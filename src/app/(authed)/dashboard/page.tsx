@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { generateHTML } from "@/lib/html";
 import "./dashboard.css";
 
@@ -47,10 +47,6 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchDashboard(month);
-  }, [month, fetchDashboard]);
 
   return (
     <>
