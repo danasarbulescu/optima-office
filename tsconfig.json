@@ -4,14 +4,17 @@
     "module": "commonjs",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true
+    "declaration": true,
+    "paths": {
+      "$amplify/*": ["./amplify/.amplify/generated/*"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "output"]
+  "include": ["amplify/**/*", "src/lib/**/*", "src/cdata.ts", "src/generate-report.ts"],
+  "exclude": ["node_modules", "dist", "output", "src/frontend", "amplify/functions/*/handler.ts"]
 }

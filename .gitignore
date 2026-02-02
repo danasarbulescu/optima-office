@@ -3,3 +3,9 @@ dist/
 output/
 .env
 .tokens.json
+
+# Amplify
+amplify_outputs.json
+amplify_outputs.d.ts
+.amplify/
+amplifyconfiguration.json
