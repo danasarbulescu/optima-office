@@ -74,6 +74,13 @@ function App() {
             onChange={e => setMonth(e.target.value)}
             className="month-picker"
           />
+          <button
+            onClick={() => fetchDashboard(month)}
+            disabled={loading}
+            className="refresh-btn"
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
           <button onClick={signOut} className="sign-out-btn">
             Sign Out
           </button>
