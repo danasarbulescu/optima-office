@@ -10,6 +10,9 @@ output/
 /out/
 next-env.d.ts
 
+# Claude Code
+.claude/settings.local.json
+
 # Amplify
 amplify_outputs.json
 amplify_outputs.d.ts
