@@ -4,39 +4,37 @@
   "description": "Financial dashboard powered by CData Connect Cloud",
   "main": "dist/generate-report.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "start:cli": "ts-node src/generate-report.ts",
-    "report": "ts-node src/generate-report.ts"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "start:cli": "ts-node --project tsconfig.cli.json src/generate-report.ts",
+    "report": "ts-node --project tsconfig.cli.json src/generate-report.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@aws-amplify/adapter-nextjs": "^1",
     "@aws-amplify/ui-react": "^6",
     "aws-amplify": "^6",
     "axios": "^1.13.4",
     "dotenv": "^17.2.3",
+    "next": "^15",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1",
     "@aws-amplify/backend-cli": "^1",
-    "@types/aws-lambda": "^8",
     "@types/node": "^25.2.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@vitejs/plugin-react": "^4",
     "aws-cdk": "^2",
     "aws-cdk-lib": "^2",
     "constructs": "^10",
-    "esbuild": "^0",
     "ts-node": "^10.9.2",
     "tsx": "^4",
-    "typescript": "^5.9.3",
-    "vite": "^6"
+    "typescript": "^5.9.3"
   }
 }

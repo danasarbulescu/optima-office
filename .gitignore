@@ -2,7 +2,13 @@ node_modules/
 dist/
 output/
 .env
+.env.local
 .tokens.json
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
 
 # Amplify
 amplify_outputs.json

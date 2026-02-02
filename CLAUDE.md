@@ -4,31 +4,39 @@ Web dashboard and CLI tool that fetches P&L data from CData Connect Cloud and re
 
 ## Workflows
 
-- **Web app**: `npm run dev` — local Vite dev server (requires `npx ampx sandbox` running for backend)
+- **Web app**: `npm run dev` — local Next.js dev server (requires `npx ampx sandbox` running for backend)
 - **CLI**: `npm run report -- --month YYYY-MM` — generates `output/dashboard.html` directly
-- **Build**: `npm run build` — Vite production build to `dist/`
+- **Build**: `npm run build` — Next.js production build to `.next/`
 
 ## Project structure
 
 ```
 amplify/
   auth/resource.ts                  — Cognito auth (email, no self-signup)
-  functions/dashboard-api/
-    resource.ts                     — Lambda function definition with CData secrets
-    handler.ts                      — Lambda handler: CData fetch + compute + JSON response
-  backend.ts                        — defineBackend, HTTP API with Cognito authorizer
+  backend.ts                        — defineBackend (auth-only)
 src/
+  app/
+    layout.tsx                      — Root layout with ConfigureAmplify
+    page.tsx                        — Home redirector (auth check)
+    globals.css                     — Global styles
+    login/page.tsx                  — Login page with Authenticator
+    (authed)/
+      layout.tsx                    — Protected layout (header, sign out)
+      dashboard/
+        page.tsx                    — Dashboard: month picker, refresh, render
+        dashboard.css               — Dashboard-specific styles
+    api/
+      dashboard/route.ts            — API route: CData fetch + compute + JSON
+  components/
+    ConfigureAmplify.tsx            — Client component for Amplify SSR config
+  utils/
+    amplify-utils.ts                — Server-side Amplify runner
   lib/
     types.ts                        — Shared interfaces (KPIs, PnLByMonth, CDataPLRow, etc.)
     cdata.ts                        — CData API client (parameterized credentials)
     compute.ts                      — buildGroupValues, computeKPIs, build13MonthPnL
     format.ts                       — formatAbbrev, formatPct, formatVariance
     html.ts                         — generateHTML, generatePnLTableHTML
-  frontend/
-    index.html                      — Vite entry HTML
-    main.tsx                        — React root with Amplify Authenticator
-    App.tsx                         — Dashboard shell: month selector, API call, render
-    App.css                         — App shell styles
   generate-report.ts                — CLI entry point (preserved)
   cdata.ts                          — CLI CData wrapper (reads .env, delegates to lib/)
 output/
@@ -37,13 +45,13 @@ output/
 
 ## Environment
 
-- **Runtime**: Node.js + Vite (frontend), Lambda (backend)
+- **Runtime**: Node.js + Next.js (frontend + API routes)
 - **Language**: TypeScript (strict mode, ES2020 target)
-- **Frontend**: React 18 + Vite + @aws-amplify/ui-react
-- **Backend**: AWS Amplify Gen 2 (Cognito, Lambda, HTTP API Gateway)
-- **Key dependencies**: axios, aws-amplify, react
+- **Frontend**: React 18 + Next.js 15 (App Router) + @aws-amplify/ui-react
+- **Backend**: AWS Amplify Gen 2 (Cognito auth only)
+- **Key dependencies**: axios, aws-amplify, @aws-amplify/adapter-nextjs, next, react
 - **CLI config**: `.env` file with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`
-- **Lambda secrets**: Set via `npx ampx sandbox secret set` (local) or Amplify Console > Secrets (production)
+- **Web app config**: CData credentials set as Amplify hosting environment variables (or `.env.local` for local dev)
 
 ## CData integration (`src/lib/cdata.ts`)
 
@@ -67,14 +75,15 @@ Key functions in `src/lib/`:
 
 ## API
 
-- **Endpoint**: `GET /dashboard?month=YYYY-MM` (Cognito-protected)
+- **Endpoint**: `GET /api/dashboard?month=YYYY-MM` (cookie-based Cognito auth via Amplify SSR)
 - **Response**: `{ kpis: KPIs, pnlByMonth: PnLByMonth, selectedMonth: string }`
 - Frontend calls `generateHTML()` client-side with the JSON response
 
 ## npm scripts
 
-- `npm run dev` — Vite dev server (frontend)
-- `npm run build` — Vite production build
+- `npm run dev` — Next.js dev server
+- `npm run build` — Next.js production build
+- `npm run start` — Next.js production server
 - `npm run report -- --month YYYY-MM` — CLI dashboard generation
 - `npm run start:cli -- --month YYYY-MM` — alias for CLI
 
@@ -87,6 +96,8 @@ npx ampx sandbox
 # Terminal 2: Start frontend
 npm run dev
 ```
+
+CData credentials for local dev: create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`.
 
 ## Authentication
 
