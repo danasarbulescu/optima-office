@@ -99,11 +99,14 @@ npm run dev
 
 CData credentials for local dev: create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`.
 
-## Authentication
+### Environments
 
-Cognito User Pool with `allowAdminCreateUserOnly: true`. Create users via:
-```bash
-aws cognito-idp admin-create-user --user-pool-id <ID> --username user@email.com \
-  --temporary-password TempPass123! \
-  --user-attributes Name=email,Value=user@email.com Name=email_verified,Value=true
-```
+**Win Desktop sandbox**
+- User Pool Id: `us-east-2_erjhdlOkq`
+- User id: `517bd500-b001-7058-f41c-f72bb5fc7040`
+- User admin email: `dana.sarbulescu@gmail.com`
+
+**Production**
+- User Pool Id: `us-east-2_IqqSQubzw`
+- User id: `b1eb05d0-2021-70ed-627a-9a99b4f566e3`
+- User admin email: `dana.sarbulescu@gmail.com`
