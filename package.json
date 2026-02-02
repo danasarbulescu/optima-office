@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:check": "cross-env NEXT_BUILD_DIR=.next-build next build",
     "start": "next start",
     "start:cli": "ts-node --project tsconfig.cli.json src/generate-report.ts",
     "report": "ts-node --project tsconfig.cli.json src/generate-report.ts"
@@ -33,6 +34,7 @@
     "aws-cdk": "^2",
     "aws-cdk-lib": "^2",
     "constructs": "^10",
+    "cross-env": "^10.1.0",
     "ts-node": "^10.9.2",
     "tsx": "^4",
     "typescript": "^5.9.3"

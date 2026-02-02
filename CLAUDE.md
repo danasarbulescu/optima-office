@@ -87,7 +87,8 @@ Key functions in `src/lib/`:
 ## npm scripts
 
 - `npm run dev` — Next.js dev server
-- `npm run build` — Next.js production build
+- `npm run build` — Next.js production build (uses `.next/`, will disrupt running dev server)
+- `npm run build:check` — production build to `.next-build/` (safe to run alongside dev server)
 - `npm run start` — Next.js production server
 - `npm run report -- --month YYYY-MM [--verbose]` — CLI dashboard generation
 - `npm run start:cli -- --month YYYY-MM [--verbose]` — alias for CLI

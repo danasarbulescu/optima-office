@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_BUILD_DIR || '.next',
   outputFileTracingRoot: path.join(__dirname),
   env: {
     CDATA_USER: process.env.CDATA_USER,
