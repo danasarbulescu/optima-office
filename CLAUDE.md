@@ -119,6 +119,13 @@ npm run dev
 
 CData credentials for local dev: create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`.
 
+## Deployment
+
+- Push to `main` branch deploys to `d149ycglubuqvd.amplifyapp.com` (production)
+- Amplify Hosting handles CI/CD automatically
+- **Check deployment status**: `npx tsx scripts/check-deployments.ts` (add `--watch` to poll until complete)
+- **Automatic monitoring**: A `PostToolUse` hook in `.claude/settings.local.json` detects `git push` and instructs Claude to run the watch script automatically in the background
+
 ### Environments
 
 **Win Desktop sandbox**
