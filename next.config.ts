@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     CDATA_USER: process.env.CDATA_USER,
     CDATA_PAT: process.env.CDATA_PAT,
     CDATA_CATALOG: process.env.CDATA_CATALOG,
+    PL_CACHE_TABLE: process.env.PL_CACHE_TABLE,
   },
 };
 

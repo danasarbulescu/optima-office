@@ -4,6 +4,8 @@ import { runWithAmplifyServerContext } from "@/utils/amplify-utils";
 import { fetchAuthSession } from "aws-amplify/auth/server";
 import { fetchPLSummaries } from "@/lib/cdata";
 import { buildExpensesTrend } from "@/lib/compute";
+import { getCachedPL, setCachedPL } from "@/lib/cache";
+import { CDataPLRow } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   const authenticated = await runWithAmplifyServerContext({
@@ -40,25 +42,46 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  try {
-    const plRows = await fetchPLSummaries(
-      process.env.CDATA_USER ?? "",
-      process.env.CDATA_PAT ?? "",
-      process.env.CDATA_CATALOG ?? ""
-    );
+  const companyId = process.env.CDATA_CATALOG ?? "";
+  const refresh = request.nextUrl.searchParams.get("refresh") === "true";
 
-    if (plRows.length === 0) {
-      return NextResponse.json(
-        { error: "No P&L summary data returned from CData." },
-        { status: 404 }
+  try {
+    let plRows: CDataPLRow[] | undefined;
+
+    if (!refresh) {
+      try {
+        const cached = await getCachedPL(companyId);
+        if (cached) plRows = cached.plRows;
+      } catch (err) {
+        console.error("Cache read failed, falling back to CData:", err);
+      }
+    }
+
+    if (!plRows) {
+      const freshRows = await fetchPLSummaries(
+        process.env.CDATA_USER ?? "",
+        process.env.CDATA_PAT ?? "",
+        companyId
       );
+
+      if (freshRows.length === 0) {
+        return NextResponse.json(
+          { error: "No P&L summary data returned from CData." },
+          { status: 404 }
+        );
+      }
+
+      setCachedPL(companyId, companyId, freshRows).catch((err) =>
+        console.error("Cache write failed:", err)
+      );
+      plRows = freshRows;
     }
 
     const data = buildExpensesTrend(plRows, startMonth, endMonth);
 
     return NextResponse.json({
       data,
-      clientName: process.env.CDATA_CATALOG ?? "",
+      clientName: companyId,
     });
   } catch (err: any) {
     console.error("Trend API error:", err);

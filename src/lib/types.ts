@@ -31,6 +31,14 @@ export interface TrendDataPoint {
   avg13: number | null;
 }
 
+export interface PLCacheEntry {
+  companyId: string;
+  clientName: string;
+  plRows: CDataPLRow[];
+  fetchedAt: string;
+  ttl: number;
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;
