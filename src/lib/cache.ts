@@ -1,9 +1,6 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { docClient } from './dynamo';
 import { CDataPLRow, PLCacheEntry } from './types';
-
-const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = process.env.PL_CACHE_TABLE || '';
 const CACHE_TTL_HOURS = 24;
