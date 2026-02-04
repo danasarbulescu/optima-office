@@ -38,7 +38,7 @@ export default function DashboardPage() {
       }
 
       const data = await res.json();
-      const html = generateHTML(data.kpis, data.selectedMonth, data.pnlByMonth);
+      const html = generateHTML(data.kpis, data.selectedMonth, data.pnlByMonth, data.clientName);
       setDashboardStyles(extractStyles(html));
       setDashboardHtml(extractBody(html));
     } catch (err: any) {

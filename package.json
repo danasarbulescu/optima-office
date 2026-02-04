@@ -2,14 +2,11 @@
   "name": "quickbooks-export",
   "version": "1.0.0",
   "description": "Financial dashboard powered by CData Connect Cloud",
-  "main": "dist/generate-report.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "build:check": "cross-env NEXT_BUILD_DIR=.next-build next build",
-    "start": "next start",
-    "start:cli": "ts-node --project tsconfig.cli.json src/generate-report.ts",
-    "report": "ts-node --project tsconfig.cli.json src/generate-report.ts"
+    "start": "next start"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +17,6 @@
     "@aws-amplify/ui-react": "^6",
     "aws-amplify": "^6",
     "axios": "^1.13.4",
-    "dotenv": "^17.2.3",
     "next": "^15.5.11",
     "react": "^18",
     "react-dom": "^18"
@@ -35,7 +31,6 @@
     "aws-cdk-lib": "^2",
     "constructs": "^10",
     "cross-env": "^10.1.0",
-    "ts-node": "^10.9.2",
     "tsx": "^4",
     "typescript": "^5.9.3"
   }

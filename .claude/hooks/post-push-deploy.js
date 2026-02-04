@@ -8,7 +8,7 @@ process.stdin.on("end", () => {
       console.log(
         JSON.stringify({
           systemMessage:
-            "A git push was just executed. You MUST now run the deployment watch script in the background (run_in_background=true): npx tsx scripts/check-deployments.ts --watch. Do NOT block on the result with TaskOutput. Note the task ID so you can check it later. At the start of your next response, check the background task status non-blockingly (TaskOutput block=false) and report the result if the deployment has completed.",
+            "A git push was just executed. You MUST now run the deployment watch script in the background (run_in_background=true): npx tsx scripts/check-deployments.ts --watch. Do NOT block on the result with TaskOutput. Note the task ID so you can check it later. At the start of subsequent responses, check the background task non-blockingly (TaskOutput block=false). Only report the result once the deployment has completed (SUCCEED or FAILED) — do NOT mention it while still running.",
         })
       );
     }

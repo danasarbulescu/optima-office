@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       month
     );
 
-    return NextResponse.json({ kpis, pnlByMonth, selectedMonth: month });
+    return NextResponse.json({ kpis, pnlByMonth, selectedMonth: month, clientName: process.env.CDATA_CATALOG ?? "" });
   } catch (err: any) {
     console.error("Dashboard API error:", err);
     return NextResponse.json(

@@ -51,7 +51,7 @@ ${bodyRows}
 </div>`;
 }
 
-export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnLByMonth): string {
+export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnLByMonth, clientName?: string): string {
   const na = 'N/A';
 
   // Variance HTML helpers
@@ -78,7 +78,7 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Financial Snapshot — ${selectedMonth}</title>
+<title>${clientName ? `${clientName} — ` : ''}Financial Snapshot — ${selectedMonth}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -86,6 +86,14 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
     background: #f5f7fa;
     color: #1a1a2e;
     padding: 40px 24px;
+  }
+  .client-name {
+    text-align: center;
+    color: #555;
+    font-size: 16px;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
   }
   h1 {
     text-align: center;
@@ -235,6 +243,7 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
 </head>
 <body>
 
+${clientName ? `<div class="client-name">${clientName}</div>` : ''}
 <h1>Financial Snapshot</h1>
 
 <!-- Row 1: Revenue metrics -->
