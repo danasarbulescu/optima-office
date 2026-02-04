@@ -137,3 +137,5 @@ CData credentials for local dev: create `.env.local` with `CDATA_USER`, `CDATA_P
 - User Pool Id: `us-east-2_IqqSQubzw`
 - User id: `b1eb05d0-2021-70ed-627a-9a99b4f566e3`
 - User admin email: `dana.sarbulescu@gmail.com`
+
+<!-- Last deployment test: 2026-02-03 -->
