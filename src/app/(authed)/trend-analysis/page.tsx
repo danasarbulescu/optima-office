@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { TrendDataPoint } from "@/lib/types";
 import { formatAbbrev } from "@/lib/format";
+import { useCompany } from "@/context/CompanyContext";
 import "./trend-analysis.css";
 
 const MONTH_LABELS = [
@@ -36,19 +37,21 @@ function getCurrentMonth(): string {
 }
 
 export default function TrendAnalysisPage() {
+  const { selectedCompany } = useCompany();
   const [startMonth, setStartMonth] = useState("2024-01");
   const [endMonth, setEndMonth] = useState(getCurrentMonth());
   const [data, setData] = useState<TrendDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [clientName, setClientName] = useState("");
+  const prevCompanyRef = useRef(selectedCompany);
 
   const fetchTrend = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const res = await fetch(
-        `/api/trend?startMonth=${startMonth}&endMonth=${endMonth}`
+        `/api/trend?startMonth=${startMonth}&endMonth=${endMonth}&company=${selectedCompany}`
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -62,7 +65,14 @@ export default function TrendAnalysisPage() {
     } finally {
       setLoading(false);
     }
-  }, [startMonth, endMonth]);
+  }, [startMonth, endMonth, selectedCompany]);
+
+  useEffect(() => {
+    if (prevCompanyRef.current !== selectedCompany) {
+      prevCompanyRef.current = selectedCompany;
+      fetchTrend();
+    }
+  }, [selectedCompany, fetchTrend]);
 
   return (
     <>

@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { runWithAmplifyServerContext } from "@/utils/amplify-utils";
 import { fetchAuthSession } from "aws-amplify/auth/server";
-import { fetchPLSummaries } from "@/lib/cdata";
 import { buildGroupValues, computeKPIs, build13MonthPnL } from "@/lib/compute";
-import { getCachedPL, setCachedPL } from "@/lib/cache";
-import { CDataPLRow } from "@/lib/types";
+import { fetchPLForCompany } from "@/lib/fetch-pl";
+import { isValidCompanyParam, COMPANIES } from "@/lib/companies";
 
 export async function GET(request: NextRequest) {
   // Validate authentication via Amplify server context
@@ -25,7 +24,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Validate month parameter
   const month = request.nextUrl.searchParams.get("month");
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json(
@@ -38,41 +36,21 @@ export async function GET(request: NextRequest) {
   const year = Number(yearStr);
   const monthIdx = parseInt(moStr, 10) - 1;
 
-  const companyId = process.env.CDATA_CATALOG ?? "";
+  const company = request.nextUrl.searchParams.get("company") ?? process.env.CDATA_CATALOG ?? COMPANIES[0].id;
   const refresh = request.nextUrl.searchParams.get("refresh") === "true";
 
+  if (!isValidCompanyParam(company)) {
+    return NextResponse.json({ error: "Invalid company parameter" }, { status: 400 });
+  }
+
   try {
-    let plRows: CDataPLRow[] | undefined;
+    const { plRows, clientName } = await fetchPLForCompany(company, refresh);
 
-    // Try cache first (skip if manual refresh requested)
-    if (!refresh) {
-      try {
-        const cached = await getCachedPL(companyId);
-        if (cached) plRows = cached.plRows;
-      } catch (err) {
-        console.error("Cache read failed, falling back to CData:", err);
-      }
-    }
-
-    // Cache miss or refresh: fetch from CData
-    if (!plRows) {
-      const freshRows = await fetchPLSummaries(
-        process.env.CDATA_USER ?? "",
-        process.env.CDATA_PAT ?? "",
-        companyId
+    if (plRows.length === 0) {
+      return NextResponse.json(
+        { error: "No P&L summary data returned from CData." },
+        { status: 404 }
       );
-
-      if (freshRows.length === 0) {
-        return NextResponse.json(
-          { error: "No P&L summary data returned from CData." },
-          { status: 404 }
-        );
-      }
-
-      setCachedPL(companyId, companyId, freshRows).catch((err) =>
-        console.error("Cache write failed:", err)
-      );
-      plRows = freshRows;
     }
 
     const curGroups = buildGroupValues(plRows, year);
@@ -88,7 +66,7 @@ export async function GET(request: NextRequest) {
       month
     );
 
-    return NextResponse.json({ kpis, pnlByMonth, selectedMonth: month, clientName: companyId });
+    return NextResponse.json({ kpis, pnlByMonth, selectedMonth: month, clientName });
   } catch (err: any) {
     console.error("Dashboard API error:", err);
     return NextResponse.json(

@@ -4,6 +4,8 @@ import { useAuthenticator, Authenticator } from "@aws-amplify/ui-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import { CompanyProvider, useCompany } from "@/context/CompanyContext";
+import { COMPANIES, COMBINED_ID, COMBINED_DISPLAY_NAME } from "@/lib/companies";
 
 function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
   const { authStatus, signOut, user } = useAuthenticator((context) => [
@@ -11,6 +13,7 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
     context.user,
   ]);
   const router = useRouter();
+  const { selectedCompany, setSelectedCompany } = useCompany();
 
   useEffect(() => {
     if (authStatus === "unauthenticated") {
@@ -39,6 +42,16 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
           <Link href="/trend-analysis" className="nav-link">Trend Analysis</Link>
         </nav>
         <div className="app-controls">
+          <select
+            className="company-selector"
+            value={selectedCompany}
+            onChange={(e) => setSelectedCompany(e.target.value)}
+          >
+            {COMPANIES.map(c => (
+              <option key={c.id} value={c.id}>{c.displayName}</option>
+            ))}
+            <option value={COMBINED_ID}>{COMBINED_DISPLAY_NAME}</option>
+          </select>
           <button onClick={signOut} className="sign-out-btn">
             Sign Out
           </button>
@@ -52,7 +65,9 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   return (
     <Authenticator.Provider>
-      <AuthedLayoutContent>{children}</AuthedLayoutContent>
+      <CompanyProvider>
+        <AuthedLayoutContent>{children}</AuthedLayoutContent>
+      </CompanyProvider>
     </Authenticator.Provider>
   );
 }

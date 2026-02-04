@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { generateHTML } from "@/lib/html";
+import { useCompany } from "@/context/CompanyContext";
 import "./dashboard.css";
 
 function getCurrentMonth(): string {
@@ -20,17 +21,19 @@ function extractStyles(html: string): string {
 }
 
 export default function DashboardPage() {
+  const { selectedCompany } = useCompany();
   const [month, setMonth] = useState(getCurrentMonth());
   const [dashboardHtml, setDashboardHtml] = useState<string>("");
   const [dashboardStyles, setDashboardStyles] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const prevCompanyRef = useRef(selectedCompany);
 
   const fetchDashboard = useCallback(async (selectedMonth: string) => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/dashboard?month=${selectedMonth}`);
+      const res = await fetch(`/api/dashboard?month=${selectedMonth}&company=${selectedCompany}`);
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -46,7 +49,14 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCompany]);
+
+  useEffect(() => {
+    if (prevCompanyRef.current !== selectedCompany) {
+      prevCompanyRef.current = selectedCompany;
+      fetchDashboard(month);
+    }
+  }, [selectedCompany, fetchDashboard, month]);
 
   return (
     <>

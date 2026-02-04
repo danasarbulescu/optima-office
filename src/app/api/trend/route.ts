@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { runWithAmplifyServerContext } from "@/utils/amplify-utils";
 import { fetchAuthSession } from "aws-amplify/auth/server";
-import { fetchPLSummaries } from "@/lib/cdata";
 import { buildExpensesTrend } from "@/lib/compute";
-import { getCachedPL, setCachedPL } from "@/lib/cache";
-import { CDataPLRow } from "@/lib/types";
+import { fetchPLForCompany } from "@/lib/fetch-pl";
+import { isValidCompanyParam, COMPANIES } from "@/lib/companies";
 
 export async function GET(request: NextRequest) {
   const authenticated = await runWithAmplifyServerContext({
@@ -42,47 +41,26 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const companyId = process.env.CDATA_CATALOG ?? "";
+  const company = request.nextUrl.searchParams.get("company") ?? process.env.CDATA_CATALOG ?? COMPANIES[0].id;
   const refresh = request.nextUrl.searchParams.get("refresh") === "true";
 
+  if (!isValidCompanyParam(company)) {
+    return NextResponse.json({ error: "Invalid company parameter" }, { status: 400 });
+  }
+
   try {
-    let plRows: CDataPLRow[] | undefined;
+    const { plRows, clientName } = await fetchPLForCompany(company, refresh);
 
-    if (!refresh) {
-      try {
-        const cached = await getCachedPL(companyId);
-        if (cached) plRows = cached.plRows;
-      } catch (err) {
-        console.error("Cache read failed, falling back to CData:", err);
-      }
-    }
-
-    if (!plRows) {
-      const freshRows = await fetchPLSummaries(
-        process.env.CDATA_USER ?? "",
-        process.env.CDATA_PAT ?? "",
-        companyId
+    if (plRows.length === 0) {
+      return NextResponse.json(
+        { error: "No P&L summary data returned from CData." },
+        { status: 404 }
       );
-
-      if (freshRows.length === 0) {
-        return NextResponse.json(
-          { error: "No P&L summary data returned from CData." },
-          { status: 404 }
-        );
-      }
-
-      setCachedPL(companyId, companyId, freshRows).catch((err) =>
-        console.error("Cache write failed:", err)
-      );
-      plRows = freshRows;
     }
 
     const data = buildExpensesTrend(plRows, startMonth, endMonth);
 
-    return NextResponse.json({
-      data,
-      clientName: companyId,
-    });
+    return NextResponse.json({ data, clientName });
   } catch (err: any) {
     console.error("Trend API error:", err);
     return NextResponse.json(
