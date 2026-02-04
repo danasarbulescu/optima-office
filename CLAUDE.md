@@ -124,7 +124,7 @@ CData credentials for local dev: create `.env.local` with `CDATA_USER`, `CDATA_P
 - Push to `main` branch deploys to `d149ycglubuqvd.amplifyapp.com` (production)
 - Amplify Hosting handles CI/CD automatically
 - **Check deployment status**: `npx tsx scripts/check-deployments.ts` (add `--watch` to poll until complete)
-- **Automatic monitoring**: A `PostToolUse` hook in `.claude/settings.local.json` detects `git push` and instructs Claude to run the watch script automatically in the background
+- **Automatic monitoring**: A `PostToolUse` hook in `.claude/settings.local.json` detects `git push` and instructs Claude to run the watch script in the background. Claude must NOT block on the result -- instead, note the task ID and check non-blockingly (`TaskOutput block=false`) at the start of subsequent responses until the deployment completes, then report the result
 
 ### Environments
 
