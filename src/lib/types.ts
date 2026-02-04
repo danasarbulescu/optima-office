@@ -25,6 +25,12 @@ export interface PnLByMonth {
   totals: Omit<PnLMonthEntry, 'label'>;
 }
 
+export interface TrendDataPoint {
+  month: string;
+  expenses: number;
+  avg13: number | null;
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;

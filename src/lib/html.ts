@@ -2,23 +2,42 @@ import { KPIs, PnLByMonth, PnLMonthEntry } from './types';
 import { formatAbbrev, formatPct, formatVariance } from './format';
 
 function generatePnLTableHTML(pnl: PnLByMonth): string {
-  const rows: [string, keyof Omit<PnLMonthEntry, 'label'>, boolean][] = [
+  const rows: [string, keyof Omit<PnLMonthEntry, 'label'>, boolean | 'pct'][] = [
     ['Revenue',              'revenue',            false],
     ['Cost of Goods Sold',   'cogs',               false],
     ['Gross Profit',         'grossProfit',         true],
+    ['GP%',                  'grossProfit',         'pct'],
     ['Operating Expenses',   'expenses',            false],
     ['Net Operating Income', 'netOperatingIncome',  true],
+    ['Operating Profit %',   'netOperatingIncome',  'pct'],
     ['Other Expenses',       'otherExpenses',       false],
     ['Net Other Income',     'netOtherIncome',      false],
     ['Net Income',           'netIncome',           true],
+    ['Net Income %',         'netIncome',           'pct'],
   ];
 
   const headerCells = pnl.months
     .map(m => `<th>${m.label}</th>`)
     .join('\n          ');
 
-  const bodyRows = rows.map(([label, key, isSummary]) => {
-    const cls = isSummary ? ' class="summary-row"' : '';
+  const bodyRows = rows.map(([label, key, rowType]) => {
+    if (rowType === 'pct') {
+      const cells = pnl.months
+        .map(m => {
+          const pct = m.revenue !== 0 ? (m[key] / m.revenue) * 100 : 0;
+          return `<td>${formatPct(pct)}</td>`;
+        })
+        .join('');
+      const totalPct = pnl.totals.revenue !== 0
+        ? (pnl.totals[key] / pnl.totals.revenue) * 100 : 0;
+      const totalCell = `<td>${formatPct(totalPct)}</td>`;
+      return `      <tr class="pct-row">
+        <td class="row-label">${label}</td>
+        ${cells}
+        ${totalCell}
+      </tr>`;
+    }
+    const cls = rowType ? ' class="summary-row"' : '';
     const cells = pnl.months
       .map(m => `<td>${formatAbbrev(m[key])}</td>`)
       .join('');
@@ -238,6 +257,16 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
   }
   .pnl-table tbody tr.summary-row:hover td.row-label {
     background: #e8edf8;
+  }
+  .pnl-table tbody tr.pct-row td {
+    font-style: italic;
+    color: #555;
+  }
+  .pnl-table tbody tr.pct-row:hover td {
+    background: #f0f4ff;
+  }
+  .pnl-table tbody tr.pct-row:hover td.row-label {
+    background: #f0f4ff;
   }
 </style>
 </head>

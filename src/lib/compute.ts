@@ -1,4 +1,4 @@
-import { CDataPLRow, GroupValues, KPIs, PnLMonthEntry, PnLByMonth } from './types';
+import { CDataPLRow, GroupValues, KPIs, PnLMonthEntry, PnLByMonth, TrendDataPoint } from './types';
 
 export function buildGroupValues(rows: CDataPLRow[], year: number): GroupValues {
   const monthNames = [
@@ -43,12 +43,16 @@ export function computeKPIs(
   const gpCurrentMo = monthIdx >= 0 ? (grossProfit[monthIdx] || 0) : 0;
   const currentMoNetIncome = monthIdx >= 0 ? (netIncome[monthIdx] || 0) : 0;
 
-  // Revenue 3 prior months average
+  // Revenue 3 prior months average (rolling across year boundary)
+  const pyIncome = pyGroups?.get('Income') || [];
   let rev3Sum = 0;
   let rev3Count = 0;
   for (let i = monthIdx - 3; i < monthIdx; i++) {
-    if (i >= 0 && i < income.length) {
-      rev3Sum += income[i];
+    if (i >= 0) {
+      rev3Sum += income[i] || 0;
+      rev3Count++;
+    } else if (pyIncome.length > 0) {
+      rev3Sum += pyIncome[12 + i] || 0; // -1 -> 11 (Dec), -2 -> 10 (Nov), -3 -> 9 (Oct)
       rev3Count++;
     }
   }
@@ -71,7 +75,6 @@ export function computeKPIs(
   let netIncomeYoyVariance: number | null = null;
 
   if (pyGroups) {
-    const pyIncome = pyGroups.get('Income') || [];
     const pyNetIncome = pyGroups.get('NetIncome') || [];
 
     pyToDateRevenue = sumRange(pyIncome, 0, monthIdx);
@@ -157,4 +160,57 @@ export function build13MonthPnL(
   }
 
   return { months, totals };
+}
+
+function subtractMonths(monthStr: string, n: number): string {
+  const [y, m] = monthStr.split('-').map(Number);
+  const total = y * 12 + (m - 1) - n;
+  const newYear = Math.floor(total / 12);
+  const newMonth = (total % 12) + 1;
+  return `${newYear}-${String(newMonth).padStart(2, '0')}`;
+}
+
+export function buildExpensesTrend(
+  rows: CDataPLRow[],
+  startMonth: string,
+  endMonth: string,
+): TrendDataPoint[] {
+  // Build flat array from (startMonth - 12) through endMonth
+  // Use buildGroupValues per year to stay consistent with the dashboard P&L
+  const extractionStart = subtractMonths(startMonth, 12);
+  const [startY, startM] = extractionStart.split('-').map(Number);
+  const [endY, endM] = endMonth.split('-').map(Number);
+
+  // Cache buildGroupValues per year
+  const groupsByYear = new Map<number, GroupValues>();
+  for (let yr = startY; yr <= endY; yr++) {
+    groupsByYear.set(yr, buildGroupValues(rows, yr));
+  }
+
+  const allMonths: { month: string; value: number }[] = [];
+  let y = startY;
+  let m = startM;
+  while (y < endY || (y === endY && m <= endM)) {
+    const expenses = groupsByYear.get(y)?.get('Expenses') || [];
+    const value = expenses[m - 1] || 0;
+    allMonths.push({ month: `${y}-${String(m).padStart(2, '0')}`, value });
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+
+  // Compute rolling 13-month average and build result for requested range only
+  const result: TrendDataPoint[] = [];
+  for (let i = 0; i < allMonths.length; i++) {
+    if (allMonths[i].month < startMonth) continue;
+    const avg13 = i >= 12
+      ? allMonths.slice(i - 12, i + 1).reduce((s, p) => s + p.value, 0) / 13
+      : null;
+    result.push({
+      month: allMonths[i].month,
+      expenses: allMonths[i].value,
+      avg13,
+    });
+  }
+
+  return result;
 }

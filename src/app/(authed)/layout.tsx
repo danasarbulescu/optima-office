@@ -3,6 +3,7 @@
 import { useAuthenticator, Authenticator } from "@aws-amplify/ui-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
 
 function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
   const { authStatus, signOut, user } = useAuthenticator((context) => [
@@ -33,6 +34,10 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="app-shell">
       <header className="app-header">
         <span className="app-user">{user?.signInDetails?.loginId}</span>
+        <nav className="app-nav">
+          <Link href="/dashboard" className="nav-link">Dashboard</Link>
+          <Link href="/trend-analysis" className="nav-link">Trend Analysis</Link>
+        </nav>
         <div className="app-controls">
           <button onClick={signOut} className="sign-out-btn">
             Sign Out
