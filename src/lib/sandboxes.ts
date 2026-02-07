@@ -15,6 +15,11 @@ export const SANDBOXES: SandboxConfig[] = [
     label: 'Win XPS Sandbox',
     tablePrefix: 'amplify-quickbooksexport-Marin-sandbox-a3c0c362ac',
   },
+  {
+    id: 'production',
+    label: 'Production',
+    tablePrefix: 'amplify-d149ycglubuqvd-main-branch-d0cdc27b71',
+  },
 ];
 
 export function getSandboxById(id: string): SandboxConfig | undefined {

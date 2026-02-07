@@ -180,6 +180,7 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 - User admin email: `dana.sarbulescu@gmail.com`
 
 **Production**
+- AWS resource prefix: `amplify-d149ycglubuqvd-main-branch-d0cdc27b71`
 - User Pool Id: `us-east-2_IqqSQubzw`
 - User id: `b1eb05d0-2021-70ed-627a-9a99b4f566e3`
 - User admin email: `dana.sarbulescu@gmail.com`
