@@ -12,7 +12,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 ```
 amplify/
   auth/resource.ts                  — Cognito auth (email, no self-signup)
-  backend.ts                        — defineBackend (auth + DynamoDB PLCache + Clients tables)
+  backend.ts                        — defineBackend (auth + DynamoDB tables + SSR compute role)
 src/
   app/
     layout.tsx                      — Root layout with ConfigureAmplify
@@ -21,20 +21,26 @@ src/
     login/page.tsx                  — Login page with Authenticator
     (authed)/
       layout.tsx                    — Protected layout (header, multi-select dropdown, nav, sign out)
+      loading.tsx                   — Loading skeleton for page transitions
       clients/
-        page.tsx                    — Client management: list, add (modal), delete
+        page.tsx                    — Client management: list, add, edit, delete, sortable columns
         clients.css                 — Clients page styles
       dashboard/
         page.tsx                    — Dashboard: month picker, refresh, render
         dashboard.css               — Dashboard-specific styles
       trend-analysis/
-        page.tsx                    — Trend analysis: date range, line chart (recharts)
+        page.tsx                    — Trend analysis: date range picker, lazy-loads TrendChart
+        TrendChart.tsx              — Client-side recharts line chart (dynamic import, SSR disabled)
         trend-analysis.css          — Trend-specific styles
+      tools/
+        page.tsx                    — Sandbox data sync tool (preview + execute)
+        tools.css                   — Tools page styles
     api/
       clients/route.ts              — API: list clients (GET), add client (POST)
-      clients/[id]/route.ts         — API: delete client (DELETE)
+      clients/[id]/route.ts         — API: edit client (PUT), delete client (DELETE)
       dashboard/route.ts            — API: P&L fetch + compute + JSON (?month, ?companies)
       trend/route.ts                — API: expenses trend data (?startMonth, ?endMonth, ?companies)
+      tools/sync-sandbox/route.ts   — API: sandbox sync preview + execute (POST)
   components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
@@ -43,14 +49,19 @@ src/
     amplify-utils.ts                — Server-side Amplify runner
   lib/
     types.ts                        — Shared interfaces (ClientConfig, KPIs, PnLByMonth, CDataPLRow, PLCacheEntry)
-    clients.ts                      — DynamoDB CRUD for Clients table (getClients, addClient, deleteClient)
+    clients.ts                      — DynamoDB CRUD for Clients table (getClients, addClient, updateClient, deleteClient)
     cdata.ts                        — CData API client (parameterized credentials)
     cache.ts                        — DynamoDB P&L cache (getCachedPL, setCachedPL, 24h staleness)
+    dynamo.ts                       — DynamoDB document client + pagination helpers (scanAllItems, queryAllItems)
     fetch-pl.ts                     — Shared fetch helper (cache-first, multi-company merge)
     merge.ts                        — mergePLRows: sums numeric columns by RowGroup across companies
     compute.ts                      — buildGroupValues, computeKPIs, build13MonthPnL, buildExpensesTrend
     format.ts                       — formatAbbrev, formatPct, formatVariance
     html.ts                         — generateHTML, generatePnLTableHTML
+    sandboxes.ts                    — Sandbox configs (Win Desktop, Win XPS, Production) with table prefixes
+    sync-sandbox.ts                 — Cross-sandbox DynamoDB sync (previewSync, executeSync)
+scripts/
+  check-deployments.ts              — Poll Amplify deployment status (--watch for continuous polling)
 next.config.ts                      — Inlines CData env vars at build time
 tsconfig.json                       — Main TS config (esnext module, bundler resolution)
 amplify.yml                         — Amplify CI/CD pipeline (backend deploy + frontend build)
@@ -62,23 +73,24 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 - **Runtime**: Node.js + Next.js (frontend + API routes)
 - **Language**: TypeScript (strict mode, ES2020 target)
 - **Frontend**: React 18 + Next.js 15 (App Router) + @aws-amplify/ui-react
-- **Backend**: AWS Amplify Gen 2 (Cognito auth + DynamoDB)
+- **Backend**: AWS Amplify Gen 2 (Cognito auth + DynamoDB + SSR compute role)
 - **Key dependencies**: axios, aws-amplify, @aws-amplify/adapter-nextjs, @aws-amplify/ui-react, @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, recharts, next, react
 - **Web app config**: CData credentials set as Amplify hosting environment variables (or `.env.local` for local dev)
 
 ## Client management
 
-- **Clients table**: DynamoDB `Clients` table stores client registry (id, displayName, createdAt)
-- **CRUD**: `src/lib/clients.ts` provides `getClients()`, `addClient()`, `deleteClient()`
-- **Clients page**: `/clients` — list, add (modal with display name + CData catalog ID), delete
-- **API routes**: `GET/POST /api/clients`, `DELETE /api/clients/:id`
+- **Clients table**: DynamoDB `Clients` table stores client registry (id, catalogId, displayName, email?, firstName?, lastName?, createdAt)
+- **ID model**: Internal UUID (`id`) is auto-generated; `catalogId` is the CData catalog name (e.g. `BrooklynRestaurants`)
+- **CRUD**: `src/lib/clients.ts` provides `getClients()`, `addClient()`, `updateClient()`, `deleteClient()`
+- **Clients page**: `/clients` — list with sortable columns (displayName, catalogId, email, firstName, lastName), add/edit modals, delete
+- **API routes**: `GET/POST /api/clients`, `PUT/DELETE /api/clients/:id`
 - **Env var**: `CLIENTS_TABLE` — DynamoDB table name (set in Amplify env vars or `.env.local`)
 
 ## Multi-company support
 
 - **Client selector**: Multi-select checkbox dropdown in header (select one, multiple, or all clients)
 - **Multi-select merge**: When multiple clients selected, fetches each in parallel, merges P&L rows by RowGroup (sums all numeric columns). Output is structurally identical to single-company data so all compute functions work unchanged.
-- **React context**: `CompanyProvider` / `useCompany()` in `src/context/CompanyContext.tsx` provides `clients`, `selectedCompanies`, `setSelectedCompanies`, `refreshClients`
+- **React context**: `CompanyProvider` / `useCompany()` in `src/context/CompanyContext.tsx` provides `clients`, `clientsLoading`, `selectedCompanies`, `setSelectedCompanies`, `refreshClients`
 - **Auto-refetch**: Both dashboard and trend pages auto-refetch when selection changes; auto-fetch on mount uses cached data
 
 ## DynamoDB caching (`src/lib/cache.ts`)
@@ -116,12 +128,24 @@ Line chart (recharts) showing operating expenses over a configurable date range:
 - **X-axis**: months, **Y-axis**: dollar amounts
 - **Two lines**: Total expenses per month + 13-month rolling average
 - `buildExpensesTrend(plRows, startMonth, endMonth)` in `src/lib/compute.ts`
+- `TrendChart.tsx` is a separate client component loaded via `next/dynamic` with SSR disabled (recharts requires browser APIs)
+
+## Tools — Sandbox Data Sync
+
+Admin tool at `/tools` for copying the Clients DynamoDB table between environments:
+- **Sandboxes**: Defined in `src/lib/sandboxes.ts` — Win Desktop, Win XPS, Production (each with a table prefix)
+- **Discovery**: `discoverClientsTable(prefix)` in `src/lib/sync-sandbox.ts` uses `ListTablesCommand` to find Clients tables by prefix
+- **Preview**: Shows source/destination item counts and source items before sync
+- **Execute**: Clears destination table, batch-writes all source items
+- **API**: `POST /api/tools/sync-sandbox` with `{ action, sourceId, destinationId }`
+- **IAM**: SSR compute role needs `dynamodb:ListTables` on `*` and read/write on `arn:aws:dynamodb:*:*:table/amplify-*`
 
 ## API
 
-- **Clients**: `GET /api/clients` — list all clients; `POST /api/clients` — add client `{ id, displayName }`; `DELETE /api/clients/:id` — remove client
+- **Clients**: `GET /api/clients` — list all clients; `POST /api/clients` — add client `{ catalogId, displayName, email?, firstName?, lastName? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
 - **Dashboard**: `GET /api/dashboard?month=YYYY-MM&companies=id1,id2&refresh=true` — P&L KPIs and 13-month table data
 - **Trend**: `GET /api/trend?startMonth=YYYY-MM&endMonth=YYYY-MM&companies=id1,id2&refresh=true` — monthly expenses trend data
+- **Sandbox sync**: `POST /api/tools/sync-sandbox` — `{ action: "preview"|"execute", sourceId, destinationId }` — preview or execute DynamoDB Clients table sync between sandboxes
 - All endpoints: cookie-based Cognito auth via Amplify SSR
 - `?companies` accepts comma-separated client IDs (validated against Clients table)
 - `?refresh=true` bypasses DynamoDB cache and fetches fresh from CData
@@ -185,4 +209,4 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 - User id: `b1eb05d0-2021-70ed-627a-9a99b4f566e3`
 - User admin email: `dana.sarbulescu@gmail.com`
 
-<!-- Last deployment test: 2026-02-03 -->
+<!-- Last deployment test: 2026-02-07 -->
