@@ -1,6 +1,7 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 const backend = defineBackend({ auth });
@@ -27,9 +28,17 @@ const clientsTable = new dynamodb.Table(cacheStack, 'Clients', {
   removalPolicy: RemovalPolicy.DESTROY,
 });
 
+// IAM role for Amplify Hosting SSR compute (Next.js API routes)
+const computeRole = new iam.Role(cacheStack, 'SSRComputeRole', {
+  assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
+});
+plCacheTable.grantReadWriteData(computeRole);
+clientsTable.grantReadWriteData(computeRole);
+
 backend.addOutput({
   custom: {
     plCacheTableName: plCacheTable.tableName,
     clientsTableName: clientsTable.tableName,
+    ssrComputeRoleArn: computeRole.roleArn,
   },
 });
