@@ -20,8 +20,16 @@ const plCacheTable = new dynamodb.Table(cacheStack, 'PLCache', {
   removalPolicy: RemovalPolicy.DESTROY,
 });
 
+// DynamoDB table for client/company registry
+const clientsTable = new dynamodb.Table(cacheStack, 'Clients', {
+  partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: RemovalPolicy.DESTROY,
+});
+
 backend.addOutput({
   custom: {
     plCacheTableName: plCacheTable.tableName,
+    clientsTableName: clientsTable.tableName,
   },
 });

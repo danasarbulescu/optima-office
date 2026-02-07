@@ -1,3 +1,9 @@
+export interface ClientConfig {
+  id: string;          // CData catalog name, also the DynamoDB cache key
+  displayName: string; // Human-readable label for the UI
+  createdAt?: string;
+}
+
 export interface CDataPLRow {
   account: string;
   RowGroup: string;
