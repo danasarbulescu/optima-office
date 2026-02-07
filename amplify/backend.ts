@@ -35,6 +35,22 @@ const computeRole = new iam.Role(cacheStack, 'SSRComputeRole', {
 plCacheTable.grantReadWriteData(computeRole);
 clientsTable.grantReadWriteData(computeRole);
 
+// Sandbox sync tool needs ListTables + read/write access to all Amplify DynamoDB tables
+computeRole.addToPolicy(new iam.PolicyStatement({
+  actions: ['dynamodb:ListTables'],
+  resources: ['*'],
+}));
+computeRole.addToPolicy(new iam.PolicyStatement({
+  actions: [
+    'dynamodb:GetItem',
+    'dynamodb:PutItem',
+    'dynamodb:DeleteItem',
+    'dynamodb:Scan',
+    'dynamodb:BatchWriteItem',
+  ],
+  resources: [`arn:aws:dynamodb:*:*:table/amplify-*`],
+}));
+
 backend.addOutput({
   custom: {
     plCacheTableName: plCacheTable.tableName,
