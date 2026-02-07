@@ -222,6 +222,13 @@ body {
   color: #9a9caa;
 }
 
+.app-empty {
+  text-align: center;
+  padding: 60px 24px;
+  font-size: 16px;
+  color: #9a9caa;
+}
+
 .app-error {
   text-align: center;
   padding: 60px 24px;

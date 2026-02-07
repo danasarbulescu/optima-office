@@ -39,17 +39,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { id, displayName } = body;
+    const { catalogId, displayName, email, firstName, lastName } = body;
 
-    if (!id || !displayName) {
-      return NextResponse.json({ error: "id and displayName are required" }, { status: 400 });
+    if (!catalogId || !displayName) {
+      return NextResponse.json({ error: "catalogId and displayName are required" }, { status: 400 });
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(id)) {
-      return NextResponse.json({ error: "id must contain only letters, numbers, and underscores" }, { status: 400 });
+    if (!/^[a-zA-Z0-9_]+$/.test(catalogId)) {
+      return NextResponse.json({ error: "catalogId must contain only letters, numbers, and underscores" }, { status: 400 });
     }
 
-    await addClient(id, displayName);
+    await addClient({ catalogId, displayName, email, firstName, lastName });
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err: any) {
     console.error("Clients POST error:", err);

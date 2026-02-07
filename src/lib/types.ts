@@ -1,7 +1,11 @@
 export interface ClientConfig {
-  id: string;          // CData catalog name, also the DynamoDB cache key
+  id: string;          // Internal UUID (DynamoDB partition key)
+  catalogId: string;   // CData catalog name (e.g. "BrooklynRestaurants")
   displayName: string; // Human-readable label for the UI
   createdAt?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface CDataPLRow {

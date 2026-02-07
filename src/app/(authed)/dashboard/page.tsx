@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { generateHTML } from "@/lib/html";
 import { useCompany } from "@/context/CompanyContext";
 import "./dashboard.css";
@@ -26,10 +26,14 @@ export default function DashboardPage() {
   const [dashboardHtml, setDashboardHtml] = useState<string>("");
   const [dashboardStyles, setDashboardStyles] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [noCache, setNoCache] = useState(false);
   const [error, setError] = useState<string>("");
+  const hasAutoLoaded = useRef(false);
+
   const fetchDashboard = useCallback(async (selectedMonth: string, refresh = false) => {
     setLoading(true);
     setError("");
+    setNoCache(false);
     try {
       const url = `/api/dashboard?month=${selectedMonth}&companies=${selectedCompanies.join(',')}${refresh ? '&refresh=true' : ''}`;
       const res = await fetch(url);
@@ -41,17 +45,32 @@ export default function DashboardPage() {
 
       const data = await res.json();
       const html = generateHTML(data.kpis, data.selectedMonth, data.pnlByMonth, data.clientName);
-      setDashboardStyles(extractStyles(html));
-      setDashboardHtml(extractBody(html));
+      const body = extractBody(html);
+
+      if (!body || body.trim() === '') {
+        setDashboardHtml("");
+        setDashboardStyles("");
+        setNoCache(true);
+      } else {
+        setDashboardStyles(extractStyles(html));
+        setDashboardHtml(body);
+      }
     } catch (err: any) {
-      setError(err.message || "Failed to load dashboard");
+      // If auto-loading cached data fails, show the no-cache message instead of an error
+      if (!refresh && !dashboardHtml) {
+        setNoCache(true);
+      } else {
+        setError(err.message || "Failed to load dashboard");
+      }
     } finally {
       setLoading(false);
     }
-  }, [selectedCompanies]);
+  }, [selectedCompanies, dashboardHtml]);
 
+  // Auto-load cached data on mount when companies are available
   useEffect(() => {
-    if (selectedCompanies.length > 0) {
+    if (!hasAutoLoaded.current && selectedCompanies.length > 0) {
+      hasAutoLoaded.current = true;
       fetchDashboard(month);
     }
   }, [selectedCompanies, fetchDashboard, month]);
@@ -66,16 +85,29 @@ export default function DashboardPage() {
           className="month-picker"
         />
         <button
-          onClick={() => fetchDashboard(month, true)}
-          disabled={loading}
+          onClick={() => fetchDashboard(month)}
+          disabled={loading || selectedCompanies.length === 0}
           className="refresh-btn"
         >
-          {loading ? "Refreshing..." : "API Refresh"}
+          {loading ? "Loading..." : "Load"}
+        </button>
+        <button
+          onClick={() => fetchDashboard(month, true)}
+          disabled={loading || selectedCompanies.length === 0}
+          className="refresh-btn"
+        >
+          {loading ? "Fetching..." : "Fetch API Data"}
         </button>
       </div>
 
       {loading && <div className="app-loading">Loading dashboard...</div>}
       {error && <div className="app-error">{error}</div>}
+
+      {noCache && !loading && (
+        <div className="app-empty">
+          There is no cached data, you need to pull fresh data via API.
+        </div>
+      )}
 
       {dashboardHtml && (
         <>
