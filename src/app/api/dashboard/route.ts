@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { runWithAmplifyServerContext } from "@/utils/amplify-utils";
 import { fetchAuthSession } from "aws-amplify/auth/server";
 import { buildGroupValues, computeKPIs, build13MonthPnL } from "@/lib/compute";
-import { fetchPLForCompany } from "@/lib/fetch-pl";
-import { isValidCompanyParam, COMPANIES } from "@/lib/companies";
+import { fetchPLForCompanies } from "@/lib/fetch-pl";
+import { getClients } from "@/lib/clients";
 
 export async function GET(request: NextRequest) {
   // Validate authentication via Amplify server context
@@ -36,15 +36,27 @@ export async function GET(request: NextRequest) {
   const year = Number(yearStr);
   const monthIdx = parseInt(moStr, 10) - 1;
 
-  const company = request.nextUrl.searchParams.get("company") ?? process.env.CDATA_CATALOG ?? COMPANIES[0].id;
+  const companiesParam = request.nextUrl.searchParams.get("companies");
   const refresh = request.nextUrl.searchParams.get("refresh") === "true";
 
-  if (!isValidCompanyParam(company)) {
-    return NextResponse.json({ error: "Invalid company parameter" }, { status: 400 });
+  if (!companiesParam) {
+    return NextResponse.json({ error: "Missing companies parameter" }, { status: 400 });
+  }
+
+  const companyIds = companiesParam.split(",").filter(Boolean);
+  if (companyIds.length === 0) {
+    return NextResponse.json({ error: "No companies specified" }, { status: 400 });
   }
 
   try {
-    const { plRows, clientName } = await fetchPLForCompany(company, refresh);
+    const clients = await getClients();
+    const validIds = new Set(clients.map(c => c.id));
+    const invalid = companyIds.filter(id => !validIds.has(id));
+    if (invalid.length > 0) {
+      return NextResponse.json({ error: `Invalid company IDs: ${invalid.join(", ")}` }, { status: 400 });
+    }
+
+    const { plRows, clientName } = await fetchPLForCompanies(companyIds, clients, refresh);
 
     if (plRows.length === 0) {
       return NextResponse.json(

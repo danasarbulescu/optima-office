@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { generateHTML } from "@/lib/html";
 import { useCompany } from "@/context/CompanyContext";
 import "./dashboard.css";
@@ -21,19 +21,18 @@ function extractStyles(html: string): string {
 }
 
 export default function DashboardPage() {
-  const { selectedCompany } = useCompany();
+  const { selectedCompanies } = useCompany();
   const [month, setMonth] = useState(getCurrentMonth());
   const [dashboardHtml, setDashboardHtml] = useState<string>("");
   const [dashboardStyles, setDashboardStyles] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const prevCompanyRef = useRef(selectedCompany);
-
-  const fetchDashboard = useCallback(async (selectedMonth: string) => {
+  const fetchDashboard = useCallback(async (selectedMonth: string, refresh = false) => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/dashboard?month=${selectedMonth}&company=${selectedCompany}`);
+      const url = `/api/dashboard?month=${selectedMonth}&companies=${selectedCompanies.join(',')}${refresh ? '&refresh=true' : ''}`;
+      const res = await fetch(url);
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -49,14 +48,13 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCompany]);
+  }, [selectedCompanies]);
 
   useEffect(() => {
-    if (prevCompanyRef.current !== selectedCompany) {
-      prevCompanyRef.current = selectedCompany;
+    if (selectedCompanies.length > 0) {
       fetchDashboard(month);
     }
-  }, [selectedCompany, fetchDashboard, month]);
+  }, [selectedCompanies, fetchDashboard, month]);
 
   return (
     <>
@@ -68,11 +66,11 @@ export default function DashboardPage() {
           className="month-picker"
         />
         <button
-          onClick={() => fetchDashboard(month)}
+          onClick={() => fetchDashboard(month, true)}
           disabled={loading}
           className="refresh-btn"
         >
-          {loading ? "Refreshing..." : "Refresh"}
+          {loading ? "Refreshing..." : "API Refresh"}
         </button>
       </div>
 

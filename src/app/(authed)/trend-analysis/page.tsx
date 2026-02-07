@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -37,22 +37,19 @@ function getCurrentMonth(): string {
 }
 
 export default function TrendAnalysisPage() {
-  const { selectedCompany } = useCompany();
+  const { selectedCompanies } = useCompany();
   const [startMonth, setStartMonth] = useState("2024-01");
   const [endMonth, setEndMonth] = useState(getCurrentMonth());
   const [data, setData] = useState<TrendDataPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [clientName, setClientName] = useState("");
-  const prevCompanyRef = useRef(selectedCompany);
-
-  const fetchTrend = useCallback(async () => {
+  const fetchTrend = useCallback(async (refresh = false) => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(
-        `/api/trend?startMonth=${startMonth}&endMonth=${endMonth}&company=${selectedCompany}`
-      );
+      const url = `/api/trend?startMonth=${startMonth}&endMonth=${endMonth}&companies=${selectedCompanies.join(',')}${refresh ? '&refresh=true' : ''}`;
+      const res = await fetch(url);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `API error: ${res.status}`);
@@ -65,14 +62,13 @@ export default function TrendAnalysisPage() {
     } finally {
       setLoading(false);
     }
-  }, [startMonth, endMonth, selectedCompany]);
+  }, [startMonth, endMonth, selectedCompanies]);
 
   useEffect(() => {
-    if (prevCompanyRef.current !== selectedCompany) {
-      prevCompanyRef.current = selectedCompany;
+    if (selectedCompanies.length > 0) {
       fetchTrend();
     }
-  }, [selectedCompany, fetchTrend]);
+  }, [selectedCompanies, fetchTrend]);
 
   return (
     <>
@@ -96,11 +92,11 @@ export default function TrendAnalysisPage() {
           />
         </label>
         <button
-          onClick={fetchTrend}
+          onClick={() => fetchTrend(true)}
           disabled={loading}
           className="refresh-btn"
         >
-          {loading ? "Loading..." : "Load"}
+          {loading ? "Refreshing..." : "API Refresh"}
         </button>
       </div>
 
@@ -119,15 +115,17 @@ export default function TrendAnalysisPage() {
                 data={data}
                 margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2b35" />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: "#9a9caa" }}
                   tickFormatter={formatMonthLabel}
+                  stroke="#3a3b48"
                 />
                 <YAxis
                   tickFormatter={(val: number) => formatAbbrev(val)}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: "#9a9caa" }}
+                  stroke="#3a3b48"
                 />
                 <Tooltip
                   formatter={(value, name) => [
@@ -140,6 +138,8 @@ export default function TrendAnalysisPage() {
                       : "13M Avg",
                   ]}
                   labelFormatter={(label) => formatMonthFull(String(label))}
+                  contentStyle={{ backgroundColor: "#1e1f2a", border: "1px solid #2a2b35", borderRadius: 6, color: "#e1e2e8" }}
+                  labelStyle={{ color: "#9a9caa" }}
                 />
                 <Legend
                   formatter={(value: string) =>
@@ -161,7 +161,7 @@ export default function TrendAnalysisPage() {
                   type="monotone"
                   dataKey="avg13"
                   name="avg13"
-                  stroke="#1a237e"
+                  stroke="#ff7043"
                   strokeWidth={2}
                   dot={false}
                   connectNulls={false}

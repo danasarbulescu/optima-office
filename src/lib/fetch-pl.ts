@@ -1,8 +1,7 @@
 import { fetchPLSummaries } from './cdata';
 import { getCachedPL, setCachedPL } from './cache';
 import { mergePLRows } from './merge';
-import { CDataPLRow } from './types';
-import { COMPANIES, COMBINED_ID } from './companies';
+import { CDataPLRow, ClientConfig } from './types';
 
 async function fetchSingleCompany(companyId: string, refresh: boolean): Promise<CDataPLRow[]> {
   if (!refresh) {
@@ -34,24 +33,30 @@ export interface FetchPLResult {
   clientName: string;
 }
 
-export async function fetchPLForCompany(companyParam: string, refresh: boolean): Promise<FetchPLResult> {
-  if (companyParam === COMBINED_ID) {
-    const results = await Promise.all(
-      COMPANIES.map(c => fetchSingleCompany(c.id, refresh))
-    );
-
-    const nonEmpty = results.filter(r => r.length > 0);
-    if (nonEmpty.length === 0) {
-      return { plRows: [], clientName: 'Combined' };
-    }
-
-    return {
-      plRows: mergePLRows(...nonEmpty),
-      clientName: 'Combined',
-    };
+export async function fetchPLForCompanies(
+  companyIds: string[],
+  clients: ClientConfig[],
+  refresh: boolean,
+): Promise<FetchPLResult> {
+  if (companyIds.length === 1) {
+    const id = companyIds[0];
+    const plRows = await fetchSingleCompany(id, refresh);
+    const client = clients.find(c => c.id === id);
+    return { plRows, clientName: client?.displayName ?? id };
   }
 
-  const plRows = await fetchSingleCompany(companyParam, refresh);
-  const company = COMPANIES.find(c => c.id === companyParam);
-  return { plRows, clientName: company?.displayName ?? companyParam };
+  // Multiple companies: fetch in parallel and merge
+  const results = await Promise.all(
+    companyIds.map(id => fetchSingleCompany(id, refresh))
+  );
+
+  const nonEmpty = results.filter(r => r.length > 0);
+  if (nonEmpty.length === 0) {
+    return { plRows: [], clientName: 'Combined' };
+  }
+
+  return {
+    plRows: mergePLRows(...nonEmpty),
+    clientName: 'Combined',
+  };
 }
