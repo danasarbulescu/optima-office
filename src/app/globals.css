@@ -4,10 +4,40 @@
   box-sizing: border-box;
 }
 
+/* Force Amplify Authenticator dark mode */
+:root {
+  --amplify-colors-background-primary: #0f1117;
+  --amplify-colors-background-secondary: #1a1b23;
+  --amplify-colors-background-tertiary: #252636;
+  --amplify-colors-border-primary: #3a3b48;
+  --amplify-colors-border-secondary: #2a2b35;
+  --amplify-colors-font-primary: #e1e2e8;
+  --amplify-colors-font-secondary: #9a9caa;
+  --amplify-colors-font-tertiary: #6a6b78;
+  --amplify-colors-brand-primary-10: #1a2450;
+  --amplify-colors-brand-primary-20: #1e2d6a;
+  --amplify-colors-brand-primary-40: #2a4490;
+  --amplify-colors-brand-primary-60: #3b6cf5;
+  --amplify-colors-brand-primary-80: #6b8cff;
+  --amplify-colors-brand-primary-90: #8fa6ff;
+  --amplify-colors-brand-primary-100: #b3c4ff;
+  --amplify-components-authenticator-router-background-color: #1a1b23;
+  --amplify-components-authenticator-router-border-color: #2a2b35;
+  --amplify-components-button-primary-background-color: #3b6cf5;
+  --amplify-components-button-primary-hover-background-color: #2a5ae0;
+  --amplify-components-button-link-color: #6b8cff;
+  --amplify-components-fieldcontrol-border-color: #3a3b48;
+  --amplify-components-fieldcontrol-color: #e1e2e8;
+  --amplify-components-input-color: #e1e2e8;
+  --amplify-components-tabs-item-active-color: #6b8cff;
+  --amplify-components-tabs-item-active-border-color: #3b6cf5;
+  --amplify-components-tabs-item-color: #9a9caa;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f7fa;
-  color: #1a1a2e;
+  background: #0f1117;
+  color: #e1e2e8;
 }
 
 .app-shell {
@@ -19,8 +49,9 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background: #1a3cad;
+  background: #141829;
   color: #fff;
+  border-bottom: 1px solid #252636;
 }
 
 .app-user {
@@ -34,7 +65,7 @@ body {
 }
 
 .nav-link {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -45,7 +76,7 @@ body {
 
 .nav-link:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .app-controls {
@@ -54,36 +85,93 @@ body {
   gap: 12px;
 }
 
-.company-selector {
-  padding: 6px 10px;
-  padding-right: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+.multi-select {
+  position: relative;
+}
+
+.multi-select-trigger {
+  padding: 6px 28px 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 4px;
   background: transparent;
   color: #fff;
   font-size: 14px;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 6px center;
   background-size: 16px;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
-.company-selector option {
-  background: #1a3cad;
-  color: #fff;
+.multi-select-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
-.company-selector:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+.multi-select-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 220px;
+  background: #1e1f2a;
+  border: 1px solid #2a2b35;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  padding: 4px 0;
+}
+
+.multi-select-actions {
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid #2a2b35;
+}
+
+.multi-select-actions button {
+  padding: 2px 8px;
+  border: 1px solid #3a3b48;
+  border-radius: 3px;
+  background: transparent;
+  font-size: 12px;
+  color: #9a9caa;
+  cursor: pointer;
+}
+
+.multi-select-actions button:hover:not(:disabled) {
+  background: #252636;
+  color: #e1e2e8;
+}
+
+.multi-select-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.multi-select-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #e1e2e8;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.multi-select-option:hover {
+  background: #252636;
+}
+
+.multi-select-option input[type="checkbox"] {
+  accent-color: #3b6cf5;
 }
 
 .sign-out-btn {
   padding: 6px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 4px;
   background: transparent;
   color: #fff;
@@ -93,22 +181,25 @@ body {
 }
 
 .sign-out-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .month-picker {
   padding: 6px 10px;
-  border: 1px solid #ccc;
+  border: 1px solid #3a3b48;
   border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
+  background: #1e1f2a;
+  color: #e1e2e8;
+  color-scheme: dark;
 }
 
 .refresh-btn {
   padding: 6px 16px;
-  border: 1px solid #1a3cad;
+  border: 1px solid #3b6cf5;
   border-radius: 4px;
-  background: #1a3cad;
+  background: #3b6cf5;
   color: #fff;
   font-size: 14px;
   cursor: pointer;
@@ -116,7 +207,7 @@ body {
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: #153299;
+  background: #2a5ae0;
 }
 
 .refresh-btn:disabled {
@@ -128,7 +219,7 @@ body {
   text-align: center;
   padding: 60px 24px;
   font-size: 16px;
-  color: #666;
+  color: #9a9caa;
 }
 
 .app-error {

@@ -102,13 +102,13 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f5f7fa;
-    color: #1a1a2e;
+    background: #0f1117;
+    color: #e1e2e8;
     padding: 40px 24px;
   }
   .client-name {
     text-align: center;
-    color: #555;
+    color: #9a9caa;
     font-size: 16px;
     letter-spacing: 1px;
     margin-bottom: 4px;
@@ -116,7 +116,7 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
   }
   h1 {
     text-align: center;
-    color: #1a3cad;
+    color: #6b8cff;
     font-size: 28px;
     letter-spacing: 2px;
     margin-bottom: 32px;
@@ -133,9 +133,9 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
     grid-template-columns: repeat(5, 1fr);
   }
   .card {
-    background: #fff;
+    background: #1a1b23;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     overflow: hidden;
     text-align: center;
     min-height: 140px;
@@ -143,8 +143,8 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
     flex-direction: column;
   }
   .card-header {
-    background: #1a3cad;
-    color: #fff;
+    background: #252636;
+    color: #c0c4d0;
     padding: 12px 8px;
     font-size: 13px;
     font-weight: 700;
@@ -162,7 +162,7 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
   .kpi-value {
     font-size: 28px;
     font-weight: 700;
-    color: #1a1a2e;
+    color: #e1e2e8;
   }
   .variance {
     font-size: 13px;
@@ -171,7 +171,7 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
   }
   .sub-label {
     font-size: 11px;
-    color: #666;
+    color: #6a6b78;
     margin-top: 2px;
   }
   @media (max-width: 900px) {
@@ -187,7 +187,7 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
     margin: 40px auto 0;
   }
   .pnl-section h2 {
-    color: #1a3cad;
+    color: #6b8cff;
     font-size: 20px;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -196,9 +196,9 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
   }
   .table-scroll {
     overflow-x: auto;
-    background: #fff;
+    background: #1a1b23;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
   .pnl-table {
     width: 100%;
@@ -208,8 +208,8 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
     min-width: 900px;
   }
   .pnl-table thead th {
-    background: #1a3cad;
-    color: #fff;
+    background: #252636;
+    color: #c0c4d0;
     padding: 10px 12px;
     font-weight: 700;
     text-align: right;
@@ -222,51 +222,51 @@ export function generateHTML(kpis: KPIs, selectedMonth: string, pnlByMonth?: PnL
     position: sticky;
     left: 0;
     z-index: 2;
-    background: #1a3cad;
+    background: #252636;
   }
   .pnl-table tbody td {
     padding: 8px 12px;
     text-align: right;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #2a2b35;
   }
   .pnl-table tbody td.row-label {
     text-align: left;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #e1e2e8;
     position: sticky;
     left: 0;
-    background: #fff;
+    background: #1a1b23;
     z-index: 1;
   }
   .pnl-table tbody tr.summary-row td {
     font-weight: 700;
-    border-top: 2px solid #1a3cad;
-    border-bottom: 2px solid #1a3cad;
+    border-top: 2px solid #3b6cf5;
+    border-bottom: 2px solid #3b6cf5;
   }
   .pnl-table tbody tr.summary-row td.row-label {
-    color: #1a3cad;
+    color: #6b8cff;
   }
   .pnl-table tbody tr:hover td {
-    background: #f0f4ff;
+    background: #1f2233;
   }
   .pnl-table tbody tr:hover td.row-label {
-    background: #f0f4ff;
+    background: #1f2233;
   }
   .pnl-table tbody tr.summary-row:hover td {
-    background: #e8edf8;
+    background: #1c2040;
   }
   .pnl-table tbody tr.summary-row:hover td.row-label {
-    background: #e8edf8;
+    background: #1c2040;
   }
   .pnl-table tbody tr.pct-row td {
     font-style: italic;
-    color: #555;
+    color: #6a6b78;
   }
   .pnl-table tbody tr.pct-row:hover td {
-    background: #f0f4ff;
+    background: #1f2233;
   }
   .pnl-table tbody tr.pct-row:hover td.row-label {
-    background: #f0f4ff;
+    background: #1f2233;
   }
 </style>
 </head>

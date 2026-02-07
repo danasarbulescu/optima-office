@@ -11,7 +11,7 @@
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #1a1a2e;
+  color: #e1e2e8;
   font-weight: 500;
 }
 
@@ -23,7 +23,7 @@
 
 .trend-title {
   text-align: center;
-  color: #1a3cad;
+  color: #6b8cff;
   font-size: 20px;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -32,15 +32,15 @@
 
 .trend-client {
   display: block;
-  color: #555;
+  color: #9a9caa;
   font-size: 14px;
   letter-spacing: 1px;
   margin-bottom: 4px;
 }
 
 .trend-chart-card {
-  background: #fff;
+  background: #1a1b23;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   padding: 24px;
 }
