@@ -105,6 +105,7 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
           <Link href="/dashboard" className="nav-link">Dashboard</Link>
           <Link href="/trend-analysis" className="nav-link">Trend Analysis</Link>
           <Link href="/clients" className="nav-link">Clients</Link>
+          <Link href="/tools" className="nav-link">Tools</Link>
         </nav>
         <div className="app-controls">
           <MultiSelectDropdown />

@@ -1,0 +1,205 @@
+.tools-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.tools-header {
+  margin-bottom: 24px;
+}
+
+.tools-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.tool-section {
+  background: #1a1b23;
+  border: 1px solid #2a2b35;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.tool-section h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.tool-description {
+  color: #6a6b78;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.sync-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.sync-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sync-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9a9caa;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sync-field select {
+  padding: 6px 10px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #141520;
+  color: #e1e2e8;
+  cursor: pointer;
+}
+
+.sync-arrow {
+  color: #9a9caa;
+  font-size: 20px;
+  padding-bottom: 4px;
+}
+
+.sync-go-btn {
+  padding: 6px 20px;
+  border: 1px solid #3b6cf5;
+  border-radius: 4px;
+  background: #3b6cf5;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sync-go-btn:hover:not(:disabled) {
+  background: #2a5ae0;
+}
+
+.sync-go-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sync-confirm {
+  margin-top: 20px;
+  padding: 16px;
+  background: #252636;
+  border: 1px solid #3a3b48;
+  border-radius: 6px;
+}
+
+.sync-confirm p {
+  font-size: 14px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.sync-confirm ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #9a9caa;
+}
+
+.sync-confirm ul li {
+  margin-bottom: 4px;
+}
+
+.sync-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.sync-cancel-btn {
+  padding: 6px 16px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  background: transparent;
+  color: #9a9caa;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sync-cancel-btn:hover {
+  background: #1e1f2a;
+}
+
+.sync-confirm-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 4px;
+  background: #e67e22;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sync-confirm-btn:hover:not(:disabled) {
+  background: #cf6d17;
+}
+
+.sync-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sync-report {
+  margin-top: 20px;
+  padding: 16px;
+  background: #1a2a1a;
+  border: 1px solid #2a4a2a;
+  border-radius: 6px;
+}
+
+.sync-report h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4caf50;
+  margin-bottom: 12px;
+}
+
+.sync-report-table {
+  width: 100%;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.sync-report-table td {
+  padding: 4px 0;
+  vertical-align: top;
+}
+
+.sync-report-table td:first-child {
+  color: #9a9caa;
+  width: 200px;
+}
+
+.sync-report h4 {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #9a9caa;
+}
+
+.sync-report ul {
+  list-style: disc;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #e1e2e8;
+}
+
+.sync-report ul li {
+  margin-bottom: 2px;
+}

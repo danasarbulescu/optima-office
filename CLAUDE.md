@@ -168,6 +168,7 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 ### Environments
 
 **Win Desktop sandbox**
+- AWS resource prefix: `amplify-quickbooksexport-marin-sandbox-59a22a3c9b`
 - User Pool Id: `us-east-2_erjhdlOkq`
 - User id: `517bd500-b001-7058-f41c-f72bb5fc7040`
 - User admin email: `dana.sarbulescu@gmail.com`
