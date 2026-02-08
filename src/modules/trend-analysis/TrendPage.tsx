@@ -16,7 +16,7 @@ function getCurrentMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function TrendAnalysisPage() {
+export default function TrendPage() {
   const { selectedEntities } = useEntity();
   const [startMonth, setStartMonth] = useState("2024-01");
   const [endMonth, setEndMonth] = useState(getCurrentMonth());

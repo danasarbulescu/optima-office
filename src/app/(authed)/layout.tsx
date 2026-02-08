@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { EntityProvider, useEntity } from "@/context/EntityContext";
 import { ClientProvider, useClient } from "@/context/ClientContext";
+import { getAllModuleManifests } from "@/modules/registry";
 
 function MultiSelectDropdown() {
   const { entities, entitiesLoading, selectedEntities, setSelectedEntities } = useEntity();
@@ -92,6 +93,19 @@ function ClientSwitcher() {
   );
 }
 
+function ModuleNav() {
+  const { enabledModules } = useClient();
+  const moduleNavItems = getAllModuleManifests().filter(m => enabledModules.includes(m.id));
+
+  return (
+    <>
+      {moduleNavItems.map(m => (
+        <Link key={m.id} href={`/${m.route}`} className="nav-link">{m.navLabel}</Link>
+      ))}
+    </>
+  );
+}
+
 function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
   const { authStatus, signOut, user } = useAuthenticator((context) => [
     context.authStatus,
@@ -122,8 +136,7 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
       <header className="app-header">
         <span className="app-user">{user?.signInDetails?.loginId}</span>
         <nav className="app-nav">
-          <Link href="/dashboard" className="nav-link">Dashboard</Link>
-          <Link href="/trend-analysis" className="nav-link">Trend Analysis</Link>
+          <ModuleNav />
           <Link href="/entities" className="nav-link">Entities</Link>
           <Link href="/tools" className="nav-link">Tools</Link>
         </nav>

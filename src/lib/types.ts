@@ -16,6 +16,7 @@ export interface Client {
   slug: string;
   displayName: string;
   createdAt: string;
+  enabledModules?: string[];
 }
 
 export type ClientRole = 'internal-admin' | 'client-admin' | 'client-viewer';

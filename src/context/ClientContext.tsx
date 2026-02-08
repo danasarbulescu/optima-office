@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { Client } from '@/lib/types';
+import { getAllModuleManifests } from '@/modules/registry';
 
 interface ClientContextValue {
   currentClientId: string | null;  // null = loading, "*" = all clients (internal default)
@@ -9,6 +10,7 @@ interface ClientContextValue {
   clients: Client[];               // Non-empty only for internal users
   isInternal: boolean;
   clientLoading: boolean;
+  enabledModules: string[];
   setCurrentClientId: (id: string) => void;
 }
 
@@ -52,6 +54,14 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
   const currentClient = clients.find(c => c.id === currentClientId) || null;
 
+  const enabledModules = useMemo(() => {
+    if (isInternal && currentClientId === '*') {
+      return getAllModuleManifests().map(m => m.id);
+    }
+    const client = clients.find(c => c.id === currentClientId);
+    return client?.enabledModules || ['dashboard', 'trend-analysis'];
+  }, [isInternal, currentClientId, clients]);
+
   return (
     <ClientContext.Provider
       value={{
@@ -60,6 +70,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         clients,
         isInternal,
         clientLoading,
+        enabledModules,
         setCurrentClientId,
       }}
     >
