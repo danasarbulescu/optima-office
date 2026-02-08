@@ -5,12 +5,17 @@ import { CDataPLRow, PLCacheEntry } from './types';
 const TABLE_NAME = process.env.PL_CACHE_TABLE || '';
 const CACHE_TTL_HOURS = 24;
 
-export async function getCachedPL(companyId: string): Promise<PLCacheEntry | null> {
+/** Build a client-scoped cache key: "{clientId}#{entityId}" */
+function cacheKey(clientId: string, entityId: string): string {
+  return `${clientId}#${entityId}`;
+}
+
+export async function getCachedPL(clientId: string, entityId: string): Promise<PLCacheEntry | null> {
   if (!TABLE_NAME) return null;
 
   const result = await docClient.send(new GetCommand({
     TableName: TABLE_NAME,
-    Key: { companyId },
+    Key: { entityId: cacheKey(clientId, entityId) },
   }));
 
   if (!result.Item) return null;
@@ -25,8 +30,9 @@ export async function getCachedPL(companyId: string): Promise<PLCacheEntry | nul
 }
 
 export async function setCachedPL(
-  companyId: string,
-  clientName: string,
+  clientId: string,
+  entityId: string,
+  entityName: string,
   plRows: CDataPLRow[],
 ): Promise<void> {
   if (!TABLE_NAME) return;
@@ -37,8 +43,8 @@ export async function setCachedPL(
   await docClient.send(new PutCommand({
     TableName: TABLE_NAME,
     Item: {
-      companyId,
-      clientName,
+      entityId: cacheKey(clientId, entityId),
+      entityName,
       plRows,
       fetchedAt: now.toISOString(),
       ttl,

@@ -1,12 +1,12 @@
 import { fetchPLSummaries } from './cdata';
 import { getCachedPL, setCachedPL } from './cache';
 import { mergePLRows } from './merge';
-import { CDataPLRow, ClientConfig } from './types';
+import { CDataPLRow, EntityConfig } from './types';
 
-async function fetchSingleCompany(catalogId: string, displayName: string, refresh: boolean): Promise<CDataPLRow[]> {
+async function fetchSingleEntity(clientId: string, catalogId: string, displayName: string, refresh: boolean): Promise<CDataPLRow[]> {
   if (!refresh) {
     try {
-      const cached = await getCachedPL(catalogId);
+      const cached = await getCachedPL(clientId, catalogId);
       if (cached) return cached.plRows;
     } catch (err) {
       console.error(`Cache read failed for ${catalogId}, falling back to CData:`, err);
@@ -20,7 +20,7 @@ async function fetchSingleCompany(catalogId: string, displayName: string, refres
   );
 
   if (freshRows.length > 0) {
-    setCachedPL(catalogId, displayName, freshRows).catch((err) =>
+    setCachedPL(clientId, catalogId, displayName, freshRows).catch((err) =>
       console.error(`Cache write failed for ${catalogId}:`, err)
     );
   }
@@ -30,37 +30,38 @@ async function fetchSingleCompany(catalogId: string, displayName: string, refres
 
 export interface FetchPLResult {
   plRows: CDataPLRow[];
-  clientName: string;
+  entityName: string;
 }
 
-export async function fetchPLForCompanies(
-  companyIds: string[],
-  clients: ClientConfig[],
+export async function fetchPLForEntities(
+  clientId: string,
+  entityIds: string[],
+  entities: EntityConfig[],
   refresh: boolean,
 ): Promise<FetchPLResult> {
-  if (companyIds.length === 1) {
-    const client = clients.find(c => c.id === companyIds[0]);
-    if (!client) return { plRows: [], clientName: 'Unknown' };
-    const plRows = await fetchSingleCompany(client.catalogId, client.displayName, refresh);
-    return { plRows, clientName: client.displayName };
+  if (entityIds.length === 1) {
+    const entity = entities.find(e => e.id === entityIds[0]);
+    if (!entity) return { plRows: [], entityName: 'Unknown' };
+    const plRows = await fetchSingleEntity(clientId, entity.catalogId, entity.displayName, refresh);
+    return { plRows, entityName: entity.displayName };
   }
 
-  // Multiple companies: resolve UUIDs to catalogIds and fetch in parallel
-  const resolvedClients = companyIds
-    .map(id => clients.find(c => c.id === id))
-    .filter((c): c is ClientConfig => !!c);
+  // Multiple entities: resolve UUIDs to catalogIds and fetch in parallel
+  const resolvedEntities = entityIds
+    .map(id => entities.find(e => e.id === id))
+    .filter((e): e is EntityConfig => !!e);
 
   const results = await Promise.all(
-    resolvedClients.map(c => fetchSingleCompany(c.catalogId, c.displayName, refresh))
+    resolvedEntities.map(e => fetchSingleEntity(clientId, e.catalogId, e.displayName, refresh))
   );
 
   const nonEmpty = results.filter(r => r.length > 0);
   if (nonEmpty.length === 0) {
-    return { plRows: [], clientName: 'Combined' };
+    return { plRows: [], entityName: 'Combined' };
   }
 
   return {
     plRows: mergePLRows(...nonEmpty),
-    clientName: 'Combined',
+    entityName: 'Combined',
   };
 }

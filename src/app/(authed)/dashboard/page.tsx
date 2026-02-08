@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { generateHTML } from "@/lib/html";
-import { useCompany } from "@/context/CompanyContext";
+import { useEntity } from "@/context/EntityContext";
 import "./dashboard.css";
 
 function getCurrentMonth(): string {
@@ -21,7 +21,7 @@ function extractStyles(html: string): string {
 }
 
 export default function DashboardPage() {
-  const { selectedCompanies } = useCompany();
+  const { selectedEntities } = useEntity();
   const [month, setMonth] = useState(getCurrentMonth());
   const [dashboardHtml, setDashboardHtml] = useState<string>("");
   const [dashboardStyles, setDashboardStyles] = useState<string>("");
@@ -35,7 +35,7 @@ export default function DashboardPage() {
     setError("");
     setNoCache(false);
     try {
-      const url = `/api/dashboard?month=${selectedMonth}&companies=${selectedCompanies.join(',')}${refresh ? '&refresh=true' : ''}`;
+      const url = `/api/dashboard?month=${selectedMonth}&entities=${selectedEntities.join(',')}${refresh ? '&refresh=true' : ''}`;
       const res = await fetch(url);
 
       if (!res.ok) {
@@ -44,7 +44,7 @@ export default function DashboardPage() {
       }
 
       const data = await res.json();
-      const html = generateHTML(data.kpis, data.selectedMonth, data.pnlByMonth, data.clientName);
+      const html = generateHTML(data.kpis, data.selectedMonth, data.pnlByMonth, data.entityName);
       const body = extractBody(html);
 
       if (!body || body.trim() === '') {
@@ -65,15 +65,15 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCompanies, dashboardHtml]);
+  }, [selectedEntities, dashboardHtml]);
 
-  // Auto-load cached data on mount when companies are available
+  // Auto-load cached data on mount when entities are available
   useEffect(() => {
-    if (!hasAutoLoaded.current && selectedCompanies.length > 0) {
+    if (!hasAutoLoaded.current && selectedEntities.length > 0) {
       hasAutoLoaded.current = true;
       fetchDashboard(month);
     }
-  }, [selectedCompanies, fetchDashboard, month]);
+  }, [selectedEntities, fetchDashboard, month]);
 
   return (
     <>
@@ -86,14 +86,14 @@ export default function DashboardPage() {
         />
         <button
           onClick={() => fetchDashboard(month)}
-          disabled={loading || selectedCompanies.length === 0}
+          disabled={loading || selectedEntities.length === 0}
           className="refresh-btn"
         >
           {loading ? "Loading..." : "Load"}
         </button>
         <button
           onClick={() => fetchDashboard(month, true)}
-          disabled={loading || selectedCompanies.length === 0}
+          disabled={loading || selectedEntities.length === 0}
           className="refresh-btn"
         >
           {loading ? "Fetching..." : "Fetch API Data"}

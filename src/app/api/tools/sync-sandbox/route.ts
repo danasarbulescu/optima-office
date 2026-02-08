@@ -1,27 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { runWithAmplifyServerContext } from "@/utils/amplify-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
+import { getAuthContext } from "@/lib/auth-context";
 import { getSandboxById } from "@/lib/sandboxes";
 import { previewSync, executeSync } from "@/lib/sync-sandbox";
 
-async function checkAuth(): Promise<boolean> {
-  return runWithAmplifyServerContext({
-    nextServerContext: { cookies },
-    operation: async (contextSpec) => {
-      try {
-        const session = await fetchAuthSession(contextSpec);
-        return !!session.tokens;
-      } catch {
-        return false;
-      }
-    },
-  });
-}
-
 export async function POST(request: NextRequest) {
-  if (!(await checkAuth())) {
+  const auth = await getAuthContext(request.headers.get("x-client-id"));
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Sandbox sync is internal-admin only
+  if (!auth.isInternal) {
+    return NextResponse.json({ error: "Forbidden: internal admin only" }, { status: 403 });
   }
 
   try {

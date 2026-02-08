@@ -13,7 +13,9 @@ const nextConfig: NextConfig = {
     CDATA_PAT: process.env.CDATA_PAT,
     CDATA_CATALOG: process.env.CDATA_CATALOG,
     PL_CACHE_TABLE: process.env.PL_CACHE_TABLE || amplifyOutputs?.custom?.plCacheTableName || '',
+    ENTITIES_TABLE: process.env.ENTITIES_TABLE || amplifyOutputs?.custom?.entitiesTableName || '',
     CLIENTS_TABLE: process.env.CLIENTS_TABLE || amplifyOutputs?.custom?.clientsTableName || '',
+    CLIENT_MEMBERSHIPS_TABLE: process.env.CLIENT_MEMBERSHIPS_TABLE || amplifyOutputs?.custom?.clientMembershipsTableName || '',
   },
 };
 

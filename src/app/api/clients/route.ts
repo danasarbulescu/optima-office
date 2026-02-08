@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { runWithAmplifyServerContext } from "@/utils/amplify-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
+import { getAuthContext } from "@/lib/auth-context";
 import { getClients, addClient } from "@/lib/clients";
 
-async function checkAuth(): Promise<boolean> {
-  return runWithAmplifyServerContext({
-    nextServerContext: { cookies },
-    operation: async (contextSpec) => {
-      try {
-        const session = await fetchAuthSession(contextSpec);
-        return !!session.tokens;
-      } catch {
-        return false;
-      }
-    },
-  });
-}
-
-export async function GET() {
-  if (!(await checkAuth())) {
+export async function GET(request: NextRequest) {
+  const auth = await getAuthContext(request.headers.get("x-client-id"));
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!auth.isInternal) {
+    return NextResponse.json({ error: "Forbidden: internal admin only" }, { status: 403 });
   }
 
   try {
@@ -33,24 +22,29 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await checkAuth())) {
+  const auth = await getAuthContext(request.headers.get("x-client-id"));
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!auth.isInternal) {
+    return NextResponse.json({ error: "Forbidden: internal admin only" }, { status: 403 });
   }
 
   try {
     const body = await request.json();
-    const { catalogId, displayName, email, firstName, lastName } = body;
+    const { slug, displayName } = body;
 
-    if (!catalogId || !displayName) {
-      return NextResponse.json({ error: "catalogId and displayName are required" }, { status: 400 });
+    if (!slug || !displayName) {
+      return NextResponse.json({ error: "slug and displayName are required" }, { status: 400 });
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(catalogId)) {
-      return NextResponse.json({ error: "catalogId must contain only letters, numbers, and underscores" }, { status: 400 });
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return NextResponse.json({ error: "slug must contain only lowercase letters, numbers, and hyphens" }, { status: 400 });
     }
 
-    await addClient({ catalogId, displayName, email, firstName, lastName });
-    return NextResponse.json({ success: true }, { status: 201 });
+    const id = await addClient({ slug, displayName });
+    return NextResponse.json({ success: true, id }, { status: 201 });
   } catch (err: any) {
     console.error("Clients POST error:", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });

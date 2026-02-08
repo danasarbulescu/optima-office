@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SANDBOXES } from "@/lib/sandboxes";
-import { ClientConfig } from "@/lib/types";
+import { EntityConfig } from "@/lib/types";
 import "./tools.css";
 
 interface PreviewData {
@@ -10,7 +10,7 @@ interface PreviewData {
   destinationTable: string;
   sourceItemCount: number;
   destinationItemCount: number;
-  sourceItems: ClientConfig[];
+  sourceItems: EntityConfig[];
 }
 
 interface ReportData {
@@ -20,7 +20,7 @@ interface ReportData {
   destinationTable: string;
   itemsCopied: number;
   itemsDeletedFromDestination: number;
-  copiedItems: ClientConfig[];
+  copiedItems: EntityConfig[];
 }
 
 type Status = "idle" | "previewing" | "confirming" | "syncing" | "done" | "error";

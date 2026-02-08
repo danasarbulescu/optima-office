@@ -1,11 +1,34 @@
-export interface ClientConfig {
+export interface EntityConfig {
   id: string;          // Internal UUID (DynamoDB partition key)
+  clientId: string;    // Client this entity belongs to
   catalogId: string;   // CData catalog name (e.g. "BrooklynRestaurants")
   displayName: string; // Human-readable label for the UI
   createdAt?: string;
   email?: string;
   firstName?: string;
   lastName?: string;
+}
+
+export interface Client {
+  id: string;
+  slug: string;
+  displayName: string;
+  createdAt: string;
+}
+
+export type ClientRole = 'internal-admin' | 'client-admin' | 'client-viewer';
+
+export interface ClientMembership {
+  userId: string;       // Cognito sub
+  clientId: string;     // "*" = internal (all clients)
+  role: ClientRole;
+}
+
+export interface AuthContext {
+  userId: string;
+  clientId: string;     // Resolved client (for internal, the currently-selected one)
+  role: ClientRole;
+  isInternal: boolean;  // true if clientId === "*"
 }
 
 export interface CDataPLRow {
@@ -42,8 +65,8 @@ export interface TrendDataPoint {
 }
 
 export interface PLCacheEntry {
-  companyId: string;
-  clientName: string;
+  entityId: string;
+  entityName: string;
   plRows: CDataPLRow[];
   fetchedAt: string;
   ttl: number;

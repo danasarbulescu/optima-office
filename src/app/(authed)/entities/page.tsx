@@ -1,29 +1,29 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { ClientConfig } from "@/lib/types";
-import { useCompany } from "@/context/CompanyContext";
-import "./clients.css";
+import { EntityConfig } from "@/lib/types";
+import { useEntity } from "@/context/EntityContext";
+import "./entities.css";
 
 type SortColumn = "displayName" | "catalogId" | "email" | "firstName" | "lastName";
 type SortDirection = "asc" | "desc";
 
-export default function ClientsPage() {
-  const { refreshClients } = useCompany();
-  const [clients, setClients] = useState<ClientConfig[]>([]);
+export default function EntitiesPage() {
+  const { refreshEntities } = useEntity();
+  const [entities, setEntities] = useState<EntityConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingClient, setEditingClient] = useState<ClientConfig | null>(null);
+  const [editingEntity, setEditingEntity] = useState<EntityConfig | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const fetchClients = useCallback(async () => {
+  const fetchEntities = useCallback(async () => {
     try {
-      const res = await fetch("/api/clients");
-      if (!res.ok) throw new Error("Failed to load clients");
+      const res = await fetch("/api/entities");
+      if (!res.ok) throw new Error("Failed to load entities");
       const data = await res.json();
-      setClients(data.clients);
+      setEntities(data.entities);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -32,8 +32,8 @@ export default function ClientsPage() {
   }, []);
 
   useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+    fetchEntities();
+  }, [fetchEntities]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -44,15 +44,15 @@ export default function ClientsPage() {
     }
   };
 
-  const sortedClients = useMemo(() => {
-    if (!sortColumn) return clients;
-    const sorted = [...clients].sort((a, b) => {
+  const sortedEntities = useMemo(() => {
+    if (!sortColumn) return entities;
+    const sorted = [...entities].sort((a, b) => {
       const aVal = (a[sortColumn] ?? "").toString().toLowerCase();
       const bVal = (b[sortColumn] ?? "").toString().toLowerCase();
       return aVal.localeCompare(bVal);
     });
     return sortDirection === "desc" ? sorted.reverse() : sorted;
-  }, [clients, sortColumn, sortDirection]);
+  }, [entities, sortColumn, sortDirection]);
 
   const sortIndicator = (column: SortColumn) => {
     if (sortColumn !== column) return <span className="sort-arrow sort-arrow-inactive">{"\u25B2"}</span>;
@@ -63,13 +63,13 @@ export default function ClientsPage() {
     );
   };
 
-  const handleDelete = async (client: ClientConfig) => {
-    if (!confirm(`Delete client "${client.displayName}"?`)) return;
+  const handleDelete = async (entity: EntityConfig) => {
+    if (!confirm(`Delete entity "${entity.displayName}"?`)) return;
     try {
-      const res = await fetch(`/api/clients/${encodeURIComponent(client.id)}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete client");
-      await fetchClients();
-      refreshClients();
+      const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete entity");
+      await fetchEntities();
+      refreshEntities();
     } catch (err: any) {
       setError(err.message);
     }
@@ -77,33 +77,33 @@ export default function ClientsPage() {
 
   const handleAdded = () => {
     setShowAddModal(false);
-    fetchClients();
-    refreshClients();
+    fetchEntities();
+    refreshEntities();
   };
 
   const handleEdited = () => {
-    setEditingClient(null);
-    fetchClients();
-    refreshClients();
+    setEditingEntity(null);
+    fetchEntities();
+    refreshEntities();
   };
 
-  if (loading) return <div className="app-loading">Loading clients...</div>;
+  if (loading) return <div className="app-loading">Loading entities...</div>;
   if (error) return <div className="app-error">{error}</div>;
 
   return (
-    <div className="clients-page">
-      <div className="clients-header">
-        <h1>Clients</h1>
-        <button className="add-client-btn" onClick={() => setShowAddModal(true)}>
-          New Client
+    <div className="entities-page">
+      <div className="entities-header">
+        <h1>Entities</h1>
+        <button className="add-entity-btn" onClick={() => setShowAddModal(true)}>
+          New Entity
         </button>
       </div>
 
-      {clients.length === 0 ? (
-        <div className="clients-empty">No clients configured. Add one to get started.</div>
+      {entities.length === 0 ? (
+        <div className="entities-empty">No entities configured. Add one to get started.</div>
       ) : (
-        <div className="clients-table-wrapper">
-          <table className="clients-table">
+        <div className="entities-table-wrapper">
+          <table className="entities-table">
             <thead>
               <tr>
                 <th className="sortable-th" onClick={() => handleSort("displayName")}>
@@ -125,19 +125,19 @@ export default function ClientsPage() {
               </tr>
             </thead>
             <tbody>
-              {sortedClients.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.displayName}</td>
-                  <td>{c.catalogId}</td>
-                  <td>{c.firstName || ""}</td>
-                  <td>{c.lastName || ""}</td>
-                  <td>{c.email || ""}</td>
+              {sortedEntities.map((e) => (
+                <tr key={e.id}>
+                  <td>{e.displayName}</td>
+                  <td>{e.catalogId}</td>
+                  <td>{e.firstName || ""}</td>
+                  <td>{e.lastName || ""}</td>
+                  <td>{e.email || ""}</td>
                   <td>
                     <div className="action-buttons">
-                      <button className="edit-btn" onClick={() => setEditingClient(c)}>
+                      <button className="edit-btn" onClick={() => setEditingEntity(e)}>
                         Edit
                       </button>
-                      <button className="delete-btn" onClick={() => handleDelete(c)}>
+                      <button className="delete-btn" onClick={() => handleDelete(e)}>
                         Delete
                       </button>
                     </div>
@@ -150,13 +150,13 @@ export default function ClientsPage() {
       )}
 
       {showAddModal && (
-        <AddClientModal onClose={() => setShowAddModal(false)} onAdded={handleAdded} />
+        <AddEntityModal onClose={() => setShowAddModal(false)} onAdded={handleAdded} />
       )}
 
-      {editingClient && (
-        <EditClientModal
-          client={editingClient}
-          onClose={() => setEditingClient(null)}
+      {editingEntity && (
+        <EditEntityModal
+          entity={editingEntity}
+          onClose={() => setEditingEntity(null)}
           onEdited={handleEdited}
         />
       )}
@@ -164,7 +164,7 @@ export default function ClientsPage() {
   );
 }
 
-function AddClientModal({
+function AddEntityModal({
   onClose,
   onAdded,
 }: {
@@ -188,14 +188,14 @@ function AddClientModal({
       if (firstName.trim()) body.firstName = firstName.trim();
       if (lastName.trim()) body.lastName = lastName.trim();
 
-      const res = await fetch("/api/clients", {
+      const res = await fetch("/api/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to add client");
+        throw new Error(data.error || "Failed to add entity");
       }
       onAdded();
     } catch (err: any) {
@@ -208,7 +208,7 @@ function AddClientModal({
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2>New Client</h2>
+        <h2>New Entity</h2>
         <div className="modal-field">
           <label>Display Name</label>
           <input
@@ -274,20 +274,20 @@ function AddClientModal({
   );
 }
 
-function EditClientModal({
-  client,
+function EditEntityModal({
+  entity,
   onClose,
   onEdited,
 }: {
-  client: ClientConfig;
+  entity: EntityConfig;
   onClose: () => void;
   onEdited: () => void;
 }) {
-  const [displayName, setDisplayName] = useState(client.displayName);
-  const [catalogId, setCatalogId] = useState(client.catalogId);
-  const [email, setEmail] = useState(client.email || "");
-  const [firstName, setFirstName] = useState(client.firstName || "");
-  const [lastName, setLastName] = useState(client.lastName || "");
+  const [displayName, setDisplayName] = useState(entity.displayName);
+  const [catalogId, setCatalogId] = useState(entity.catalogId);
+  const [email, setEmail] = useState(entity.email || "");
+  const [firstName, setFirstName] = useState(entity.firstName || "");
+  const [lastName, setLastName] = useState(entity.lastName || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -295,7 +295,7 @@ function EditClientModal({
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/clients/${encodeURIComponent(client.id)}`, {
+      const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -308,7 +308,7 @@ function EditClientModal({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to update client");
+        throw new Error(data.error || "Failed to update entity");
       }
       onEdited();
     } catch (err: any) {
@@ -321,7 +321,7 @@ function EditClientModal({
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2>Edit Client</h2>
+        <h2>Edit Entity</h2>
         <div className="modal-field">
           <label>Display Name</label>
           <input

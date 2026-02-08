@@ -15,15 +15,33 @@ cfnUserPool.adminCreateUserConfig = {
 // DynamoDB table for caching P&L data fetched from CData
 const cacheStack = backend.createStack('PLCacheStack');
 const plCacheTable = new dynamodb.Table(cacheStack, 'PLCache', {
-  partitionKey: { name: 'companyId', type: dynamodb.AttributeType.STRING },
+  partitionKey: { name: 'entityId', type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
   timeToLiveAttribute: 'ttl',
   removalPolicy: RemovalPolicy.DESTROY,
 });
 
-// DynamoDB table for client/company registry
+// DynamoDB table for entity (QuickBooks company) registry
+const entitiesTable = new dynamodb.Table(cacheStack, 'Entities', {
+  partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: RemovalPolicy.DESTROY,
+});
+entitiesTable.addGlobalSecondaryIndex({
+  indexName: 'byClient',
+  partitionKey: { name: 'clientId', type: dynamodb.AttributeType.STRING },
+});
+
+// DynamoDB table for client registry
 const clientsTable = new dynamodb.Table(cacheStack, 'Clients', {
   partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: RemovalPolicy.DESTROY,
+});
+
+// DynamoDB table for user-client membership mapping
+const clientMembershipsTable = new dynamodb.Table(cacheStack, 'ClientMemberships', {
+  partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
   removalPolicy: RemovalPolicy.DESTROY,
 });
@@ -33,7 +51,9 @@ const computeRole = new iam.Role(cacheStack, 'SSRComputeRole', {
   assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
 });
 plCacheTable.grantReadWriteData(computeRole);
+entitiesTable.grantReadWriteData(computeRole);
 clientsTable.grantReadWriteData(computeRole);
+clientMembershipsTable.grantReadWriteData(computeRole);
 
 // Sandbox sync tool needs ListTables + read/write access to all Amplify DynamoDB tables
 computeRole.addToPolicy(new iam.PolicyStatement({
@@ -54,7 +74,9 @@ computeRole.addToPolicy(new iam.PolicyStatement({
 backend.addOutput({
   custom: {
     plCacheTableName: plCacheTable.tableName,
+    entitiesTableName: entitiesTable.tableName,
     clientsTableName: clientsTable.tableName,
+    clientMembershipsTableName: clientMembershipsTable.tableName,
     ssrComputeRoleArn: computeRole.roleArn,
   },
 });

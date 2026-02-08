@@ -30,15 +30,15 @@ function formatMonthFull(val: string): string {
 
 export default function TrendChart({
   data,
-  clientName,
+  entityName,
 }: {
   data: TrendDataPoint[];
-  clientName: string;
+  entityName: string;
 }) {
   return (
     <div className="trend-chart-container">
       <h2 className="trend-title">
-        {clientName && <span className="trend-client">{clientName}</span>}
+        {entityName && <span className="trend-client">{entityName}</span>}
         Operating Expenses Trend
       </h2>
       <div className="trend-chart-card">

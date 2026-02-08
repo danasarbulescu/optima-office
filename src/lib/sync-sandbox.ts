@@ -1,7 +1,7 @@
 import { ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import { DeleteCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, scanAllItems } from './dynamo';
-import { ClientConfig } from './types';
+import { EntityConfig } from './types';
 import { SandboxConfig } from './sandboxes';
 
 export interface SyncPreview {
@@ -9,7 +9,7 @@ export interface SyncPreview {
   destinationTable: string;
   sourceItemCount: number;
   destinationItemCount: number;
-  sourceItems: ClientConfig[];
+  sourceItems: EntityConfig[];
 }
 
 export interface SyncReport {
@@ -19,10 +19,10 @@ export interface SyncReport {
   destinationTable: string;
   itemsCopied: number;
   itemsDeletedFromDestination: number;
-  copiedItems: ClientConfig[];
+  copiedItems: EntityConfig[];
 }
 
-async function discoverClientsTable(prefix: string): Promise<string> {
+async function discoverEntitiesTable(prefix: string): Promise<string> {
   const tableNames: string[] = [];
   let exclusiveStartTableName: string | undefined;
 
@@ -38,12 +38,13 @@ async function discoverClientsTable(prefix: string): Promise<string> {
     exclusiveStartTableName = response.LastEvaluatedTableName;
   } while (exclusiveStartTableName);
 
+  // Look for Entities table (new) or Clients table (legacy) by prefix
   const match = tableNames.find(
-    (name) => name.startsWith(prefix) && name.includes('Clients'),
+    (name) => name.startsWith(prefix) && (name.includes('Entities') || name.includes('Clients')),
   );
 
   if (!match) {
-    throw new Error(`Could not find Clients table for prefix: ${prefix}`);
+    throw new Error(`Could not find Entities table for prefix: ${prefix}`);
   }
 
   return match;
@@ -65,7 +66,7 @@ async function clearTable(tableName: string): Promise<number> {
   return items.length;
 }
 
-async function batchWriteItems(tableName: string, items: ClientConfig[]): Promise<void> {
+async function batchWriteItems(tableName: string, items: EntityConfig[]): Promise<void> {
   const BATCH_SIZE = 25;
 
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -85,13 +86,13 @@ export async function previewSync(
   destination: SandboxConfig,
 ): Promise<SyncPreview> {
   const [sourceTable, destinationTable] = await Promise.all([
-    discoverClientsTable(source.tablePrefix),
-    discoverClientsTable(destination.tablePrefix),
+    discoverEntitiesTable(source.tablePrefix),
+    discoverEntitiesTable(destination.tablePrefix),
   ]);
 
   const [sourceItems, destinationItems] = await Promise.all([
-    scanAllItems<ClientConfig>({ TableName: sourceTable }),
-    scanAllItems<ClientConfig>({ TableName: destinationTable }),
+    scanAllItems<EntityConfig>({ TableName: sourceTable }),
+    scanAllItems<EntityConfig>({ TableName: destinationTable }),
   ]);
 
   return {
@@ -108,11 +109,11 @@ export async function executeSync(
   destination: SandboxConfig,
 ): Promise<SyncReport> {
   const [sourceTable, destinationTable] = await Promise.all([
-    discoverClientsTable(source.tablePrefix),
-    discoverClientsTable(destination.tablePrefix),
+    discoverEntitiesTable(source.tablePrefix),
+    discoverEntitiesTable(destination.tablePrefix),
   ]);
 
-  const sourceItems = await scanAllItems<ClientConfig>({ TableName: sourceTable });
+  const sourceItems = await scanAllItems<EntityConfig>({ TableName: sourceTable });
   const deletedCount = await clearTable(destinationTable);
   await batchWriteItems(destinationTable, sourceItems);
 
