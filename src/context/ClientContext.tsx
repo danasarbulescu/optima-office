@@ -11,16 +11,36 @@ interface ClientContextValue {
   isInternal: boolean;
   clientLoading: boolean;
   enabledModules: string[];
+  isImpersonating: boolean;
   setCurrentClientId: (id: string) => void;
+  startImpersonating: () => void;
+  stopImpersonating: () => void;
 }
 
 const ClientContext = createContext<ClientContextValue | undefined>(undefined);
 
 export function ClientProvider({ children }: { children: ReactNode }) {
-  const [currentClientId, setCurrentClientId] = useState<string | null>(null);
+  const [currentClientId, setCurrentClientIdRaw] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [isInternal, setIsInternal] = useState(false);
   const [clientLoading, setClientLoading] = useState(true);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
+  // Auto-clear impersonation when client changes
+  const setCurrentClientId = (id: string) => {
+    setIsImpersonating(false);
+    setCurrentClientIdRaw(id);
+  };
+
+  const startImpersonating = () => {
+    if (currentClientId && currentClientId !== '*') {
+      setIsImpersonating(true);
+    }
+  };
+
+  const stopImpersonating = () => {
+    setIsImpersonating(false);
+  };
 
   useEffect(() => {
     async function loadAuthContext() {
@@ -36,9 +56,9 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         if (data.isInternal) {
           setClients(data.clients || []);
           // Default to "*" (all clients) for internal users
-          setCurrentClientId('*');
+          setCurrentClientIdRaw('*');
         } else {
-          setCurrentClientId(data.clientId);
+          setCurrentClientIdRaw(data.clientId);
           if (data.client) {
             setClients([data.client]);
           }
@@ -71,7 +91,10 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         isInternal,
         clientLoading,
         enabledModules,
+        isImpersonating,
         setCurrentClientId,
+        startImpersonating,
+        stopImpersonating,
       }}
     >
       {children}

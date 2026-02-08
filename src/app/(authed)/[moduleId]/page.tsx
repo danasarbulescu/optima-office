@@ -16,14 +16,14 @@ function ModuleNotFound() {
 
 export default function ModulePage() {
   const { moduleId } = useParams<{ moduleId: string }>();
-  const { enabledModules, isInternal, clientLoading } = useClient();
+  const { enabledModules, isInternal, isImpersonating, clientLoading } = useClient();
 
   if (clientLoading) return null;
 
   const manifest = getModuleManifest(moduleId);
   if (!manifest) return <ModuleNotFound />;
 
-  if (!isInternal && !enabledModules.includes(moduleId)) {
+  if ((!isInternal || isImpersonating) && !enabledModules.includes(moduleId)) {
     return <ModuleNotFound />;
   }
 

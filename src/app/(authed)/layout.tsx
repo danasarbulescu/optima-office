@@ -75,9 +75,9 @@ function MultiSelectDropdown() {
 }
 
 function ClientSwitcher() {
-  const { clients, currentClientId, setCurrentClientId, isInternal, clientLoading } = useClient();
+  const { clients, currentClientId, setCurrentClientId, isInternal, clientLoading, isImpersonating } = useClient();
 
-  if (clientLoading || !isInternal) return null;
+  if (clientLoading || !isInternal || isImpersonating) return null;
 
   return (
     <select
@@ -106,12 +106,38 @@ function ModuleNav() {
   );
 }
 
+function ViewAsClientButton() {
+  const { isInternal, currentClientId, isImpersonating, startImpersonating } = useClient();
+
+  if (!isInternal || currentClientId === '*' || isImpersonating) return null;
+
+  return (
+    <button onClick={startImpersonating} className="view-as-client-btn">
+      View as Client
+    </button>
+  );
+}
+
+function ImpersonationBanner() {
+  const { isImpersonating, currentClient, stopImpersonating } = useClient();
+
+  if (!isImpersonating) return null;
+
+  return (
+    <div className="impersonation-banner">
+      <span>Viewing as <strong>{currentClient?.displayName || 'Client'}</strong></span>
+      <button onClick={stopImpersonating}>Exit</button>
+    </div>
+  );
+}
+
 function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
   const { authStatus, signOut, user } = useAuthenticator((context) => [
     context.authStatus,
     context.user,
   ]);
   const router = useRouter();
+  const { isInternal, isImpersonating } = useClient();
 
   useEffect(() => {
     if (authStatus === "unauthenticated") {
@@ -137,17 +163,23 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
         <span className="app-user">{user?.signInDetails?.loginId}</span>
         <nav className="app-nav">
           <ModuleNav />
-          <Link href="/entities" className="nav-link">Entities</Link>
-          <Link href="/tools" className="nav-link">Tools</Link>
+          {isInternal && !isImpersonating && (
+            <>
+              <Link href="/entities" className="nav-link">Entities</Link>
+              <Link href="/tools" className="nav-link">Tools</Link>
+            </>
+          )}
         </nav>
         <div className="app-controls">
           <ClientSwitcher />
+          <ViewAsClientButton />
           <MultiSelectDropdown />
           <button onClick={signOut} className="sign-out-btn">
             Sign Out
           </button>
         </div>
       </header>
+      <ImpersonationBanner />
       <main>{children}</main>
     </div>
   );

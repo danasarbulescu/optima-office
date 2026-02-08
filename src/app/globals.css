@@ -240,6 +240,47 @@ body {
   cursor: not-allowed;
 }
 
+.view-as-client-btn {
+  padding: 4px 12px;
+  border: 1px solid #d97706;
+  border-radius: 4px;
+  background: transparent;
+  color: #fbbf24;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.view-as-client-btn:hover {
+  background: rgba(217, 119, 6, 0.15);
+}
+
+.impersonation-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 24px;
+  background: #92400e;
+  color: #fef3c7;
+  font-size: 13px;
+}
+
+.impersonation-banner button {
+  padding: 2px 10px;
+  border: 1px solid rgba(254, 243, 199, 0.4);
+  border-radius: 3px;
+  background: transparent;
+  color: #fef3c7;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.impersonation-banner button:hover {
+  background: rgba(254, 243, 199, 0.15);
+}
+
 .app-loading {
   text-align: center;
   padding: 60px 24px;
