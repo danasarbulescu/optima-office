@@ -28,7 +28,7 @@ export default function TrendPage() {
     setLoading(true);
     setError("");
     try {
-      const url = `/api/trend?startMonth=${startMonth}&endMonth=${endMonth}&entities=${selectedEntities.join(',')}${refresh ? '&refresh=true' : ''}`;
+      const url = `/api/trend-analysis?startMonth=${startMonth}&endMonth=${endMonth}&entities=${selectedEntities.join(',')}${refresh ? '&refresh=true' : ''}`;
       const res = await fetch(url);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
