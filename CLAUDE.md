@@ -4,7 +4,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 
 ## Workflows
 
-- **Web app**: `npm run dev` — local Next.js dev server (requires `npx ampx sandbox` running for backend)
+- ***Web app***: `npm run dev` — local Next.js dev server (requires `npx ampx sandbox` running for backend)
 - **Build**: `npm run build` — Next.js production build to `.next/`
 
 ## Project structure
