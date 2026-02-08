@@ -36,6 +36,7 @@ export async function addClient(data: {
     slug: data.slug,
     displayName: data.displayName,
     createdAt: new Date().toISOString(),
+    status: 'active',
   };
   if (data.firstName) item.firstName = data.firstName;
   if (data.lastName) item.lastName = data.lastName;

@@ -18,7 +18,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { slug, displayName, firstName, lastName, email, enabledModules } = body;
+    const { slug, displayName, firstName, lastName, email, enabledModules, status } = body;
 
     const updates: Record<string, unknown> = {};
     if (slug !== undefined) {
@@ -37,6 +37,7 @@ export async function PUT(
       }
       updates.enabledModules = enabledModules;
     }
+    if (status !== undefined) updates.status = status;
 
     await updateClient(id, updates);
     return NextResponse.json({ success: true });

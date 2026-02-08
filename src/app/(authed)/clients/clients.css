@@ -483,3 +483,76 @@
 .module-checkbox input[type="checkbox"] {
   accent-color: #3b6cf5;
 }
+
+/* Archived button */
+.archived-btn {
+  padding: 8px 20px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  background: transparent;
+  color: #9a9caa;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.archived-btn:hover {
+  background: #252636;
+  color: #e1e2e8;
+}
+
+/* Status dropdown */
+.status-select {
+  padding: 4px 8px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  background: #141520;
+  color: #e1e2e8;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.status-select:focus {
+  outline: none;
+  border-color: #3b6cf5;
+}
+
+/* Archived modal list */
+.archived-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archived-modal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #141520;
+  border-radius: 4px;
+  color: #e1e2e8;
+  font-size: 14px;
+}
+
+.activate-btn {
+  padding: 4px 14px;
+  border: 1px solid #27ae60;
+  border-radius: 4px;
+  background: transparent;
+  color: #27ae60;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.activate-btn:hover:not(:disabled) {
+  background: #27ae60;
+  color: #fff;
+}
+
+.activate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -25,6 +25,7 @@ export default function ClientsPage() {
   const [editingEntity, setEditingEntity] = useState<EntityConfig | null>(null);
   const [sortColumn, setSortColumn] = useState<ClientSortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [showArchivedModal, setShowArchivedModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -58,6 +59,15 @@ export default function ClientsPage() {
     return map;
   }, [allEntities]);
 
+  const activeClients = useMemo(
+    () => clients.filter((c) => (c.status || "active") === "active"),
+    [clients]
+  );
+  const archivedClients = useMemo(
+    () => clients.filter((c) => c.status === "archived"),
+    [clients]
+  );
+
   const handleSort = (column: ClientSortColumn) => {
     if (sortColumn === column) {
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
@@ -68,14 +78,14 @@ export default function ClientsPage() {
   };
 
   const sortedClients = useMemo(() => {
-    if (!sortColumn) return clients;
-    const sorted = [...clients].sort((a, b) => {
+    if (!sortColumn) return activeClients;
+    const sorted = [...activeClients].sort((a, b) => {
       const aVal = (a[sortColumn] ?? "").toString().toLowerCase();
       const bVal = (b[sortColumn] ?? "").toString().toLowerCase();
       return aVal.localeCompare(bVal);
     });
     return sortDirection === "desc" ? sorted.reverse() : sorted;
-  }, [clients, sortColumn, sortDirection]);
+  }, [activeClients, sortColumn, sortDirection]);
 
   const sortIndicator = (column: ClientSortColumn) => {
     if (sortColumn !== column)
@@ -137,12 +147,19 @@ export default function ClientsPage() {
     <div className="clients-page">
       <div className="clients-header">
         <h1>Clients</h1>
-        <button className="add-client-btn" onClick={() => setShowAddClientModal(true)}>
-          New Client
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          {archivedClients.length > 0 && (
+            <button className="archived-btn" onClick={() => setShowArchivedModal(true)}>
+              Archived ({archivedClients.length})
+            </button>
+          )}
+          <button className="add-client-btn" onClick={() => setShowAddClientModal(true)}>
+            New Client
+          </button>
+        </div>
       </div>
 
-      {clients.length === 0 ? (
+      {activeClients.length === 0 ? (
         <div className="clients-empty">No clients configured. Add one to get started.</div>
       ) : (
         <div className="clients-table-wrapper">
@@ -213,6 +230,21 @@ export default function ClientsPage() {
           entity={editingEntity}
           onClose={() => setEditingEntity(null)}
           onSaved={() => { setEditingEntity(null); afterMutation(); }}
+        />
+      )}
+      {showArchivedModal && (
+        <ArchivedClientsModal
+          clients={archivedClients}
+          onActivate={async (id) => {
+            await fetch(`/api/clients/${encodeURIComponent(id)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: "active" }),
+            });
+            await fetchData();
+            refreshEntities();
+          }}
+          onClose={() => setShowArchivedModal(false)}
         />
       )}
     </div>
@@ -495,10 +527,11 @@ function EditClientModal({
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState(client.displayName);
-  const [slug, setSlug] = useState(client.slug);
+  const [slug, setSlug] = useState(client.slug || "");
   const [firstName, setFirstName] = useState(client.firstName || "");
   const [lastName, setLastName] = useState(client.lastName || "");
   const [email, setEmail] = useState(client.email || "");
+  const [status, setStatus] = useState(client.status || "active");
   const [enabledModules, setEnabledModules] = useState<string[]>(
     client.enabledModules || [...DEFAULT_MODULES]
   );
@@ -527,6 +560,7 @@ function EditClientModal({
           lastName: lastName.trim(),
           email: email.trim(),
           enabledModules,
+          status,
         }),
       });
       if (!res.ok) {
@@ -564,6 +598,17 @@ function EditClientModal({
           {slug && !slugValid && (
             <div className="slug-hint">Only lowercase letters, numbers, and hyphens</div>
           )}
+        </div>
+        <div className="modal-field">
+          <label>Status</label>
+          <select
+            className="status-select"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
         </div>
         <div className="modal-separator" />
         <div className="modal-field">
@@ -695,6 +740,55 @@ function AddEntityModal({
           >
             {saving ? "Saving..." : "Save"}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Archived Clients Modal ─── */
+
+function ArchivedClientsModal({
+  clients,
+  onActivate,
+  onClose,
+}: {
+  clients: Client[];
+  onActivate: (id: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [activating, setActivating] = useState<string | null>(null);
+
+  const handleActivate = async (id: string) => {
+    setActivating(id);
+    await onActivate(id);
+    setActivating(null);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h2>Archived Clients</h2>
+        {clients.length === 0 ? (
+          <div className="entities-empty-sub">No archived clients.</div>
+        ) : (
+          <div className="archived-modal-list">
+            {clients.map((c) => (
+              <div key={c.id} className="archived-modal-item">
+                <span>{c.displayName}</span>
+                <button
+                  className="activate-btn"
+                  onClick={() => handleActivate(c.id)}
+                  disabled={activating === c.id}
+                >
+                  {activating === c.id ? "Activating..." : "Activate"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="modal-actions">
+          <button className="modal-cancel-btn" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>

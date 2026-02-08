@@ -20,6 +20,7 @@ export interface Client {
   email?: string;
   createdAt: string;
   enabledModules?: string[];
+  status?: string;
 }
 
 export type ClientRole = 'internal-admin' | 'client-admin' | 'client-viewer';
