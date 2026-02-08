@@ -1,23 +1,24 @@
-import { fetchPLSummaries } from './cdata';
+import { getAdapter } from './adapters';
 import { getCachedPL, setCachedPL } from './cache';
-import { mergePLRows } from './merge';
-import { CDataPLRow, EntityConfig } from './types';
+import { mergeFinancialRows } from './merge';
+import { FinancialRow } from './models/financial';
+import { EntityConfig } from './types';
 
-async function fetchSingleEntity(clientId: string, catalogId: string, displayName: string, refresh: boolean): Promise<CDataPLRow[]> {
+async function fetchSingleEntity(clientId: string, catalogId: string, displayName: string, refresh: boolean): Promise<FinancialRow[]> {
   if (!refresh) {
     try {
       const cached = await getCachedPL(clientId, catalogId);
-      if (cached) return cached.plRows;
+      if (cached) return cached.rows;
     } catch (err) {
       console.error(`Cache read failed for ${catalogId}, falling back to CData:`, err);
     }
   }
 
-  const freshRows = await fetchPLSummaries(
-    process.env.CDATA_USER ?? '',
-    process.env.CDATA_PAT ?? '',
-    catalogId,
-  );
+  const adapter = getAdapter('quickbooks');
+  const freshRows = await adapter.fetchFinancialData(catalogId, {
+    user: process.env.CDATA_USER ?? '',
+    pat: process.env.CDATA_PAT ?? '',
+  });
 
   if (freshRows.length > 0) {
     setCachedPL(clientId, catalogId, displayName, freshRows).catch((err) =>
@@ -29,7 +30,7 @@ async function fetchSingleEntity(clientId: string, catalogId: string, displayNam
 }
 
 export interface FetchPLResult {
-  plRows: CDataPLRow[];
+  rows: FinancialRow[];
   entityName: string;
 }
 
@@ -41,9 +42,9 @@ export async function fetchPLForEntities(
 ): Promise<FetchPLResult> {
   if (entityIds.length === 1) {
     const entity = entities.find(e => e.id === entityIds[0]);
-    if (!entity) return { plRows: [], entityName: 'Unknown' };
-    const plRows = await fetchSingleEntity(clientId, entity.catalogId, entity.displayName, refresh);
-    return { plRows, entityName: entity.displayName };
+    if (!entity) return { rows: [], entityName: 'Unknown' };
+    const rows = await fetchSingleEntity(clientId, entity.catalogId, entity.displayName, refresh);
+    return { rows, entityName: entity.displayName };
   }
 
   // Multiple entities: resolve UUIDs to catalogIds and fetch in parallel
@@ -57,11 +58,11 @@ export async function fetchPLForEntities(
 
   const nonEmpty = results.filter(r => r.length > 0);
   if (nonEmpty.length === 0) {
-    return { plRows: [], entityName: 'Combined' };
+    return { rows: [], entityName: 'Combined' };
   }
 
   return {
-    plRows: mergePLRows(...nonEmpty),
+    rows: mergeFinancialRows(...nonEmpty),
     entityName: 'Combined',
   };
 }

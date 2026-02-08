@@ -50,16 +50,16 @@ export async function GET(request: NextRequest) {
     }
 
     const cacheClientId = auth.clientId === '*' ? 'global' : auth.clientId;
-    const { plRows, entityName } = await fetchPLForEntities(cacheClientId, entityIds, entities, refresh);
+    const { rows, entityName } = await fetchPLForEntities(cacheClientId, entityIds, entities, refresh);
 
-    if (plRows.length === 0) {
+    if (rows.length === 0) {
       return NextResponse.json(
         { error: "No P&L summary data returned from CData." },
         { status: 404 }
       );
     }
 
-    const data = buildExpensesTrend(plRows, startMonth, endMonth);
+    const data = buildExpensesTrend(rows, startMonth, endMonth);
 
     return NextResponse.json({ data, entityName });
   } catch (err: any) {

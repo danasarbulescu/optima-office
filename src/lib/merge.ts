@@ -1,28 +1,24 @@
-import { CDataPLRow } from './types';
-
-const META_KEYS = new Set(['account', 'RowGroup', 'RowType', 'RowId']);
+import { FinancialRow } from './models/financial';
 
 /**
- * Merge multiple companies' P&L summary rows into one combined array.
- * Rows are grouped by RowGroup. All numeric columns are summed.
+ * Merge multiple companies' financial rows into one combined array.
+ * Rows are grouped by category. All period values are summed.
  */
-export function mergePLRows(...rowSets: CDataPLRow[][]): CDataPLRow[] {
-  const grouped = new Map<string, CDataPLRow>();
+export function mergeFinancialRows(...rowSets: FinancialRow[][]): FinancialRow[] {
+  const grouped = new Map<string, FinancialRow>();
 
   for (const rows of rowSets) {
     for (const row of rows) {
-      const key = row.RowGroup;
-      const existing = grouped.get(key);
+      const existing = grouped.get(row.category);
 
       if (!existing) {
-        grouped.set(key, { ...row });
+        grouped.set(row.category, {
+          category: row.category,
+          periods: { ...row.periods },
+        });
       } else {
-        for (const col of Object.keys(row)) {
-          if (META_KEYS.has(col)) continue;
-          const val = parseFloat(row[col]);
-          if (!isNaN(val)) {
-            existing[col] = (parseFloat(existing[col]) || 0) + val;
-          }
+        for (const [period, val] of Object.entries(row.periods)) {
+          existing.periods[period] = (existing.periods[period] || 0) + val;
         }
       }
     }

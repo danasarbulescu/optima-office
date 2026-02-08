@@ -1,3 +1,5 @@
+import { FinancialRow } from './models/financial';
+
 export interface EntityConfig {
   id: string;          // Internal UUID (DynamoDB partition key)
   clientId: string;    // Client this entity belongs to
@@ -31,16 +33,6 @@ export interface AuthContext {
   isInternal: boolean;  // true if clientId === "*"
 }
 
-export interface CDataPLRow {
-  account: string;
-  RowGroup: string;
-  RowType: string;
-  RowId: string | null;
-  [key: string]: any;
-}
-
-export type GroupValues = Map<string, number[]>;
-
 export interface PnLMonthEntry {
   label: string;
   revenue: number;
@@ -67,7 +59,7 @@ export interface TrendDataPoint {
 export interface PLCacheEntry {
   entityId: string;
   entityName: string;
-  plRows: CDataPLRow[];
+  rows: FinancialRow[];
   fetchedAt: string;
   ttl: number;
 }

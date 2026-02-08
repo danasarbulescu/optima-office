@@ -1,5 +1,12 @@
 import axios from 'axios';
-import { CDataPLRow } from './types';
+
+export interface CDataPLRow {
+  account: string;
+  RowGroup: string;
+  RowType: string;
+  RowId: string | null;
+  [key: string]: any;
+}
 
 const CDATA_ENDPOINT = 'https://cloud.cdata.com/api/query';
 

@@ -1,6 +1,7 @@
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient } from './dynamo';
-import { CDataPLRow, PLCacheEntry } from './types';
+import { FinancialRow } from './models/financial';
+import { PLCacheEntry } from './types';
 
 const TABLE_NAME = process.env.PL_CACHE_TABLE || '';
 const CACHE_TTL_HOURS = 24;
@@ -33,7 +34,7 @@ export async function setCachedPL(
   clientId: string,
   entityId: string,
   entityName: string,
-  plRows: CDataPLRow[],
+  rows: FinancialRow[],
 ): Promise<void> {
   if (!TABLE_NAME) return;
 
@@ -45,7 +46,7 @@ export async function setCachedPL(
     Item: {
       entityId: cacheKey(clientId, entityId),
       entityName,
-      plRows,
+      rows,
       fetchedAt: now.toISOString(),
       ttl,
     },

@@ -44,17 +44,17 @@ export async function GET(request: NextRequest) {
     }
 
     const cacheClientId = auth.clientId === '*' ? 'global' : auth.clientId;
-    const { plRows, entityName } = await fetchPLForEntities(cacheClientId, entityIds, entities, refresh);
+    const { rows, entityName } = await fetchPLForEntities(cacheClientId, entityIds, entities, refresh);
 
-    if (plRows.length === 0) {
+    if (rows.length === 0) {
       return NextResponse.json(
         { error: "No P&L summary data returned from CData." },
         { status: 404 }
       );
     }
 
-    const curGroups = buildGroupValues(plRows, year);
-    const pyGroups = buildGroupValues(plRows, year - 1);
+    const curGroups = buildGroupValues(rows, year);
+    const pyGroups = buildGroupValues(rows, year - 1);
     const pyHasData = [...pyGroups.values()].some((arr) =>
       arr.slice(0, 12).some((v) => v !== 0)
     );

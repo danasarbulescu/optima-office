@@ -1,21 +1,20 @@
-import { CDataPLRow, GroupValues, KPIs, PnLMonthEntry, PnLByMonth, TrendDataPoint } from './types';
+import { FinancialRow } from './models/financial';
+import { KPIs, PnLMonthEntry, PnLByMonth, TrendDataPoint } from './types';
 
-export function buildGroupValues(rows: CDataPLRow[], year: number): GroupValues {
-  const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
+export type GroupValues = Map<string, number[]>;
+
+export function buildGroupValues(rows: FinancialRow[], year: number): GroupValues {
   const map: GroupValues = new Map();
 
   for (const row of rows) {
     const values: number[] = [];
-    for (let m = 0; m < 12; m++) {
-      const colName = `${monthNames[m]}_${year}`;
-      values.push(parseFloat(row[colName]) || 0);
+    for (let m = 1; m <= 12; m++) {
+      const key = `${year}-${String(m).padStart(2, '0')}`;
+      values.push(row.periods[key] || 0);
     }
     // Index 12 = computed annual total
     values.push(values.reduce((a, b) => a + b, 0));
-    map.set(row.RowGroup, values);
+    map.set(row.category, values);
   }
 
   return map;
@@ -171,29 +170,25 @@ function subtractMonths(monthStr: string, n: number): string {
 }
 
 export function buildExpensesTrend(
-  rows: CDataPLRow[],
+  rows: FinancialRow[],
   startMonth: string,
   endMonth: string,
 ): TrendDataPoint[] {
   // Build flat array from (startMonth - 12) through endMonth
-  // Use buildGroupValues per year to stay consistent with the dashboard P&L
   const extractionStart = subtractMonths(startMonth, 12);
   const [startY, startM] = extractionStart.split('-').map(Number);
   const [endY, endM] = endMonth.split('-').map(Number);
 
-  // Cache buildGroupValues per year
-  const groupsByYear = new Map<number, GroupValues>();
-  for (let yr = startY; yr <= endY; yr++) {
-    groupsByYear.set(yr, buildGroupValues(rows, yr));
-  }
+  // Find the Expenses row and read periods directly
+  const expensesRow = rows.find(r => r.category === 'Expenses');
 
   const allMonths: { month: string; value: number }[] = [];
   let y = startY;
   let m = startM;
   while (y < endY || (y === endY && m <= endM)) {
-    const expenses = groupsByYear.get(y)?.get('Expenses') || [];
-    const value = expenses[m - 1] || 0;
-    allMonths.push({ month: `${y}-${String(m).padStart(2, '0')}`, value });
+    const key = `${y}-${String(m).padStart(2, '0')}`;
+    const value = expensesRow?.periods[key] || 0;
+    allMonths.push({ month: key, value });
     m++;
     if (m > 12) { m = 1; y++; }
   }
