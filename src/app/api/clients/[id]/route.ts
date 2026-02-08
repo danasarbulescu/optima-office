@@ -18,9 +18,9 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { slug, displayName } = body;
+    const { slug, displayName, firstName, lastName, email, enabledModules } = body;
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, unknown> = {};
     if (slug !== undefined) {
       if (!/^[a-z0-9-]+$/.test(slug)) {
         return NextResponse.json({ error: "slug must contain only lowercase letters, numbers, and hyphens" }, { status: 400 });
@@ -28,6 +28,15 @@ export async function PUT(
       updates.slug = slug;
     }
     if (displayName !== undefined) updates.displayName = displayName;
+    if (firstName !== undefined) updates.firstName = firstName;
+    if (lastName !== undefined) updates.lastName = lastName;
+    if (email !== undefined) updates.email = email;
+    if (enabledModules !== undefined) {
+      if (!Array.isArray(enabledModules)) {
+        return NextResponse.json({ error: "enabledModules must be an array" }, { status: 400 });
+      }
+      updates.enabledModules = enabledModules;
+    }
 
     await updateClient(id, updates);
     return NextResponse.json({ success: true });

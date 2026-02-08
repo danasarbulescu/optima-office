@@ -14,7 +14,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { catalogId, displayName, email, firstName, lastName } = body;
+    const { catalogId, displayName } = body;
 
     if (catalogId !== undefined && !/^[a-zA-Z0-9_]+$/.test(catalogId)) {
       return NextResponse.json({ error: "catalogId must contain only letters, numbers, and underscores" }, { status: 400 });
@@ -23,9 +23,6 @@ export async function PUT(
     const updates: Record<string, string> = {};
     if (catalogId !== undefined) updates.catalogId = catalogId;
     if (displayName !== undefined) updates.displayName = displayName;
-    if (email !== undefined) updates.email = email;
-    if (firstName !== undefined) updates.firstName = firstName;
-    if (lastName !== undefined) updates.lastName = lastName;
 
     await updateEntity(id, updates);
     return NextResponse.json({ success: true });

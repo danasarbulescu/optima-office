@@ -22,26 +22,37 @@ export async function getClient(id: string): Promise<Client | null> {
   return (result.Item as Client) || null;
 }
 
-export async function addClient(data: { slug: string; displayName: string }): Promise<string> {
+export async function addClient(data: {
+  slug: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  enabledModules?: string[];
+}): Promise<string> {
   const id = randomUUID();
-  await docClient.send(new PutCommand({
-    TableName: TABLE,
-    Item: {
-      id,
-      slug: data.slug,
-      displayName: data.displayName,
-      createdAt: new Date().toISOString(),
-    },
-  }));
+  const item: Record<string, unknown> = {
+    id,
+    slug: data.slug,
+    displayName: data.displayName,
+    createdAt: new Date().toISOString(),
+  };
+  if (data.firstName) item.firstName = data.firstName;
+  if (data.lastName) item.lastName = data.lastName;
+  if (data.email) item.email = data.email;
+  if (data.enabledModules) item.enabledModules = data.enabledModules;
+
+  await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return id;
 }
 
-export async function updateClient(id: string, updates: Record<string, string>): Promise<void> {
+export async function updateClient(id: string, updates: Record<string, unknown>): Promise<void> {
   const expressions: string[] = [];
   const names: Record<string, string> = {};
-  const values: Record<string, string> = {};
+  const values: Record<string, unknown> = {};
 
   for (const [key, val] of Object.entries(updates)) {
+    if (val === undefined) continue;
     const attrName = `#${key}`;
     const attrVal = `:${key}`;
     expressions.push(`${attrName} = ${attrVal}`);

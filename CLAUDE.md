@@ -29,9 +29,9 @@ src/
       layout.tsx                    — Protected layout (header, dynamic module nav, client switcher, sign out)
       loading.tsx                   — Loading skeleton for page transitions
       [moduleId]/page.tsx           — Dynamic module page resolver (code-splits via next/dynamic)
-      entities/
-        page.tsx                    — Entity management: list, add, edit, delete, sortable columns
-        entities.css                — Entities page styles
+      clients/
+        page.tsx                    — Unified client + entity management: accordion table, client CRUD, entity CRUD, modules config
+        clients.css                 — Clients page styles
       tools/
         page.tsx                    — Sandbox data sync tool (preview + execute)
         tools.css                   — Tools page styles
@@ -60,7 +60,7 @@ src/
   components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
-    ClientContext.tsx                — React context for client state + client switcher + enabledModules
+    ClientContext.tsx                — React context for client state + client switcher + enabledModules + impersonation
     EntityContext.tsx                — React context for multi-select entity state + dynamic entity list
   utils/
     amplify-utils.ts                — Server-side Amplify runner
@@ -106,24 +106,27 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 
 ## Multi-tenant architecture
 
-- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, createdAt, enabledModules?).
+- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, enabledModules?).
 - **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role).
 - **Roles**: `internal-admin` (sees all clients, can switch between them), `client-admin`, `client-viewer` (locked to their client).
 - **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal }`.
 - **Internal users**: See a client switcher dropdown in the header. Can switch between clients. See all modules.
 - **External users**: Locked to their assigned client. No switcher visible. See only modules in `enabledModules` (defaults to `['dashboard', 'trend-analysis']`).
-- **Routing**: Auth-based (URLs stay `/dashboard`, `/entities` — no client ID in URL). Client selection via `x-client-id` header or stored in context.
-- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `enabledModules`.
+- **Routing**: Auth-based (URLs stay `/dashboard`, `/clients` — no client ID in URL). Client selection via `x-client-id` header or stored in context.
+- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `enabledModules`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`.
+- **Client impersonation**: Internal admins can click "View as Client" (when a specific client is selected) to see exactly what that client sees — only their `enabledModules`, no admin nav (Clients/Tools), no client switcher. An amber banner shows "Viewing as {clientName}" with an Exit button. Purely client-side; auto-clears when switching clients.
 
-## Entity management
+## Client & entity management
 
-- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, email?, firstName?, lastName?, clientId, createdAt)
+- **Clients page**: `/clients` — single-page accordion. Client table with sortable columns (displayName, slug), expand to see client details + entities sub-table. Client CRUD with contact fields (firstName, lastName, email) and enabledModules config. Entity CRUD with displayName + CData catalogId.
+- **Client contact fields**: firstName, lastName, email stored on Client (not Entity). Contact info is displayed in client detail panel.
+- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, createdAt)
 - **GSI**: `byClient` index on `clientId` — used to query entities belonging to a specific client
 - **ID model**: Internal UUID (`id`) is auto-generated; `catalogId` is the CData catalog name (e.g. `BrooklynRestaurants`)
-- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, entity)`, `updateEntity()`, `deleteEntity()`
-- **Entities page**: `/entities` — list with sortable columns (displayName, catalogId, email, firstName, lastName), add/edit modals, delete
-- **API routes**: `GET/POST /api/entities`, `PUT/DELETE /api/entities/:id`
-- **Env var**: `ENTITIES_TABLE` — DynamoDB table name (set in Amplify env vars or `.env.local`)
+- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { catalogId, displayName })`, `updateEntity()`, `deleteEntity()`
+- **Client cascade delete**: Deleting a client also deletes all its entities
+- **API routes**: `GET/POST /api/entities`, `PUT/DELETE /api/entities/:id`; `GET/POST /api/clients`, `PUT/DELETE /api/clients/:id`
+- **Env var**: `ENTITIES_TABLE`, `CLIENTS_TABLE` — DynamoDB table names (set in Amplify env vars or `.env.local`)
 
 ## Multi-entity support
 
@@ -167,7 +170,7 @@ Each feature is a self-contained module in `src/modules/` with a manifest, page 
 - **Dynamic page route**: `src/app/(authed)/[moduleId]/page.tsx` — resolves module, checks enablement, code-splits via `next/dynamic`
 - **Dynamic API route**: `src/app/api/[moduleId]/route.ts` — centralized auth + module enablement check, delegates to module handler
 - **Per-client enablement**: `Client.enabledModules?: string[]` — controls which modules a client can access. Internal users see all. Defaults to `['dashboard', 'trend-analysis']`
-- **Static routes unaffected**: `/entities` and `/tools` are static Next.js routes that take priority over `[moduleId]`
+- **Static routes unaffected**: `/clients` and `/tools` are static Next.js routes that take priority over `[moduleId]`
 - **Navigation**: Built dynamically from module registry filtered by `enabledModules` in `ModuleNav` component
 
 ### Adding a new module
@@ -203,8 +206,8 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 
 ## API
 
-- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ catalogId, displayName, email?, firstName?, lastName? }`; `PUT /api/entities/:id` — edit entity; `DELETE /api/entities/:id` — remove entity
-- **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
+- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ catalogId, displayName }`; `PUT /api/entities/:id` — edit entity; `DELETE /api/entities/:id` — remove entity
+- **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email?, enabledModules? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list)
 - **Module API** (via `GET /api/[moduleId]`): Auth + module enablement check, delegates to module handler
   - **Dashboard**: `GET /api/dashboard?month=YYYY-MM&entities=id1,id2&refresh=true` — P&L KPIs and 13-month table data

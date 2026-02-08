@@ -165,7 +165,7 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
           <ModuleNav />
           {isInternal && !isImpersonating && (
             <>
-              <Link href="/entities" className="nav-link">Entities</Link>
+              <Link href="/clients" className="nav-link">Clients</Link>
               <Link href="/tools" className="nav-link">Tools</Link>
             </>
           )}
