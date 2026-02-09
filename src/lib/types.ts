@@ -85,7 +85,6 @@ export interface Dashboard {
   slug: string;
   displayName: string;
   sortOrder: number;
-  dataSourceType: string;
   createdAt: string;
 }
 

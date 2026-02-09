@@ -27,7 +27,6 @@ export async function PUT(
       updates.slug = body.slug;
     }
     if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
-    if (body.dataSourceType !== undefined) updates.dataSourceType = body.dataSourceType;
 
     await updateDashboard(id, updates);
     return NextResponse.json({ success: true });

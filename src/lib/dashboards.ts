@@ -56,7 +56,7 @@ export async function addDashboard(dashboard: Omit<Dashboard, 'id' | 'createdAt'
 
 export async function updateDashboard(
   id: string,
-  updates: Partial<Pick<Dashboard, 'displayName' | 'slug' | 'sortOrder' | 'dataSourceType'>>,
+  updates: Partial<Pick<Dashboard, 'displayName' | 'slug' | 'sortOrder'>>,
 ): Promise<void> {
   if (!TABLE_NAME) throw new Error('DASHBOARDS_TABLE not configured');
   const entries = Object.entries(updates).filter(([, v]) => v !== undefined);

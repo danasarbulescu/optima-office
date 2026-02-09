@@ -436,7 +436,6 @@ function PackageRow({
                         <th style={{ width: 24 }}></th>
                         <th>Dashboard Name</th>
                         <th>Slug</th>
-                        <th>Data Source</th>
                         <th>Order</th>
                         <th></th>
                       </tr>
@@ -494,7 +493,6 @@ function DashboardRow({
         </td>
         <td>{dashboard.displayName}</td>
         <td><code className="slug-badge">{dashboard.slug}</code></td>
-        <td><code className="slug-badge">{dashboard.dataSourceType}</code></td>
         <td>{dashboard.sortOrder}</td>
         <td>
           <div className="action-buttons">
@@ -505,7 +503,7 @@ function DashboardRow({
       </tr>
       {isExpanded && (
         <tr className="detail-row">
-          <td colSpan={6}>
+          <td colSpan={5}>
             <div className="detail-content" style={{ paddingLeft: 24 }}>
               <div className="entities-section">
                 <div className="entities-section-header">
@@ -934,7 +932,6 @@ function AddDashboardModal({
   const [displayName, setDisplayName] = useState("");
   const [slug, setSlug] = useState("");
   const [sortOrder, setSortOrder] = useState(0);
-  const [dataSourceType, setDataSourceType] = useState("financial-snapshot");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -958,7 +955,7 @@ function AddDashboardModal({
       const res = await fetch("/api/dashboards", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-client-id": clientId },
-        body: JSON.stringify({ packageId, clientId, slug, displayName, sortOrder, dataSourceType }),
+        body: JSON.stringify({ packageId, clientId, slug, displayName, sortOrder }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -984,13 +981,6 @@ function AddDashboardModal({
           <label>Slug</label>
           <input type="text" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} placeholder="e.g. monthly-dashboard" />
           {slug && !slugValid && <div className="slug-hint">Only lowercase letters, numbers, and hyphens</div>}
-        </div>
-        <div className="modal-field">
-          <label>Data Source Type</label>
-          <select value={dataSourceType} onChange={(e) => setDataSourceType(e.target.value)}>
-            <option value="financial-snapshot">Financial Snapshot</option>
-            <option value="expense-trend">Expense Trend</option>
-          </select>
         </div>
         <div className="modal-field">
           <label>Sort Order</label>
@@ -1022,7 +1012,6 @@ function EditDashboardModal({
   const [displayName, setDisplayName] = useState(dashboard.displayName);
   const [slug, setSlug] = useState(dashboard.slug);
   const [sortOrder, setSortOrder] = useState(dashboard.sortOrder);
-  const [dataSourceType, setDataSourceType] = useState(dashboard.dataSourceType);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -1035,7 +1024,7 @@ function EditDashboardModal({
       const res = await fetch(`/api/dashboards/${encodeURIComponent(dashboard.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, displayName, sortOrder, dataSourceType }),
+        body: JSON.stringify({ slug, displayName, sortOrder }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -1061,13 +1050,6 @@ function EditDashboardModal({
           <label>Slug</label>
           <input type="text" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
           {slug && !slugValid && <div className="slug-hint">Only lowercase letters, numbers, and hyphens</div>}
-        </div>
-        <div className="modal-field">
-          <label>Data Source Type</label>
-          <select value={dataSourceType} onChange={(e) => setDataSourceType(e.target.value)}>
-            <option value="financial-snapshot">Financial Snapshot</option>
-            <option value="expense-trend">Expense Trend</option>
-          </select>
         </div>
         <div className="modal-field">
           <label>Sort Order</label>
@@ -1107,7 +1089,7 @@ function AddWidgetModal({
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/widget-types?dataSourceType=${dashboard.dataSourceType}`);
+        const res = await fetch(`/api/widget-types`);
         if (res.ok) {
           const data = await res.json();
           // Filter out already-mapped widget types
@@ -1119,7 +1101,7 @@ function AddWidgetModal({
       } catch { /* non-fatal */ }
       setLoading(false);
     })();
-  }, [dashboard.dataSourceType, existingWidgetTypeIds]);
+  }, [existingWidgetTypeIds]);
 
   const toggleWidget = (id: string) => {
     setSelectedIds((prev) =>

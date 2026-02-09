@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useClient } from "@/context/ClientContext";
@@ -47,6 +47,23 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [noCache, setNoCache] = useState(false);
   const hasAutoLoaded = useRef(false);
+
+  // Infer data needs from assigned widgets
+  const hasFinancialWidgets = useMemo(() =>
+    widgets.some(w => {
+      const wt = getWidgetType(w.widgetTypeId);
+      return wt?.component === "KpiCard" || wt?.component === "PnlTable";
+    }),
+    [widgets]
+  );
+
+  const hasTrendWidgets = useMemo(() =>
+    widgets.some(w => {
+      const wt = getWidgetType(w.widgetTypeId);
+      return wt?.component === "TrendChart";
+    }),
+    [widgets]
+  );
 
   // Resolve dashboard from slugs
   useEffect(() => {
@@ -145,12 +162,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (hasAutoLoaded.current || resolving || !dashboard || selectedEntities.length === 0) return;
     hasAutoLoaded.current = true;
-    if (dashboard.dataSourceType === "financial-snapshot") {
+    if (hasFinancialWidgets) {
       fetchFinancialSnapshot(month);
-    } else if (dashboard.dataSourceType === "expense-trend") {
+    }
+    if (hasTrendWidgets) {
       fetchExpenseTrend();
     }
-  }, [resolving, dashboard, selectedEntities, fetchFinancialSnapshot, fetchExpenseTrend, month]);
+  }, [resolving, dashboard, selectedEntities, hasFinancialWidgets, hasTrendWidgets, fetchFinancialSnapshot, fetchExpenseTrend, month]);
 
   if (resolving) {
     return <div className="app-loading">Loading...</div>;
@@ -160,20 +178,24 @@ export default function DashboardPage() {
     return <div className="app-empty">Dashboard not found.</div>;
   }
 
-  // Render financial-snapshot dashboard
-  if (dashboard.dataSourceType === "financial-snapshot") {
-    // Split widgets into KPI cards and table
-    const kpiWidgets = widgets.filter(w => {
-      const wt = getWidgetType(w.widgetTypeId);
-      return wt?.component === "KpiCard";
-    });
-    const tableWidgets = widgets.filter(w => {
-      const wt = getWidgetType(w.widgetTypeId);
-      return wt?.component === "PnlTable";
-    });
+  if (widgets.length === 0) {
+    return <div className="app-empty">No widgets configured for this dashboard.</div>;
+  }
 
-    return (
-      <>
+  // Split widgets by component type
+  const kpiWidgets = widgets.filter(w => {
+    const wt = getWidgetType(w.widgetTypeId);
+    return wt?.component === "KpiCard";
+  });
+  const tableWidgets = widgets.filter(w => {
+    const wt = getWidgetType(w.widgetTypeId);
+    return wt?.component === "PnlTable";
+  });
+
+  return (
+    <>
+      {/* Financial snapshot controls */}
+      {hasFinancialWidgets && (
         <div className="dashboard-controls">
           <input
             type="month"
@@ -196,45 +218,10 @@ export default function DashboardPage() {
             {loading ? "Fetching..." : "Fetch API Data"}
           </button>
         </div>
+      )}
 
-        {loading && <div className="app-loading">Loading dashboard...</div>}
-        {error && <div className="app-error">{error}</div>}
-        {noCache && !loading && (
-          <div className="app-empty">
-            There is no cached data, you need to pull fresh data via API.
-          </div>
-        )}
-
-        {kpis && (
-          <>
-            {entityName && (
-              <div style={{ textAlign: "center", color: "#9a9caa", fontSize: 16, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>
-                {entityName}
-              </div>
-            )}
-            <h1 style={{ textAlign: "center", color: "#6b8cff", fontSize: 28, letterSpacing: 2, marginBottom: 32, textTransform: "uppercase" }}>
-              Financial Snapshot
-            </h1>
-            <div className={`widget-grid${kpiWidgets.length > 4 ? " widget-grid-5" : ""}`}>
-              {kpiWidgets.map(w => {
-                const config = KPI_CONFIGS[w.widgetTypeId];
-                if (!config) return null;
-                return <KpiCard key={w.id} config={config} kpis={kpis} />;
-              })}
-            </div>
-            {tableWidgets.map(w => (
-              pnlByMonth ? <PnlTable key={w.id} pnl={pnlByMonth} /> : null
-            ))}
-          </>
-        )}
-      </>
-    );
-  }
-
-  // Render expense-trend dashboard
-  if (dashboard.dataSourceType === "expense-trend") {
-    return (
-      <>
+      {/* Expense trend controls */}
+      {hasTrendWidgets && (
         <div className="dashboard-controls">
           <label>
             From:
@@ -262,16 +249,44 @@ export default function DashboardPage() {
             {loading ? "Refreshing..." : "API Refresh"}
           </button>
         </div>
+      )}
 
-        {loading && <div className="app-loading">Loading trend data...</div>}
-        {error && <div className="app-error">{error}</div>}
+      {loading && <div className="app-loading">Loading dashboard...</div>}
+      {error && <div className="app-error">{error}</div>}
+      {noCache && !loading && (
+        <div className="app-empty">
+          There is no cached data, you need to pull fresh data via API.
+        </div>
+      )}
 
-        {trendData.length > 0 && (
-          <TrendChart data={trendData} entityName={trendEntityName} />
-        )}
-      </>
-    );
-  }
+      {/* Financial snapshot widgets */}
+      {kpis && (
+        <>
+          {entityName && (
+            <div style={{ textAlign: "center", color: "#9a9caa", fontSize: 16, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>
+              {entityName}
+            </div>
+          )}
+          <h1 style={{ textAlign: "center", color: "#6b8cff", fontSize: 28, letterSpacing: 2, marginBottom: 32, textTransform: "uppercase" }}>
+            Financial Snapshot
+          </h1>
+          <div className={`widget-grid${kpiWidgets.length > 4 ? " widget-grid-5" : ""}`}>
+            {kpiWidgets.map(w => {
+              const config = KPI_CONFIGS[w.widgetTypeId];
+              if (!config) return null;
+              return <KpiCard key={w.id} config={config} kpis={kpis} />;
+            })}
+          </div>
+          {tableWidgets.map(w => (
+            pnlByMonth ? <PnlTable key={w.id} pnl={pnlByMonth} /> : null
+          ))}
+        </>
+      )}
 
-  return <div className="app-empty">Unknown dashboard type: {dashboard.dataSourceType}</div>;
+      {/* Trend widgets */}
+      {trendData.length > 0 && hasTrendWidgets && (
+        <TrendChart data={trendData} entityName={trendEntityName} />
+      )}
+    </>
+  );
 }

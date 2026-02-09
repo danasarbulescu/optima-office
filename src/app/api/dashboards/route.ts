@@ -37,16 +37,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { packageId, clientId, slug, displayName, sortOrder, dataSourceType } = body;
+    const { packageId, clientId, slug, displayName, sortOrder } = body;
 
-    if (!packageId || !clientId || !slug || !displayName || !dataSourceType) {
-      return NextResponse.json({ error: "packageId, clientId, slug, displayName, and dataSourceType are required" }, { status: 400 });
+    if (!packageId || !clientId || !slug || !displayName) {
+      return NextResponse.json({ error: "packageId, clientId, slug, and displayName are required" }, { status: 400 });
     }
     if (!/^[a-z0-9-]+$/.test(slug)) {
       return NextResponse.json({ error: "slug must contain only lowercase letters, numbers, and hyphens" }, { status: 400 });
     }
 
-    const dashboard = await addDashboard({ packageId, clientId, slug, displayName, sortOrder: sortOrder ?? 0, dataSourceType });
+    const dashboard = await addDashboard({ packageId, clientId, slug, displayName, sortOrder: sortOrder ?? 0 });
     return NextResponse.json({ success: true, id: dashboard.id }, { status: 201 });
   } catch (err: any) {
     console.error("Dashboards POST error:", err);

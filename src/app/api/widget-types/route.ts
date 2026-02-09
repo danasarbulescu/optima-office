@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
-import { WIDGET_TYPES, getWidgetTypesByDataSource } from "@/widgets/registry";
+import { WIDGET_TYPES } from "@/widgets/registry";
 import { getAllWidgetTypeMeta } from "@/lib/widget-type-meta";
 
 export async function GET(request: NextRequest) {
@@ -9,16 +9,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const dataSourceType = request.nextUrl.searchParams.get("dataSourceType");
-  const baseTypes = dataSourceType
-    ? getWidgetTypesByDataSource(dataSourceType)
-    : WIDGET_TYPES;
-
   // Merge with DynamoDB overrides
   const overrides = await getAllWidgetTypeMeta();
   const overrideMap = new Map(overrides.map(o => [o.id, o.displayName]));
 
-  const widgetTypes = baseTypes.map(wt => ({
+  const widgetTypes = WIDGET_TYPES.map(wt => ({
     ...wt,
     originalName: wt.name,
     name: overrideMap.get(wt.id) || wt.name,

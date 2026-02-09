@@ -19,6 +19,7 @@ export default function ClientsPage() {
   const [sortColumn, setSortColumn] = useState<ClientSortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [showArchivedModal, setShowArchivedModal] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -55,6 +56,37 @@ export default function ClientsPage() {
     }
   };
 
+  const handleRemoveClient = async (c: Client) => {
+    if (!confirm(`Are you sure you want to delete "${c.displayName}"? That will also delete client's packages, dashboards and their data. Widget will not be affected.`)) return;
+    setError("");
+    try {
+      const res = await fetch(`/api/clients/${encodeURIComponent(c.id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Failed to delete client "${c.displayName}"`);
+      await fetchData();
+      refreshEntities();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleRemoveAll = async () => {
+    if (!confirm("Are you sure you want to delete all Clients? That will also delete client's packages, dashboards and their data. Widget will not be affected.")) return;
+    setRemoving(true);
+    setError("");
+    try {
+      for (const c of clients) {
+        const res = await fetch(`/api/clients/${encodeURIComponent(c.id)}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(`Failed to delete client "${c.displayName}"`);
+      }
+      await fetchData();
+      refreshEntities();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   const sortedClients = useMemo(() => {
     if (!sortColumn) return activeClients;
     const sorted = [...activeClients].sort((a, b) => {
@@ -83,6 +115,11 @@ export default function ClientsPage() {
       <div className="clients-header">
         <h1>Clients</h1>
         <div style={{ display: "flex", gap: 10 }}>
+          {clients.length > 0 && (
+            <button className="delete-btn" onClick={handleRemoveAll} disabled={removing}>
+              {removing ? "Removing..." : "Remove All"}
+            </button>
+          )}
           {archivedClients.length > 0 && (
             <button className="archived-btn" onClick={() => setShowArchivedModal(true)}>
               Archived ({archivedClients.length})
@@ -101,6 +138,7 @@ export default function ClientsPage() {
           <table className="clients-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th className="sortable-th" onClick={() => handleSort("displayName")}>
                   Display Name {sortIndicator("displayName")}
                 </th>
@@ -109,6 +147,7 @@ export default function ClientsPage() {
                 </th>
                 <th>Contact</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -120,10 +159,14 @@ export default function ClientsPage() {
                     className="client-row"
                     onClick={() => router.push(`/clients/${c.id}`)}
                   >
+                    <td><code className="slug-badge">{c.id.slice(0, 6)}</code></td>
                     <td>{c.displayName}</td>
                     <td><code className="slug-badge">{c.slug}</code></td>
                     <td>{contactName || <span className="text-muted">—</span>}</td>
                     <td><span className="status-badge status-active">Active</span></td>
+                    <td>
+                      <button className="delete-btn" onClick={(e) => { e.stopPropagation(); handleRemoveClient(c); }}>Remove</button>
+                    </td>
                   </tr>
                 );
               })}

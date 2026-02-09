@@ -8,7 +8,6 @@ interface WidgetTypeView {
   name: string;
   originalName: string;
   category: string;
-  dataSourceType: string;
   component: string;
   hasOverride: boolean;
 }
@@ -51,7 +50,6 @@ export default function WidgetsPage() {
             <tr>
               <th>Name</th>
               <th>Category</th>
-              <th>Data Source</th>
               <th>Component</th>
               <th></th>
             </tr>
@@ -69,7 +67,6 @@ export default function WidgetsPage() {
                   )}
                 </td>
                 <td>{wt.category}</td>
-                <td><code className="slug-badge">{wt.dataSourceType}</code></td>
                 <td><code className="slug-badge">{wt.component}</code></td>
                 <td>
                   <button className="rename-btn" onClick={() => setEditingWidget(wt)}>
