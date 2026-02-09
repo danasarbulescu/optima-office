@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
     ENTITIES_TABLE: process.env.ENTITIES_TABLE || amplifyOutputs?.custom?.entitiesTableName || '',
     CLIENTS_TABLE: process.env.CLIENTS_TABLE || amplifyOutputs?.custom?.clientsTableName || '',
     CLIENT_MEMBERSHIPS_TABLE: process.env.CLIENT_MEMBERSHIPS_TABLE || amplifyOutputs?.custom?.clientMembershipsTableName || '',
+    PACKAGES_TABLE: process.env.PACKAGES_TABLE || amplifyOutputs?.custom?.packagesTableName || '',
+    DASHBOARDS_TABLE: process.env.DASHBOARDS_TABLE || amplifyOutputs?.custom?.dashboardsTableName || '',
+    DASHBOARD_WIDGETS_TABLE: process.env.DASHBOARD_WIDGETS_TABLE || amplifyOutputs?.custom?.dashboardWidgetsTableName || '',
+    WIDGET_TYPE_META_TABLE: process.env.WIDGET_TYPE_META_TABLE || amplifyOutputs?.custom?.widgetTypeMetaTableName || '',
   },
 };
 

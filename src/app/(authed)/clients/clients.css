@@ -556,3 +556,111 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Status badge */
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-active {
+  background: rgba(39, 174, 96, 0.15);
+  color: #27ae60;
+}
+
+.status-archived {
+  background: rgba(154, 156, 170, 0.15);
+  color: #9a9caa;
+}
+
+/* Back link */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b8cff;
+  text-decoration: none;
+  font-size: 14px;
+  margin-bottom: 20px;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #8fa6ff;
+}
+
+/* Select dropdown (for modals) */
+.modal-field select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #141520;
+  color: #e1e2e8;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.modal-field select:focus {
+  outline: none;
+  border-color: #3b6cf5;
+  box-shadow: 0 0 0 2px rgba(59, 108, 245, 0.2);
+}
+
+/* Number input */
+.modal-field input[type="number"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #141520;
+  color: #e1e2e8;
+  box-sizing: border-box;
+}
+
+.modal-field input[type="number"]:focus {
+  outline: none;
+  border-color: #3b6cf5;
+  box-shadow: 0 0 0 2px rgba(59, 108, 245, 0.2);
+}
+
+/* Widget select list in AddWidgetModal */
+.widget-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.widget-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #e1e2e8;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.widget-select-item:hover {
+  background: #252636;
+}
+
+.widget-select-item input[type="checkbox"] {
+  accent-color: #3b6cf5;
+}
+
+.widget-select-category {
+  font-size: 12px;
+  color: #6a6b78;
+  margin-left: auto;
+}

@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
-import { updateClient, deleteClient } from "@/lib/clients";
+import { getClient, updateClient, deleteClient } from "@/lib/clients";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const auth = await getAuthContext(request.headers.get("x-client-id"));
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isInternal) {
+    return NextResponse.json({ error: "Forbidden: internal admin only" }, { status: 403 });
+  }
+
+  try {
+    const { id } = await params;
+    const client = await getClient(id);
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+    return NextResponse.json({ client });
+  } catch (err: any) {
+    console.error("Client GET error:", err);
+    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+  }
+}
 
 export async function PUT(
   request: NextRequest,

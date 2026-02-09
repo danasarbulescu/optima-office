@@ -106,7 +106,7 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 
 ## Multi-tenant architecture
 
-- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, enabledModules?).
+- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, enabledModules?, status?).
 - **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role).
 - **Roles**: `internal-admin` (sees all clients, can switch between them), `client-admin`, `client-viewer` (locked to their client).
 - **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal }`.
@@ -118,7 +118,7 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 
 ## Client & entity management
 
-- **Clients page**: `/clients` — single-page accordion. Client table with sortable columns (displayName, slug), expand to see client details + entities sub-table. Client CRUD with contact fields (firstName, lastName, email) and enabledModules config. Entity CRUD with displayName + CData catalogId.
+- **Clients page**: `/clients` — single-page accordion. Client table with sortable columns (displayName, slug), expand to see client details + entities sub-table. Client CRUD with contact fields (firstName, lastName, email), enabledModules config, and status (active/archived). Archived clients are hidden from the main list; an "Archived (N)" button opens a modal to reactivate them. Entity CRUD with displayName + CData catalogId.
 - **Client contact fields**: firstName, lastName, email stored on Client (not Entity). Contact info is displayed in client detail panel.
 - **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, createdAt)
 - **GSI**: `byClient` index on `clientId` — used to query entities belonging to a specific client

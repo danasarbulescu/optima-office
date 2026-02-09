@@ -69,6 +69,40 @@ export interface PLCacheEntry {
   ttl: number;
 }
 
+export interface Package {
+  id: string;
+  clientId: string;
+  slug: string;
+  displayName: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface Dashboard {
+  id: string;
+  packageId: string;
+  clientId: string;
+  slug: string;
+  displayName: string;
+  sortOrder: number;
+  dataSourceType: string;
+  createdAt: string;
+}
+
+export interface DashboardWidget {
+  id: string;
+  dashboardId: string;
+  widgetTypeId: string;
+  sortOrder: number;
+  config?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface WidgetTypeMeta {
+  id: string;           // Same as widget type ID from registry
+  displayName: string;  // Admin-overridden display name
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;
