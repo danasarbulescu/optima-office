@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { WidgetTypeView, EditWidgetTypeModal } from "../EditWidgetTypeModal";
 import { KPI_CONFIGS } from "@/widgets/kpi-config";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
@@ -16,6 +15,15 @@ const TrendChart = dynamic(() => import("@/widgets/components/TrendChart"), {
   loading: () => <div className="app-loading">Loading chart...</div>,
   ssr: false,
 });
+
+interface WidgetTypeView {
+  id: string;
+  name: string;
+  originalName: string;
+  category: string;
+  component: string;
+  hasOverride: boolean;
+}
 
 interface UsageRecord {
   widgetId: string;
@@ -44,7 +52,11 @@ export default function WidgetTypeDetailPage() {
   const [usage, setUsage] = useState<UsageRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState(false);
+
+  // Inline name editing
+  const [editName, setEditName] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState("");
 
   // Preview state
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
@@ -63,6 +75,7 @@ export default function WidgetTypeDetailPage() {
       if (!res.ok) throw new Error("Widget type not found");
       const data = await res.json();
       setWidgetType(data.widgetType);
+      setEditName(data.widgetType.name);
     } catch (err: any) {
       setError(err.message);
     }
@@ -142,32 +155,105 @@ export default function WidgetTypeDetailPage() {
     finally { setSaving(false); }
   };
 
+  const handleSaveName = async () => {
+    if (!editName.trim() || editName === widgetType?.name) return;
+    setNameSaving(true);
+    setNameError("");
+    try {
+      const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: editName.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update name");
+      }
+      await fetchWidgetType();
+    } catch (err: any) {
+      setNameError(err.message);
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
+  const handleResetName = async () => {
+    setNameSaving(true);
+    setNameError("");
+    try {
+      const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: "" }),
+      });
+      if (!res.ok) throw new Error("Failed to reset name");
+      await fetchWidgetType();
+    } catch (err: any) {
+      setNameError(err.message);
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
   if (loading) return <div className="app-loading">Loading widget type...</div>;
   if (error || !widgetType) return <div className="app-error">{error || "Widget type not found"}</div>;
 
   const kpiConfig = KPI_CONFIGS[id];
   const hasUnsavedChange = previewEntityId !== savedEntityId;
+  const nameChanged = editName.trim() !== widgetType.name;
 
   return (
     <div className="widget-detail-page">
       <Link href="/widgets" className="widget-detail-back">&larr; Widget Types</Link>
 
       <div className="widget-detail-header">
-        <h1>
-          {widgetType.name}
-          {widgetType.hasOverride && <span className="override-badge">customized</span>}
-        </h1>
-        <button className="rename-btn" onClick={() => setEditing(true)}>Rename</button>
+        <h1>{widgetType.name}</h1>
       </div>
-
-      {widgetType.hasOverride && (
-        <div className="original-name-hint" style={{ marginBottom: 16 }}>
-          Original: {widgetType.originalName}
-        </div>
-      )}
 
       {/* Info Section */}
       <div className="widget-detail-info">
+        <div className="widget-detail-field">
+          <span className="widget-detail-label">Display Name</span>
+          <div className="inline-name-edit">
+            <div className="inline-name-row">
+              <input
+                type="text"
+                className="inline-name-input"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); }}
+                disabled={nameSaving}
+              />
+              {nameChanged && (
+                <button
+                  className="inline-name-save"
+                  onClick={handleSaveName}
+                  disabled={nameSaving || !editName.trim()}
+                >
+                  {nameSaving ? "Saving..." : "Save"}
+                </button>
+              )}
+              {nameChanged && (
+                <button
+                  className="inline-name-cancel"
+                  onClick={() => setEditName(widgetType.name)}
+                  disabled={nameSaving}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+            {widgetType.hasOverride && !nameChanged && (
+              <div className="original-name-hint">
+                Original: {widgetType.originalName}
+                <button className="reset-link" onClick={handleResetName} disabled={nameSaving}>
+                  Reset to original
+                </button>
+              </div>
+            )}
+            {nameError && <div className="inline-name-error">{nameError}</div>}
+          </div>
+        </div>
         <div className="widget-detail-field">
           <span className="widget-detail-label">Category</span>
           <span>{widgetType.category}</span>
@@ -317,14 +403,6 @@ export default function WidgetTypeDetailPage() {
           </div>
         )}
       </div>
-
-      {editing && (
-        <EditWidgetTypeModal
-          widget={widgetType}
-          onClose={() => setEditing(false)}
-          onSaved={() => { setEditing(false); fetchWidgetType(); }}
-        />
-      )}
     </div>
   );
 }

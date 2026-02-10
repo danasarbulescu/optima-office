@@ -2,14 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { WidgetTypeView, EditWidgetTypeModal } from "./EditWidgetTypeModal";
 import "./widgets.css";
+
+interface WidgetTypeView {
+  id: string;
+  name: string;
+  originalName: string;
+  category: string;
+  component: string;
+  hasOverride: boolean;
+}
 
 export default function WidgetsPage() {
   const [widgetTypes, setWidgetTypes] = useState<WidgetTypeView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editingWidget, setEditingWidget] = useState<WidgetTypeView | null>(null);
 
   const fetchWidgetTypes = useCallback(async () => {
     try {
@@ -44,7 +51,6 @@ export default function WidgetsPage() {
               <th>Name</th>
               <th>Category</th>
               <th>Component</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -63,24 +69,11 @@ export default function WidgetsPage() {
                 </td>
                 <td>{wt.category}</td>
                 <td><code className="slug-badge">{wt.component}</code></td>
-                <td>
-                  <button className="rename-btn" onClick={() => setEditingWidget(wt)}>
-                    Rename
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {editingWidget && (
-        <EditWidgetTypeModal
-          widget={editingWidget}
-          onClose={() => setEditingWidget(null)}
-          onSaved={() => { setEditingWidget(null); fetchWidgetTypes(); }}
-        />
-      )}
     </div>
   );
 }
