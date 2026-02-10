@@ -197,3 +197,80 @@
 .widget-usage-link:hover {
   text-decoration: underline;
 }
+
+/* ─── Widget Preview Section ─── */
+
+.widget-detail-preview {
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+.widget-detail-preview h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e1e2e8;
+  margin-bottom: 16px;
+}
+
+.widget-preview-frame {
+  background: #13141b;
+  border: 1px solid #2a2b35;
+  border-radius: 8px;
+  padding: 24px;
+  overflow-x: auto;
+}
+
+.widget-preview-frame .widget-grid {
+  margin: 0;
+}
+
+/* ─── Preview Source Selector ─── */
+
+.preview-source {
+  margin-bottom: 16px;
+}
+
+.preview-source-label {
+  display: block;
+  font-size: 13px;
+  color: #9a9caa;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.preview-source-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-source-controls select {
+  max-width: 300px;
+  padding: 6px 10px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  background: #252636;
+  color: #e1e2e8;
+  font-size: 13px;
+}
+
+.preview-save-btn {
+  padding: 5px 14px;
+  border: 1px solid #6b8cff;
+  border-radius: 4px;
+  background: transparent;
+  color: #6b8cff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.preview-save-btn:hover {
+  background: #6b8cff;
+  color: #fff;
+}
+
+.preview-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

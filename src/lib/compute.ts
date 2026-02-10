@@ -161,7 +161,7 @@ export function build13MonthPnL(
   return { months, totals };
 }
 
-function subtractMonths(monthStr: string, n: number): string {
+export function subtractMonths(monthStr: string, n: number): string {
   const [y, m] = monthStr.split('-').map(Number);
   const total = y * 12 + (m - 1) - n;
   const newYear = Math.floor(total / 12);

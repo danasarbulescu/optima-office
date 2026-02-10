@@ -48,7 +48,7 @@ src/
         data-sources.css            — Data sources page styles
       widgets/
         page.tsx                    — Widget types admin: list all widget types (clickable), rename (DynamoDB override)
-        [id]/page.tsx               — Widget type detail: info, KPI config, usage table (which dashboards use it)
+        [id]/page.tsx               — Widget type detail: info, KPI config, live preview (entity-backed), usage table
         EditWidgetTypeModal.tsx     — Shared rename modal (used by list + detail pages)
         widgets.css                 — Widgets page + detail page styles
       tools/
@@ -74,7 +74,9 @@ src/
       dashboards/[id]/widgets/[widgetId]/route.ts — API: edit widget (PUT), delete widget (DELETE)
       widget-types/route.ts         — API: list all widget types with DynamoDB name overrides (GET)
       widget-types/[id]/route.ts    — API: get widget type detail (GET), rename or reset to default (PUT)
+      widget-types/[id]/preview/route.ts — API: widget preview data from configured entity (GET)
       widget-types/[id]/usage/route.ts — API: get dashboards using this widget type (GET)
+      widget-types/preview-config/route.ts — API: get/set preview entity selection (GET, PUT)
       widget-data/
         financial-snapshot/route.ts — API: KPIs + P&L table data (GET)
         expense-trend/route.ts      — API: expense trend chart data (GET)
@@ -257,7 +259,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 ## Widgets admin pages
 
 - **List page**: `/widgets` (internal admin only). Lists all widget types from the static registry with DynamoDB name overrides. Widget names are clickable links to detail pages. Admins can rename widget types (stored in `WidgetTypeMeta` table) or reset to original names.
-- **Detail page**: `/widgets/[id]` — shows widget type info (name, category, component, KPI config for KPI widgets), rename action, and a usage table listing all dashboards across all clients that use this widget type. Client names link to `/clients/[id]`.
+- **Detail page**: `/widgets/[id]` — shows widget type info (name, category, component, KPI config for KPI widgets), rename action, live preview (renders the actual widget component using warehouse data from a configured entity), and a usage table listing all dashboards across all clients that use this widget type. Client names link to `/clients/[id]`. Preview entity selection is persisted in WidgetTypeMeta table (shared across all widget types).
 
 ## Multi-entity support
 
@@ -342,7 +344,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 - **Dashboards**: `GET /api/dashboards?packageId=|clientId=` — list dashboards; `POST /api/dashboards` — add `{ packageId, clientId, slug, displayName, sortOrder }`; `PUT /api/dashboards/:id` — edit; `DELETE /api/dashboards/:id` — cascade delete (widgets)
 - **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs (enforces package/dashboard authorization for client users)
 - **Dashboard widgets**: `GET /api/dashboards/:id/widgets` — list widgets; `POST /api/dashboards/:id/widgets` — add `{ widgetTypeId, sortOrder, config? }`; `PUT /api/dashboards/:id/widgets/:widgetId` — edit; `DELETE /api/dashboards/:id/widgets/:widgetId` — remove
-- **Widget types**: `GET /api/widget-types` — list all types with name overrides; `GET /api/widget-types/:id` — get single type detail; `PUT /api/widget-types/:id` — rename (empty displayName resets to default); `GET /api/widget-types/:id/usage` — list dashboards using this type (with client/package context)
+- **Widget types**: `GET /api/widget-types` — list all types with name overrides; `GET /api/widget-types/:id` — get single type detail; `PUT /api/widget-types/:id` — rename (empty displayName resets to default); `GET /api/widget-types/:id/usage` — list dashboards using this type (with client/package context); `GET /api/widget-types/:id/preview` — preview data (KPIs/PnL/trend) computed from configured entity's warehouse data; `GET /api/widget-types/preview-config` — get saved preview entity ID; `PUT /api/widget-types/preview-config` — save preview entity `{ entityId }`
 
 ### Widget data (financial data endpoints)
 - **Financial snapshot**: `GET /api/widget-data/financial-snapshot?month=YYYY-MM&entities=id1,id2&refresh=true` — returns `{ kpis, pnlByMonth, selectedMonth, entityName }`
