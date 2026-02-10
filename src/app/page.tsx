@@ -23,6 +23,20 @@ function HomeContent() {
           const data = await res.json();
 
           if (data.packages?.length > 0 && data.dashboards?.length > 0) {
+            // Check for a configured default dashboard
+            const defaultId = data.auth?.defaultDashboardId;
+            if (defaultId) {
+              const defaultDash = data.dashboards.find((d: any) => d.id === defaultId);
+              if (defaultDash) {
+                const defaultPkg = data.packages.find((p: any) => p.id === defaultDash.packageId);
+                if (defaultPkg) {
+                  router.replace(`/${defaultPkg.slug}/${defaultDash.slug}`);
+                  return;
+                }
+              }
+            }
+
+            // Fallback: first package's first dashboard
             const firstPkg = data.packages[0];
             const firstDash = data.dashboards
               .filter((d: any) => d.packageId === firstPkg.id)

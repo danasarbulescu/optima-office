@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
         isInternal: auth.isInternal,
         authorizedPackageIds: auth.authorizedPackageIds,
         authorizedDashboardIds: auth.authorizedDashboardIds,
+        defaultDashboardId: auth.defaultDashboardId,
       },
       clients,
       client,

@@ -170,6 +170,27 @@
   padding: 24px;
 }
 
+/* Dashboard header */
+.dashboard-header {
+  text-align: center;
+  padding: 24px 24px 0;
+}
+.dashboard-package-name {
+  color: #9a9caa;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.dashboard-title {
+  color: #6b8cff;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
 /* Dashboard controls (shared by financial-snapshot and expense-trend) */
 .dashboard-controls {
   display: flex;

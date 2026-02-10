@@ -10,7 +10,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 - **Dashboard**: A page within a package (e.g., "Monthly Dashboard"). Contains an ordered list of widgets.
 - **Widget**: An instance of a widget type placed on a dashboard. Has a type, sort order, and optional config.
 - **Widget Type**: A reusable component definition (e.g., "Revenue Current Month" KPI card). Defined in code, display names overridable via DynamoDB.
-- **Client User**: A sub-account within a client with restricted package/dashboard access (e.g., a client employee who can only see certain reports). Managed by internal admins; auto-creates a Cognito login (optionally sends invite). Access controlled at package level (all dashboards) and/or individual dashboard level.
+- **Client User**: A sub-account within a client with restricted package/dashboard access (e.g., a client employee who can only see certain reports). Managed by internal admins; auto-creates a Cognito login (optionally sends invite). Access controlled at package level (all dashboards) and/or individual dashboard level. Optionally has a default dashboard (landing page on login).
 - **Data Source**: A configured external data connection (e.g., a CData Connect Cloud account). Global (not per-client). Entities optionally bind to a data source for credentials; unbound entities fall back to global env vars.
 - **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many) + authorized Dashboards (many). Entity (many) → Data Source (0..many).
 
@@ -28,7 +28,7 @@ amplify/
 src/
   app/
     layout.tsx                      — Root layout with ConfigureAmplify
-    page.tsx                        — Home redirector (bootstrap → first dashboard or /clients)
+    page.tsx                        — Home redirector (bootstrap → default dashboard or first dashboard or /clients)
     globals.css                     — Global styles (header, multi-select dropdown, controls, package nav)
     login/page.tsx                  — Login page with Authenticator
     (authed)/
@@ -154,8 +154,8 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 - **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, status?).
 - **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role, clientUserId?).
 - **Roles**: `internal-admin` (sees all clients, can switch between them), `client-admin`, `client-viewer` (locked to their client).
-- **Client users**: Sub-accounts within a client with restricted package/dashboard access. Stored in `ClientUsers` table (id, clientId, email, firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds, cognitoUserId). Created by internal admins; auto-creates Cognito user (optionally sends invite). Access managed via dedicated "Manage Access" modal after creation. Linked to `ClientMemberships` via `clientUserId`.
-- **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal, authorizedPackageIds, authorizedDashboardIds }`. For client users, both fields are resolved from the linked `ClientUser` record. `null` = full access; `string[]` = restricted. A dashboard is accessible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. Archived client users are denied access (returns null).
+- **Client users**: Sub-accounts within a client with restricted package/dashboard access. Stored in `ClientUsers` table (id, clientId, email, firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds, defaultDashboardId, cognitoUserId). Created by internal admins; auto-creates Cognito user (optionally sends invite). Access managed via dedicated "Manage Access" modal after creation (includes default dashboard picker). Linked to `ClientMemberships` via `clientUserId`.
+- **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal, authorizedPackageIds, authorizedDashboardIds, defaultDashboardId }`. For client users, all three fields are resolved from the linked `ClientUser` record. `null` = full access; `string[]` = restricted. A dashboard is accessible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. `defaultDashboardId` is the user's configured landing page. Archived client users are denied access (returns null).
 - **Internal users**: See a client switcher dropdown in the header. Can switch between clients. See all packages/dashboards + admin pages (Clients, Widgets, Tools).
 - **External users**: Locked to their assigned client. No switcher visible. See only their client's packages and dashboards.
 - **Routing**: Auth-based. Dashboard URLs use `/{packageSlug}/{dashboardSlug}` pattern. Client selection via `x-client-id` header or stored in context.
@@ -340,7 +340,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 - **Bootstrap**: `GET /api/bootstrap` — single layout-level call returning auth context + clients + packages + dashboards + widgetsByDashboard + entities. Accepts optional `?clientId=` for client switches. Dashboard pages resolve from this data client-side (no separate resolve/widgets API calls)
 - **Client detail bootstrap**: `GET /api/clients/:id/bootstrap` — single call for client detail page returning client + entities + packages + dashboards + widgetsByDashboard + clientUsers + dataSources (internal admin only)
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds, authorizedDashboardIds). Superseded by `/api/bootstrap` for layout init but still available for direct use
-- **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account (optionally sends invite via `sendInvite` flag) `{ clientId, email, firstName, lastName, authorizedPackageIds, authorizedDashboardIds, sendInvite? }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
+- **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account (optionally sends invite via `sendInvite` flag) `{ clientId, email, firstName, lastName, authorizedPackageIds, authorizedDashboardIds, sendInvite? }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds, defaultDashboardId }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
 
 ### Package / dashboard / widget management (internal admin only for writes)
 - **Packages**: `GET /api/packages?clientId=` — list packages; `POST /api/packages` — add package `{ clientId, slug, displayName, sortOrder }`; `PUT /api/packages/:id` — edit; `DELETE /api/packages/:id` — cascade delete (dashboards + widgets)

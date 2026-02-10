@@ -54,7 +54,7 @@ export async function addClientUser(data: {
 
 export async function updateClientUser(
   id: string,
-  updates: Partial<Pick<ClientUser, 'firstName' | 'lastName' | 'email' | 'status' | 'authorizedPackageIds' | 'authorizedDashboardIds' | 'cognitoUserId'>>,
+  updates: Partial<Pick<ClientUser, 'firstName' | 'lastName' | 'email' | 'status' | 'authorizedPackageIds' | 'authorizedDashboardIds' | 'defaultDashboardId' | 'cognitoUserId'>>,
 ): Promise<void> {
   if (!TABLE_NAME) throw new Error('CLIENT_USERS_TABLE not configured');
 

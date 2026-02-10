@@ -59,8 +59,14 @@ export default function DashboardPage() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [noCache, setNoCache] = useState(false);
-  const hasAutoLoaded = useRef<string | null>(null);
+  const hasDataRef = useRef(false);
   const busy = loading || syncing;
+
+  // Resolve parent package for display
+  const pkg = useMemo(() => {
+    if (!dashboard) return null;
+    return packages.find(p => p.id === dashboard.packageId) || null;
+  }, [dashboard, packages]);
 
   // Infer data needs from assigned widgets
   const hasFinancialWidgets = useMemo(() =>
@@ -99,17 +105,18 @@ export default function DashboardPage() {
       setKpis(data.kpis);
       setPnlByMonth(data.pnlByMonth);
       setEntityName(data.entityName);
+      hasDataRef.current = true;
     } catch (err: any) {
       if (err.name === "AbortError") return;
-      if (!refresh && !kpis) {
+      if (!refresh && !hasDataRef.current) {
         setNoCache(true);
       } else {
         setError(err.message || "Failed to load dashboard");
       }
     } finally {
-      setActive(false);
+      if (!signal?.aborted) setActive(false);
     }
-  }, [selectedEntities, currentClientId, kpis]);
+  }, [selectedEntities, currentClientId]);
 
   // Fetch expense trend data
   const fetchExpenseTrend = useCallback(async (refresh = false, signal?: AbortSignal) => {
@@ -133,30 +140,36 @@ export default function DashboardPage() {
       if (err.name === "AbortError") return;
       setError(err.message || "Failed to load trend data");
     } finally {
-      setActive(false);
+      if (!signal?.aborted) setActive(false);
     }
   }, [startMonth, endMonth, selectedEntities, currentClientId]);
 
-  // Auto-load when dashboard resolves and entities are ready
+  // Stable refs for fetch callbacks — prevents effect re-fires when callback identity changes
+  const fetchFinancialRef = useRef(fetchFinancialSnapshot);
+  fetchFinancialRef.current = fetchFinancialSnapshot;
+  const fetchTrendRef = useRef(fetchExpenseTrend);
+  fetchTrendRef.current = fetchExpenseTrend;
+
+  // Auto-load when dashboard, entities, or month change
   useEffect(() => {
     if (packagesLoading || !dashboard || selectedEntities.length === 0) return;
-    // Avoid re-fetching for the same dashboard
-    if (hasAutoLoaded.current === dashboard.id) return;
-    hasAutoLoaded.current = dashboard.id;
 
+    hasDataRef.current = false;
     setKpis(null);
     setPnlByMonth(null);
     setTrendData([]);
 
     const controller = new AbortController();
     if (hasFinancialWidgets) {
-      fetchFinancialSnapshot(month, false, controller.signal);
+      fetchFinancialRef.current(month, false, controller.signal);
     }
     if (hasTrendWidgets) {
-      fetchExpenseTrend(false, controller.signal);
+      fetchTrendRef.current(false, controller.signal);
     }
-    return () => controller.abort();
-  }, [packagesLoading, dashboard, selectedEntities, hasFinancialWidgets, hasTrendWidgets, fetchFinancialSnapshot, fetchExpenseTrend, month]);
+
+    return () => { controller.abort(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, month]);
 
   if (packagesLoading) {
     return <div className="app-loading">Loading...</div>;
@@ -182,6 +195,11 @@ export default function DashboardPage() {
 
   return (
     <>
+      <div className="dashboard-header">
+        {pkg && <div className="dashboard-package-name">{pkg.displayName}</div>}
+        <h1 className="dashboard-title">{dashboard.displayName}</h1>
+      </div>
+
       {/* Financial snapshot controls */}
       {hasFinancialWidgets && (
         <div className="dashboard-controls">
@@ -243,7 +261,7 @@ export default function DashboardPage() {
       {error && <div className="app-error">{error}</div>}
       {noCache && !busy && (
         <div className="app-empty">
-          There is no cached data, you need to pull fresh data via API.
+          No data has been downloaded yet for this client, please perform an API sync first.
         </div>
       )}
 
@@ -255,9 +273,6 @@ export default function DashboardPage() {
               {entityName}
             </div>
           )}
-          <h1 style={{ textAlign: "center", color: "#6b8cff", fontSize: 28, letterSpacing: 2, marginBottom: 32, textTransform: "uppercase" }}>
-            Financial Snapshot
-          </h1>
           <div className={`widget-grid${kpiWidgets.length > 4 ? " widget-grid-5" : ""}`}>
             {kpiWidgets.map(w => {
               const config = KPI_CONFIGS[w.widgetTypeId];

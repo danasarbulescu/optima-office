@@ -1084,12 +1084,27 @@ export function ManageAccessModal({
   const [selectedDashboardIds, setSelectedDashboardIds] = useState<string[]>(
     clientUser.authorizedDashboardIds || []
   );
+  const [defaultDashboardId, setDefaultDashboardId] = useState(
+    clientUser.defaultDashboardId || ""
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Compute all accessible dashboards (from selected packages + individually selected)
+  const accessibleDashboards = packages.flatMap(pkg => {
+    const pkgDashboards = dashboardsByPackage[pkg.id] || [];
+    if (selectedPackageIds.includes(pkg.id)) return pkgDashboards;
+    return pkgDashboards.filter(d => selectedDashboardIds.includes(d.id));
+  });
 
   const togglePackage = (pkgId: string) => {
     setSelectedPackageIds(prev => {
       if (prev.includes(pkgId)) {
+        // When unchecking a package, clear default if it belonged to this package
+        const pkgDashIds = (dashboardsByPackage[pkgId] || []).map(d => d.id);
+        if (pkgDashIds.includes(defaultDashboardId)) {
+          setDefaultDashboardId("");
+        }
         return prev.filter(id => id !== pkgId);
       } else {
         // When checking a package, remove its individual dashboard IDs (now redundant)
@@ -1101,9 +1116,14 @@ export function ManageAccessModal({
   };
 
   const toggleDashboard = (dashId: string) => {
-    setSelectedDashboardIds(prev =>
-      prev.includes(dashId) ? prev.filter(id => id !== dashId) : [...prev, dashId]
-    );
+    setSelectedDashboardIds(prev => {
+      if (prev.includes(dashId)) {
+        // Clear default if this dashboard was the default
+        if (dashId === defaultDashboardId) setDefaultDashboardId("");
+        return prev.filter(id => id !== dashId);
+      }
+      return [...prev, dashId];
+    });
   };
 
   const handleSave = async () => {
@@ -1123,6 +1143,7 @@ export function ManageAccessModal({
         body: JSON.stringify({
           authorizedPackageIds: selectedPackageIds,
           authorizedDashboardIds: cleanedDashboardIds,
+          defaultDashboardId: defaultDashboardId || "",
         }),
       });
       if (!res.ok) {
@@ -1180,6 +1201,29 @@ export function ManageAccessModal({
                 </div>
               );
             })}
+          </div>
+        )}
+        {accessibleDashboards.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <label style={{ fontWeight: 500, fontSize: 14, color: "#c5c7d0" }}>
+              Default Dashboard
+              <select
+                value={defaultDashboardId}
+                onChange={(e) => setDefaultDashboardId(e.target.value)}
+                className="modal-input"
+                style={{ marginTop: 6 }}
+              >
+                <option value="">First available</option>
+                {accessibleDashboards.map(d => {
+                  const pkg = packages.find(p => p.id === d.packageId);
+                  return (
+                    <option key={d.id} value={d.id}>
+                      {pkg ? `${pkg.displayName} / ${d.displayName}` : d.displayName}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
           </div>
         )}
         {error && <div className="modal-error">{error}</div>}
