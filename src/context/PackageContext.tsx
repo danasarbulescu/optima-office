@@ -3,11 +3,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useClient } from './ClientContext';
 import { useBootstrap } from './BootstrapContext';
-import type { Package, Dashboard } from '@/lib/types';
+import type { Package, Dashboard, DashboardWidget } from '@/lib/types';
 
 interface PackageContextValue {
   packages: Package[];
   dashboardsByPackage: Record<string, Dashboard[]>;
+  widgetsByDashboard: Record<string, DashboardWidget[]>;
   packagesLoading: boolean;
   refreshPackages: () => void;
 }
@@ -50,6 +51,7 @@ export function PackageProvider({ children }: { children: ReactNode }) {
   const bootstrap = useBootstrap();
   const [packages, setPackages] = useState<Package[]>([]);
   const [dashboardsByPackage, setDashboardsByPackage] = useState<Record<string, Dashboard[]>>({});
+  const [widgetsByDashboard, setWidgetsByDashboard] = useState<Record<string, DashboardWidget[]>>({});
 
   // Process bootstrap data with authorization filtering
   useEffect(() => {
@@ -63,13 +65,26 @@ export function PackageProvider({ children }: { children: ReactNode }) {
     );
     setPackages(result.packages);
     setDashboardsByPackage(result.dashboardsByPackage);
-  }, [bootstrap.loading, bootstrap.packages, bootstrap.dashboards, authorizedPackageIds, authorizedDashboardIds]);
+
+    // Filter widgets to only include visible dashboards
+    const visibleDashboardIds = new Set(
+      Object.values(result.dashboardsByPackage).flat().map(d => d.id)
+    );
+    const filtered: Record<string, DashboardWidget[]> = {};
+    for (const [dashId, widgets] of Object.entries(bootstrap.widgetsByDashboard)) {
+      if (visibleDashboardIds.has(dashId)) {
+        filtered[dashId] = widgets;
+      }
+    }
+    setWidgetsByDashboard(filtered);
+  }, [bootstrap.loading, bootstrap.packages, bootstrap.dashboards, bootstrap.widgetsByDashboard, authorizedPackageIds, authorizedDashboardIds]);
 
   return (
     <PackageContext.Provider
       value={{
         packages,
         dashboardsByPackage,
+        widgetsByDashboard,
         packagesLoading: bootstrap.loading,
         refreshPackages: () => bootstrap.refetch(),
       }}

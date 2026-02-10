@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { Client, EntityConfig, Package, Dashboard } from '@/lib/types';
+import { Client, EntityConfig, Package, Dashboard, DashboardWidget } from '@/lib/types';
 
 interface BootstrapAuth {
   userId: string;
@@ -18,6 +18,7 @@ interface BootstrapContextValue {
   client: Client | null;
   packages: Package[];
   dashboards: Dashboard[];
+  widgetsByDashboard: Record<string, DashboardWidget[]>;
   entities: EntityConfig[];
   loading: boolean;
   refetch: (clientId?: string) => Promise<void>;
@@ -31,6 +32,7 @@ export function BootstrapProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<Client | null>(null);
   const [packages, setPackages] = useState<Package[]>([]);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [widgetsByDashboard, setWidgetsByDashboard] = useState<Record<string, DashboardWidget[]>>({});
   const [entities, setEntities] = useState<EntityConfig[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +53,7 @@ export function BootstrapProvider({ children }: { children: ReactNode }) {
       setClient(data.client || null);
       setPackages(data.packages || []);
       setDashboards(data.dashboards || []);
+      setWidgetsByDashboard(data.widgetsByDashboard || {});
       setEntities(data.entities || []);
     } catch {
       // Bootstrap failed — auth state stays null
@@ -72,6 +75,7 @@ export function BootstrapProvider({ children }: { children: ReactNode }) {
         client,
         packages,
         dashboards,
+        widgetsByDashboard,
         entities,
         loading,
         refetch: fetchBootstrap,

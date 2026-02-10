@@ -5,11 +5,12 @@ import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useClient } from "@/context/ClientContext";
 import { useEntity } from "@/context/EntityContext";
+import { usePackages } from "@/context/PackageContext";
 import { getWidgetType } from "@/widgets/registry";
 import { KPI_CONFIGS } from "@/widgets/kpi-config";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
-import type { KPIs, PnLByMonth, TrendDataPoint, Dashboard, DashboardWidget } from "@/lib/types";
+import type { KPIs, PnLByMonth, TrendDataPoint } from "@/lib/types";
 import "@/widgets/widgets.css";
 
 const TrendChart = dynamic(() => import("@/widgets/components/TrendChart"), {
@@ -26,10 +27,21 @@ export default function DashboardPage() {
   const { packageSlug, dashboardSlug } = useParams<{ packageSlug: string; dashboardSlug: string }>();
   const { currentClientId } = useClient();
   const { selectedEntities } = useEntity();
+  const { packages, dashboardsByPackage, widgetsByDashboard, packagesLoading } = usePackages();
 
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
-  const [resolving, setResolving] = useState(true);
+  // Resolve dashboard + widgets from context (no API calls)
+  const dashboard = useMemo(() => {
+    if (!packageSlug || !dashboardSlug) return null;
+    const pkg = packages.find(p => p.slug === packageSlug);
+    if (!pkg) return null;
+    const dashboards = dashboardsByPackage[pkg.id] || [];
+    return dashboards.find(d => d.slug === dashboardSlug) || null;
+  }, [packageSlug, dashboardSlug, packages, dashboardsByPackage]);
+
+  const widgets = useMemo(() => {
+    if (!dashboard) return [];
+    return widgetsByDashboard[dashboard.id] || [];
+  }, [dashboard, widgetsByDashboard]);
 
   // Financial snapshot state
   const [month, setMonth] = useState(getCurrentMonth());
@@ -44,9 +56,11 @@ export default function DashboardPage() {
   const [trendEntityName, setTrendEntityName] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [noCache, setNoCache] = useState(false);
-  const hasAutoLoaded = useRef(false);
+  const hasAutoLoaded = useRef<string | null>(null);
+  const busy = loading || syncing;
 
   // Infer data needs from assigned widgets
   const hasFinancialWidgets = useMemo(() =>
@@ -65,56 +79,17 @@ export default function DashboardPage() {
     [widgets]
   );
 
-  // Resolve dashboard from slugs
-  useEffect(() => {
-    if (!packageSlug || !dashboardSlug || !currentClientId) return;
-    setResolving(true);
-    hasAutoLoaded.current = false;
-    setKpis(null);
-    setPnlByMonth(null);
-    setTrendData([]);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/dashboards/resolve?packageSlug=${packageSlug}&dashboardSlug=${dashboardSlug}&clientId=${currentClientId}`,
-          { headers: { "x-client-id": currentClientId } }
-        );
-        if (!res.ok) {
-          setDashboard(null);
-          setWidgets([]);
-          setResolving(false);
-          return;
-        }
-        const { dashboard: d } = await res.json();
-        setDashboard(d);
-
-        // Fetch widgets for this dashboard
-        const wRes = await fetch(`/api/dashboards/${d.id}/widgets`, {
-          headers: { "x-client-id": currentClientId },
-        });
-        if (wRes.ok) {
-          const { widgets: w } = await wRes.json();
-          setWidgets(w);
-        }
-      } catch {
-        setDashboard(null);
-        setWidgets([]);
-      } finally {
-        setResolving(false);
-      }
-    })();
-  }, [packageSlug, dashboardSlug, currentClientId]);
-
   // Fetch financial snapshot data
-  const fetchFinancialSnapshot = useCallback(async (selectedMonth: string, refresh = false) => {
-    setLoading(true);
+  const fetchFinancialSnapshot = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
+    const setActive = refresh ? setSyncing : setLoading;
+    setActive(true);
     setError("");
     setNoCache(false);
     try {
       const url = `/api/widget-data/financial-snapshot?month=${selectedMonth}&entities=${selectedEntities.join(",")}${refresh ? "&refresh=true" : ""}`;
       const res = await fetch(url, {
         headers: { "x-client-id": currentClientId || "" },
+        signal,
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -125,24 +100,27 @@ export default function DashboardPage() {
       setPnlByMonth(data.pnlByMonth);
       setEntityName(data.entityName);
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       if (!refresh && !kpis) {
         setNoCache(true);
       } else {
         setError(err.message || "Failed to load dashboard");
       }
     } finally {
-      setLoading(false);
+      setActive(false);
     }
   }, [selectedEntities, currentClientId, kpis]);
 
   // Fetch expense trend data
-  const fetchExpenseTrend = useCallback(async (refresh = false) => {
-    setLoading(true);
+  const fetchExpenseTrend = useCallback(async (refresh = false, signal?: AbortSignal) => {
+    const setActive = refresh ? setSyncing : setLoading;
+    setActive(true);
     setError("");
     try {
       const url = `/api/widget-data/expense-trend?startMonth=${startMonth}&endMonth=${endMonth}&entities=${selectedEntities.join(",")}${refresh ? "&refresh=true" : ""}`;
       const res = await fetch(url, {
         headers: { "x-client-id": currentClientId || "" },
+        signal,
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -152,25 +130,35 @@ export default function DashboardPage() {
       setTrendData(json.data);
       setTrendEntityName(json.entityName);
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       setError(err.message || "Failed to load trend data");
     } finally {
-      setLoading(false);
+      setActive(false);
     }
   }, [startMonth, endMonth, selectedEntities, currentClientId]);
 
   // Auto-load when dashboard resolves and entities are ready
   useEffect(() => {
-    if (hasAutoLoaded.current || resolving || !dashboard || selectedEntities.length === 0) return;
-    hasAutoLoaded.current = true;
+    if (packagesLoading || !dashboard || selectedEntities.length === 0) return;
+    // Avoid re-fetching for the same dashboard
+    if (hasAutoLoaded.current === dashboard.id) return;
+    hasAutoLoaded.current = dashboard.id;
+
+    setKpis(null);
+    setPnlByMonth(null);
+    setTrendData([]);
+
+    const controller = new AbortController();
     if (hasFinancialWidgets) {
-      fetchFinancialSnapshot(month);
+      fetchFinancialSnapshot(month, false, controller.signal);
     }
     if (hasTrendWidgets) {
-      fetchExpenseTrend();
+      fetchExpenseTrend(false, controller.signal);
     }
-  }, [resolving, dashboard, selectedEntities, hasFinancialWidgets, hasTrendWidgets, fetchFinancialSnapshot, fetchExpenseTrend, month]);
+    return () => controller.abort();
+  }, [packagesLoading, dashboard, selectedEntities, hasFinancialWidgets, hasTrendWidgets, fetchFinancialSnapshot, fetchExpenseTrend, month]);
 
-  if (resolving) {
+  if (packagesLoading) {
     return <div className="app-loading">Loading...</div>;
   }
 
@@ -205,17 +193,17 @@ export default function DashboardPage() {
           />
           <button
             onClick={() => fetchFinancialSnapshot(month)}
-            disabled={loading || selectedEntities.length === 0}
+            disabled={busy || selectedEntities.length === 0}
             className="refresh-btn"
           >
             {loading ? "Loading..." : "Load"}
           </button>
           <button
             onClick={() => fetchFinancialSnapshot(month, true)}
-            disabled={loading || selectedEntities.length === 0}
+            disabled={busy || selectedEntities.length === 0}
             className="refresh-btn"
           >
-            {loading ? "Fetching..." : "Fetch API Data"}
+            {syncing ? "Syncing..." : "Sync"}
           </button>
         </div>
       )}
@@ -243,17 +231,17 @@ export default function DashboardPage() {
           </label>
           <button
             onClick={() => fetchExpenseTrend(true)}
-            disabled={loading}
+            disabled={busy}
             className="refresh-btn"
           >
-            {loading ? "Refreshing..." : "API Refresh"}
+            {syncing ? "Syncing..." : "Sync"}
           </button>
         </div>
       )}
 
-      {loading && <div className="app-loading">Loading dashboard...</div>}
+      {busy && <div className="app-loading">{syncing ? "Syncing..." : "Loading dashboard..."}</div>}
       {error && <div className="app-error">{error}</div>}
-      {noCache && !loading && (
+      {noCache && !busy && (
         <div className="app-empty">
           There is no cached data, you need to pull fresh data via API.
         </div>

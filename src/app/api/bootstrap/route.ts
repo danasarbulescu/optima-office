@@ -3,7 +3,9 @@ import { getAuthContext } from "@/lib/auth-context";
 import { getClients, getClient } from "@/lib/clients";
 import { getPackages } from "@/lib/packages";
 import { getDashboardsByClient } from "@/lib/dashboards";
+import { getWidgets } from "@/lib/dashboard-widgets";
 import { getEntities } from "@/lib/entities";
+import type { DashboardWidget } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   const selectedClientId = request.nextUrl.searchParams.get("clientId");
@@ -26,6 +28,19 @@ export async function GET(request: NextRequest) {
       getEntities(dataClientId),
     ]);
 
+    // Phase 2: fetch widgets for all dashboards in parallel
+    const widgetsByDashboard: Record<string, DashboardWidget[]> = {};
+    if (dashboards.length > 0) {
+      const widgetResults = await Promise.all(
+        dashboards.map(d => getWidgets(d.id))
+      );
+      dashboards.forEach((d, i) => {
+        if (widgetResults[i].length > 0) {
+          widgetsByDashboard[d.id] = widgetResults[i];
+        }
+      });
+    }
+
     return NextResponse.json({
       auth: {
         userId: auth.userId,
@@ -40,6 +55,7 @@ export async function GET(request: NextRequest) {
       packages,
       dashboards,
       entities,
+      widgetsByDashboard,
     });
   } catch (err: any) {
     console.error("Bootstrap error:", err);

@@ -36,7 +36,7 @@ src/
       loading.tsx                   — Loading skeleton for page transitions
       [packageSlug]/
         page.tsx                    — Package index: redirects to first dashboard in the package
-        [dashboardSlug]/page.tsx    — Dashboard page: resolves dashboard by slugs, fetches widgets, renders widget-driven content
+        [dashboardSlug]/page.tsx    — Dashboard page: resolves dashboard from context (client-side), renders widget-driven content
       clients/
         page.tsx                    — Client list: sortable table, add/archive/delete clients
         [id]/page.tsx               — Client detail: entities, client users, packages, dashboards, widgets CRUD
@@ -55,7 +55,7 @@ src/
         page.tsx                    — Sandbox data sync tool (preview + execute)
         tools.css                   — Tools page styles
     api/
-      bootstrap/route.ts            — API: layout-level bootstrap (auth + clients + packages + dashboards + entities in one call)
+      bootstrap/route.ts            — API: layout-level bootstrap (auth + clients + packages + dashboards + widgetsByDashboard + entities in one call)
       data-sources/route.ts         — API: list data sources (GET), add data source (POST) — internal admin only
       data-sources/[id]/route.ts    — API: get (GET), edit (PUT), delete with entity ref check (DELETE) — internal admin only
       entities/route.ts             — API: list entities (GET), add entity (POST)
@@ -94,10 +94,10 @@ src/
 components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
-    BootstrapContext.tsx             — React context: single /api/bootstrap call on mount, provides auth + clients + packages + dashboards + entities to child contexts
+    BootstrapContext.tsx             — React context: single /api/bootstrap call on mount, provides auth + clients + packages + dashboards + widgetsByDashboard + entities to child contexts
     ClientContext.tsx                — React context: reads auth/clients from BootstrapContext, client switcher (triggers bootstrap.refetch), impersonation, authorizedPackageIds, authorizedDashboardIds
     EntityContext.tsx                — React context: reads entities from BootstrapContext, multi-select entity state
-    PackageContext.tsx               — React context: reads packages + dashboards from BootstrapContext, applies authorization filtering locally
+    PackageContext.tsx               — React context: reads packages + dashboards + widgetsByDashboard from BootstrapContext, applies authorization filtering locally
   utils/
     amplify-utils.ts                — Server-side Amplify runner
   lib/
@@ -211,8 +211,8 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 
 ### Dashboard page rendering (`src/app/(authed)/[packageSlug]/[dashboardSlug]/page.tsx`)
 
-1. Resolves dashboard from URL slugs via `/api/dashboards/resolve`
-2. Fetches the dashboard's widgets via `/api/dashboards/:id/widgets`
+1. Resolves dashboard client-side from PackageContext (matches package slug → dashboard slug, no API call)
+2. Gets widgets from PackageContext's `widgetsByDashboard` (pre-loaded in bootstrap, no API call)
 3. Infers data needs from widget types (financial snapshot vs. trend)
 4. Fetches data from `/api/widget-data/financial-snapshot` and/or `/api/widget-data/expense-trend`
 5. Renders widget components: KPI cards in a grid, P&L table, and/or trend chart
@@ -240,7 +240,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 
 ### React context
 
-`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `packagesLoading`, `refreshPackages`. Reads packages and dashboards from `BootstrapContext` (no direct API calls), applies authorization filtering locally. `refreshPackages` triggers `bootstrap.refetch()`. Dual filtering: a dashboard is visible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. A package is visible if it's in `authorizedPackageIds` OR has any visible dashboards.
+`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `widgetsByDashboard`, `packagesLoading`, `refreshPackages`. Reads packages, dashboards, and widgets from `BootstrapContext` (no direct API calls), applies authorization filtering locally. `refreshPackages` triggers `bootstrap.refetch()`. Dual filtering: a dashboard is visible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. A package is visible if it's in `authorizedPackageIds` OR has any visible dashboards. `widgetsByDashboard` is filtered to only include widgets for visible dashboards.
 
 ## Client & entity management
 
@@ -337,7 +337,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 ### Entity & client management
 - **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ displayName, dataSourceBindings? }`; `PUT /api/entities/:id` — edit entity (accepts `dataSourceBindings`); `DELETE /api/entities/:id` — remove entity
 - **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
-- **Bootstrap**: `GET /api/bootstrap` — single layout-level call returning auth context + clients + packages + dashboards + entities. Accepts optional `?clientId=` for client switches. Replaces separate auth/context + packages + dashboards + entities calls on page load
+- **Bootstrap**: `GET /api/bootstrap` — single layout-level call returning auth context + clients + packages + dashboards + widgetsByDashboard + entities. Accepts optional `?clientId=` for client switches. Dashboard pages resolve from this data client-side (no separate resolve/widgets API calls)
 - **Client detail bootstrap**: `GET /api/clients/:id/bootstrap` — single call for client detail page returning client + entities + packages + dashboards + widgetsByDashboard + clientUsers + dataSources (internal admin only)
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds, authorizedDashboardIds). Superseded by `/api/bootstrap` for layout init but still available for direct use
 - **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account (optionally sends invite via `sendInvite` flag) `{ clientId, email, firstName, lastName, authorizedPackageIds, authorizedDashboardIds, sendInvite? }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
