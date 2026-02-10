@@ -108,6 +108,14 @@ const widgetTypeMetaTable = new dynamodb.Table(cacheStack, 'WidgetTypeMeta', {
   removalPolicy: RemovalPolicy.DESTROY,
 });
 
+// DynamoDB table for persistent financial data warehouse (per-period granular storage)
+const financialDataTable = new dynamodb.Table(cacheStack, 'FinancialData', {
+  partitionKey: { name: 'entityId', type: dynamodb.AttributeType.STRING },
+  sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: RemovalPolicy.DESTROY,
+});
+
 // IAM role for Amplify Hosting SSR compute (Next.js API routes)
 const computeRole = new iam.Role(cacheStack, 'SSRComputeRole', {
   assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
@@ -122,6 +130,7 @@ dashboardWidgetsTable.grantReadWriteData(computeRole);
 widgetTypeMetaTable.grantReadWriteData(computeRole);
 clientUsersTable.grantReadWriteData(computeRole);
 dataSourcesTable.grantReadWriteData(computeRole);
+financialDataTable.grantReadWriteData(computeRole);
 
 // Cognito admin operations for client user management
 computeRole.addToPolicy(new iam.PolicyStatement({
@@ -162,6 +171,7 @@ backend.addOutput({
     widgetTypeMetaTableName: widgetTypeMetaTable.tableName,
     clientUsersTableName: clientUsersTable.tableName,
     dataSourcesTableName: dataSourcesTable.tableName,
+    financialDataTableName: financialDataTable.tableName,
     ssrComputeRoleArn: computeRole.roleArn,
   },
 });

@@ -4,95 +4,10 @@ import { useAuthenticator, Authenticator } from "@aws-amplify/ui-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { EntityProvider, useEntity } from "@/context/EntityContext";
+import { EntityProvider } from "@/context/EntityContext";
 import { ClientProvider, useClient } from "@/context/ClientContext";
 import { PackageProvider, usePackages } from "@/context/PackageContext";
 import { BootstrapProvider } from "@/context/BootstrapContext";
-
-function MultiSelectDropdown() {
-  const { entities, entitiesLoading, selectedEntities, setSelectedEntities } = useEntity();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const toggleEntity = (id: string) => {
-    setSelectedEntities(
-      selectedEntities.includes(id)
-        ? selectedEntities.filter((e) => e !== id)
-        : [...selectedEntities, id]
-    );
-  };
-
-  const selectAll = () => setSelectedEntities(entities.map((e) => e.id));
-  const deselectAll = () => setSelectedEntities([]);
-
-  if (entitiesLoading) return <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>Loading...</span>;
-  if (entities.length === 0) return null;
-
-  const allSelected = selectedEntities.length === entities.length;
-  const label =
-    selectedEntities.length === 0
-      ? "No entities"
-      : selectedEntities.length === 1
-        ? entities.find((e) => e.id === selectedEntities[0])?.displayName ?? selectedEntities[0]
-        : allSelected
-          ? "All entities"
-          : `${selectedEntities.length} entities`;
-
-  return (
-    <div className="multi-select" ref={ref}>
-      <button className="multi-select-trigger" onClick={() => setOpen(!open)}>
-        {label}
-      </button>
-      {open && (
-        <div className="multi-select-dropdown">
-          <div className="multi-select-actions">
-            <button onClick={selectAll} disabled={allSelected}>Select All</button>
-            <button onClick={deselectAll} disabled={selectedEntities.length === 0}>Deselect All</button>
-          </div>
-          {entities.map((e) => (
-            <label key={e.id} className="multi-select-option">
-              <input
-                type="checkbox"
-                checked={selectedEntities.includes(e.id)}
-                onChange={() => toggleEntity(e.id)}
-              />
-              {e.displayName}
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ClientSwitcher() {
-  const { clients, currentClientId, setCurrentClientId, isInternal, clientLoading, isImpersonating } = useClient();
-
-  if (clientLoading || !isInternal || isImpersonating) return null;
-
-  return (
-    <select
-      className="client-switcher"
-      value={currentClientId || ''}
-      onChange={(e) => setCurrentClientId(e.target.value)}
-    >
-      <option value="*">All Clients</option>
-      {clients.map((c) => (
-        <option key={c.id} value={c.id}>{c.displayName}</option>
-      ))}
-    </select>
-  );
-}
 
 function PackageNav() {
   const { packages, dashboardsByPackage, packagesLoading } = usePackages();
@@ -223,9 +138,7 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
           )}
         </nav>
         <div className="app-controls">
-          <ClientSwitcher />
           <ViewAsClientButton />
-          <MultiSelectDropdown />
           <button onClick={signOut} className="sign-out-btn">
             Sign Out
           </button>

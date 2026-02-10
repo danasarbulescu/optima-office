@@ -115,6 +115,18 @@ export interface PLCacheEntry {
   ttl: number;
 }
 
+export interface FinancialDataItem {
+  entityId: string;       // Entity UUID (PK)
+  sk: string;             // "{category}#{period}" or "#metadata" (SK)
+  category?: string;
+  period?: string;
+  value?: number;
+  sourceType: string;     // "quickbooks", etc.
+  syncedAt: string;       // ISO timestamp
+  entityName?: string;    // metadata only
+  lastSyncedAt?: string;  // metadata only
+}
+
 export interface Package {
   id: string;
   clientId: string;

@@ -4,9 +4,11 @@ import { getDataSource } from './data-sources';
 import { mergeFinancialRows } from './merge';
 import { FinancialRow } from './models/financial';
 import { EntityConfig } from './types';
+import { getWarehouseData, setWarehouseData } from './warehouse';
 
 async function fetchSingleEntity(
   clientId: string,
+  entityId: string,
   sourceConfig: Record<string, string>,
   displayName: string,
   refresh: boolean,
@@ -15,15 +17,30 @@ async function fetchSingleEntity(
   const cacheId = sourceConfig.catalogId || '';
 
   if (!refresh) {
+    // Step 1: Check PLCache (hot blob cache, 24h TTL)
     try {
       const cached = await getCachedPL(clientId, cacheId);
       if (cached) return cached.rows;
     } catch (err) {
-      console.error(`Cache read failed for ${cacheId}, falling back to CData:`, err);
+      console.error(`PLCache read failed for ${cacheId}:`, err);
+    }
+
+    // Step 2: PLCache miss → check warehouse (persistent per-period storage)
+    try {
+      const warehouseRows = await getWarehouseData(entityId);
+      if (warehouseRows && warehouseRows.length > 0) {
+        // Populate PLCache from warehouse (fire-and-forget)
+        setCachedPL(clientId, cacheId, displayName, warehouseRows).catch((err) =>
+          console.error(`PLCache write failed for ${cacheId}:`, err)
+        );
+        return warehouseRows;
+      }
+    } catch (err) {
+      console.error(`Warehouse read failed for entity ${entityId}:`, err);
     }
   }
 
-  // Resolve adapter type + credentials from the entity's data source (or env var defaults)
+  // Step 3: Fetch from source via adapter
   let adapterType = 'quickbooks';
   let credentials: Record<string, string> = {
     user: process.env.CDATA_USER ?? '',
@@ -41,9 +58,13 @@ async function fetchSingleEntity(
   const adapter = getAdapter(adapterType);
   const freshRows = await adapter.fetchFinancialData(sourceConfig, credentials);
 
+  // Step 4: Write to both warehouse and PLCache (fire-and-forget)
   if (freshRows.length > 0) {
+    setWarehouseData(entityId, displayName, freshRows, adapterType).catch((err) =>
+      console.error(`Warehouse write failed for entity ${entityId}:`, err)
+    );
     setCachedPL(clientId, cacheId, displayName, freshRows).catch((err) =>
-      console.error(`Cache write failed for ${cacheId}:`, err)
+      console.error(`PLCache write failed for ${cacheId}:`, err)
     );
   }
 
@@ -65,7 +86,7 @@ export async function fetchPLForEntities(
     const entity = entities.find(e => e.id === entityIds[0]);
     if (!entity) return { rows: [], entityName: 'Unknown' };
     const sc = entity.sourceConfig || { catalogId: entity.catalogId };
-    const rows = await fetchSingleEntity(clientId, sc, entity.displayName, refresh, entity.dataSourceId);
+    const rows = await fetchSingleEntity(clientId, entity.id, sc, entity.displayName, refresh, entity.dataSourceId);
     return { rows, entityName: entity.displayName };
   }
 
@@ -77,7 +98,7 @@ export async function fetchPLForEntities(
   const results = await Promise.all(
     resolvedEntities.map(e => {
       const sc = e.sourceConfig || { catalogId: e.catalogId };
-      return fetchSingleEntity(clientId, sc, e.displayName, refresh, e.dataSourceId);
+      return fetchSingleEntity(clientId, e.id, sc, e.displayName, refresh, e.dataSourceId);
     })
   );
 

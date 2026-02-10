@@ -24,7 +24,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 ```
 amplify/
   auth/resource.ts                  — Cognito auth (email, no self-signup)
-  backend.ts                        — defineBackend (auth + 10 DynamoDB tables + SSR compute role + Cognito admin IAM)
+  backend.ts                        — defineBackend (auth + 11 DynamoDB tables + SSR compute role + Cognito admin IAM)
 src/
   app/
     layout.tsx                      — Root layout with ConfigureAmplify
@@ -119,6 +119,7 @@ components/
     auth-context.ts                 — Auth context helper: resolves user session → clientId, role, isInternal, authorizedPackageIds, authorizedDashboardIds
     cdata.ts                        — CData API client (fetchPLSummaries, CDataPLRow type)
     cache.ts                        — DynamoDB P&L cache (getCachedPL, setCachedPL, 24h staleness)
+    warehouse.ts                    — Financial data warehouse (getWarehouseData, setWarehouseData, persistent per-period storage)
     dynamo.ts                       — DynamoDB document client + pagination helpers (scanAllItems, queryAllItems)
     fetch-pl.ts                     — Shared fetch helper (cache-first, adapter-based, per-entity data source credentials, multi-entity merge)
     merge.ts                        — mergeFinancialRows: sums period values by category across entities
@@ -224,6 +225,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 | WidgetTypeMeta | `id` | — | `WIDGET_TYPE_META_TABLE` |
 | ClientUsers | `id` | `byClient` (clientId) | `CLIENT_USERS_TABLE` |
 | DataSources | `id` | — | `DATA_SOURCES_TABLE` |
+| FinancialData | `entityId` (+ SK `sk`) | — | `FINANCIAL_DATA_TABLE` |
 
 ### Cascade deletes
 
@@ -264,14 +266,26 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **React context**: `EntityProvider` / `useEntity()` in `src/context/EntityContext.tsx` provides `entities`, `entitiesLoading`, `selectedEntities`, `setSelectedEntities`, `refreshEntities`. Reads entities from `BootstrapContext` (no direct API calls). `refreshEntities` triggers `bootstrap.refetch()`
 - **Auto-refetch**: Dashboard pages auto-fetch on mount when entities are ready
 
-## DynamoDB caching (`src/lib/cache.ts`)
+## Financial data warehouse (`src/lib/warehouse.ts`)
 
-- **Table**: PLCache (defined in `amplify/backend.ts`, provisioned via Amplify sandbox/pipeline)
-- **Key**: `entityId` (partition key) — stores composite key `{clientId}#{entityId}`
-- **Staleness**: 24-hour TTL — serves cached data if fresher than 24h, otherwise re-fetches from CData
-- **Pattern**: Cache-first read, fire-and-forget write (via `src/lib/fetch-pl.ts`)
-- **Combined mode**: Each entity cached individually; combined view does parallel cache lookups then in-memory merge
-- **Env var**: `PL_CACHE_TABLE` — DynamoDB table name
+- **Table**: FinancialData (defined in `amplify/backend.ts`)
+- **Keys**: `entityId` (PK, entity UUID) + `sk` (SK, `{category}#{period}` or `#metadata`)
+- **Storage**: One DynamoDB item per entity+category+period (e.g., `Income#2024-01` → 50000). Persistent, no TTL.
+- **Metadata**: Special `#metadata` sort key stores `lastSyncedAt`, `entityName`, `sourceType` per entity
+- **Read**: `getWarehouseData(entityId)` — queries all items for entity, assembles into `FinancialRow[]`
+- **Write**: `setWarehouseData(entityId, entityName, rows, sourceType)` — explodes `FinancialRow[]` into per-period items, batch writes in chunks of 25
+- **Scale**: ~9 categories × ~36 months = ~325 items per entity
+- **Env var**: `FINANCIAL_DATA_TABLE`
+
+## Data fetch pipeline (`src/lib/fetch-pl.ts`)
+
+Three-tier read path: PLCache → Warehouse → CData source.
+
+1. **PLCache** (hot blob cache, 24h TTL) — `src/lib/cache.ts`, `PL_CACHE_TABLE`
+2. **Warehouse** (persistent per-period storage) — `src/lib/warehouse.ts`, `FINANCIAL_DATA_TABLE`
+3. **CData** (external API via adapter) — `src/lib/adapters/`
+
+On PLCache miss, warehouse data is read and used to repopulate PLCache. On warehouse miss (or refresh), data is fetched from CData and written to both warehouse and PLCache (fire-and-forget). Combined mode: each entity fetched independently through this pipeline, then merged in-memory.
 
 ## Data sources
 
@@ -356,7 +370,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 
 ## Build-time env inlining (`next.config.ts`)
 
-CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`), and `COGNITO_USER_POOL_ID` are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names and User Pool ID fall back to `amplify_outputs.json` custom/auth outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
+CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`, `FINANCIAL_DATA_TABLE`), and `COGNITO_USER_POOL_ID` are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names and User Pool ID fall back to `amplify_outputs.json` custom/auth outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
 
 ## Local development
 
@@ -368,7 +382,7 @@ npx ampx sandbox
 npm run dev
 ```
 
-Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`.
+Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`, `FINANCIAL_DATA_TABLE`.
 
 ## Deployment
 
