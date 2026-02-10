@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { slug, displayName, firstName, lastName, email, enabledModules } = body;
+    const { slug, displayName, firstName, lastName, email } = body;
 
     if (!slug || !displayName) {
       return NextResponse.json({ error: "slug and displayName are required" }, { status: 400 });
@@ -43,11 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "slug must contain only lowercase letters, numbers, and hyphens" }, { status: 400 });
     }
 
-    if (enabledModules !== undefined && !Array.isArray(enabledModules)) {
-      return NextResponse.json({ error: "enabledModules must be an array" }, { status: 400 });
-    }
-
-    const id = await addClient({ slug, displayName, firstName, lastName, email, enabledModules });
+    const id = await addClient({ slug, displayName, firstName, lastName, email });
     return NextResponse.json({ success: true, id }, { status: 201 });
   } catch (err: any) {
     console.error("Clients POST error:", err);

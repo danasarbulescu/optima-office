@@ -28,7 +28,6 @@ export async function addClient(data: {
   firstName?: string;
   lastName?: string;
   email?: string;
-  enabledModules?: string[];
 }): Promise<string> {
   const id = randomUUID();
   const item: Record<string, unknown> = {
@@ -41,7 +40,6 @@ export async function addClient(data: {
   if (data.firstName) item.firstName = data.firstName;
   if (data.lastName) item.lastName = data.lastName;
   if (data.email) item.email = data.email;
-  if (data.enabledModules) item.enabledModules = data.enabledModules;
 
   await docClient.send(new PutCommand({ TableName: TABLE, Item: item }));
   return id;

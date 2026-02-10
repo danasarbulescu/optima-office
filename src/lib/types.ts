@@ -19,7 +19,6 @@ export interface Client {
   lastName?: string;
   email?: string;
   createdAt: string;
-  enabledModules?: string[];
   status?: string;
 }
 

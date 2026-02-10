@@ -46,8 +46,7 @@ src/
         page.tsx                    — Sandbox data sync tool (preview + execute)
         tools.css                   — Tools page styles
     api/
-      [moduleId]/route.ts           — Legacy module API resolver (auth + enablement check)
-      entities/route.ts             — API: list entities (GET), add entity (POST)
+entities/route.ts             — API: list entities (GET), add entity (POST)
       entities/[id]/route.ts        — API: edit entity (PUT), delete entity (DELETE)
       clients/route.ts              — API: list clients (GET), add client (POST) — internal admin only
       clients/[id]/route.ts         — API: edit client (PUT), delete client (DELETE) — internal admin only
@@ -74,24 +73,10 @@ src/
       KpiCard.tsx                   — KPI card component: renders value, variance, label from KPIs data
       PnlTable.tsx                  — P&L table component: 13-month trailing table with row definitions
       TrendChart.tsx                — Trend chart component: recharts line chart (expenses + 13-month avg)
-  modules/
-    types.ts                        — ModuleManifest, ModuleApiHandler interfaces (legacy)
-    registry.ts                     — Module discovery + lookup (legacy, used by [moduleId] API route)
-    dashboard/
-      manifest.ts                   — Dashboard module metadata (legacy)
-      DashboardPage.tsx             — Legacy dashboard page component
-      dashboard.css                 — Legacy dashboard styles
-      api.ts                        — Legacy API handler: P&L fetch + compute + JSON
-    trend-analysis/
-      manifest.ts                   — Trend analysis module metadata (legacy)
-      TrendPage.tsx                 — Legacy trend analysis page component
-      TrendChart.tsx                — Legacy recharts line chart component
-      trend-analysis.css            — Legacy trend styles
-      api.ts                        — Legacy API handler: expenses trend data
-  components/
+components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
-    ClientContext.tsx                — React context: client state, client switcher, enabledModules, impersonation
+    ClientContext.tsx                — React context: client state, client switcher, impersonation
     EntityContext.tsx                — React context: multi-select entity state, dynamic entity list
     PackageContext.tsx               — React context: packages + dashboards for current client
   utils/
@@ -118,7 +103,6 @@ src/
     merge.ts                        — mergeFinancialRows: sums period values by category across entities
     compute.ts                      — buildGroupValues, computeKPIs, build13MonthPnL, buildExpensesTrend
     format.ts                       — formatAbbrev, formatPct, formatVariance
-    html.ts                         — generateHTML, generatePnLTableHTML (legacy, used by old module API)
     sandboxes.ts                    — Sandbox configs (Win Desktop, Win XPS, Production) with table prefixes
     sync-sandbox.ts                 — Cross-sandbox DynamoDB sync (previewSync, executeSync)
 scripts/
@@ -142,14 +126,14 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 
 ## Multi-tenant architecture
 
-- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, enabledModules?, status?).
+- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, status?).
 - **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role).
 - **Roles**: `internal-admin` (sees all clients, can switch between them), `client-admin`, `client-viewer` (locked to their client).
 - **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal }`.
 - **Internal users**: See a client switcher dropdown in the header. Can switch between clients. See all packages/dashboards + admin pages (Clients, Widgets, Tools).
 - **External users**: Locked to their assigned client. No switcher visible. See only their client's packages and dashboards.
 - **Routing**: Auth-based. Dashboard URLs use `/{packageSlug}/{dashboardSlug}` pattern. Client selection via `x-client-id` header or stored in context.
-- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `enabledModules`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`.
+- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`.
 - **Client impersonation**: Internal admins can click "View as Client" (when a specific client is selected) to see exactly what that client sees — only their packages/dashboards, no admin nav (Clients/Widgets/Tools), no client switcher. An amber banner shows "Viewing as {clientName}" with an Exit button. Purely client-side; auto-clears when switching clients.
 
 ## Package / Dashboard / Widget system
@@ -278,16 +262,6 @@ Admin page at `/widgets` (internal admin only). Lists all widget types from the 
 - **RowGroups**: Income, COGS, GrossProfit, Expenses, NetOperatingIncome, OtherIncome, OtherExpenses, NetOtherIncome, NetIncome
 - `buildGroupValues(rows, year)` — extracts monthly values from `FinancialRow.periods` for a given year into `Map<string, number[]>` (indices 0-11 = Jan-Dec, 12 = computed total)
 
-## Legacy module system (`src/modules/`)
-
-The old module/plugin system still exists alongside the new package/dashboard/widget architecture. It provides API handlers that are still used by the legacy `[moduleId]` API route.
-
-- **Module manifest**: `ModuleManifest { id, name, route, navLabel, navOrder }` in `src/modules/types.ts`
-- **Module registry**: `src/modules/registry.ts` — `getAllModuleManifests()`, `getModuleManifest(id)`
-- **Dynamic API route**: `src/app/api/[moduleId]/route.ts` — centralized auth + module enablement check, delegates to module handler
-- **Per-client enablement**: `Client.enabledModules?: string[]` — controls legacy module access
-- **Standard modules**: `dashboard` (P&L KPIs + table), `trend-analysis` (expenses trend chart)
-
 ## Tools — Sandbox Data Sync
 
 Admin tool at `/tools` for copying the Entities DynamoDB table between environments:
@@ -302,7 +276,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 
 ### Entity & client management
 - **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ catalogId, displayName }`; `PUT /api/entities/:id` — edit entity; `DELETE /api/entities/:id` — remove entity
-- **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email?, enabledModules? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
+- **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list)
 
 ### Package / dashboard / widget management (internal admin only for writes)
@@ -315,11 +289,6 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 ### Widget data (financial data endpoints)
 - **Financial snapshot**: `GET /api/widget-data/financial-snapshot?month=YYYY-MM&entities=id1,id2&refresh=true` — returns `{ kpis, pnlByMonth, selectedMonth, entityName }`
 - **Expense trend**: `GET /api/widget-data/expense-trend?startMonth=YYYY-MM&endMonth=YYYY-MM&entities=id1,id2&refresh=true` — returns `{ data: TrendDataPoint[], entityName }`
-
-### Legacy module API
-- **Module API** (via `GET /api/[moduleId]`): Auth + module enablement check, delegates to module handler
-  - **Dashboard**: `GET /api/dashboard?month=YYYY-MM&entities=id1,id2&refresh=true`
-  - **Trend**: `GET /api/trend-analysis?startMonth=YYYY-MM&endMonth=YYYY-MM&entities=id1,id2&refresh=true`
 
 ### Other
 - **Sandbox sync**: `POST /api/tools/sync-sandbox` — `{ action: "preview"|"execute", sourceId, destinationId }`

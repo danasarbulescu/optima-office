@@ -43,7 +43,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { slug, displayName, firstName, lastName, email, enabledModules, status } = body;
+    const { slug, displayName, firstName, lastName, email, status } = body;
 
     const updates: Record<string, unknown> = {};
     if (slug !== undefined) {
@@ -56,12 +56,6 @@ export async function PUT(
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
     if (email !== undefined) updates.email = email;
-    if (enabledModules !== undefined) {
-      if (!Array.isArray(enabledModules)) {
-        return NextResponse.json({ error: "enabledModules must be an array" }, { status: 400 });
-      }
-      updates.enabledModules = enabledModules;
-    }
     if (status !== undefined) updates.status = status;
 
     await updateClient(id, updates);
