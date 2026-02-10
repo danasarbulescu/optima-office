@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser, DataSource, getEntityBindings } from "@/lib/types";
@@ -49,6 +49,11 @@ export default function ClientDetailPage() {
   const [editingClientUser, setEditingClientUser] = useState<ClientUser | null>(null);
   const [managingAccessUser, setManagingAccessUser] = useState<ClientUser | null>(null);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
+
+  // Sync state
+  const [syncingEntityId, setSyncingEntityId] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<{ entityId: string; status: 'success' | 'error'; message: string } | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Accordion state
   const [expandedPkgId, setExpandedPkgId] = useState<string | null>(null);
@@ -194,6 +199,23 @@ export default function ClientDetailPage() {
     }
   };
 
+  const handleSyncEntity = async (entity: EntityConfig) => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    setSyncResult(null);
+    setSyncingEntityId(entity.id);
+    try {
+      const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}/sync`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Sync failed");
+      setSyncResult({ entityId: entity.id, status: 'success', message: `Synced ${data.rowCount} rows` });
+      syncTimerRef.current = setTimeout(() => setSyncResult(null), 3000);
+    } catch (err: any) {
+      setSyncResult({ entityId: entity.id, status: 'error', message: err.message });
+    } finally {
+      setSyncingEntityId(null);
+    }
+  };
+
   const handleDeleteEntity = async (entity: EntityConfig) => {
     if (!confirm(`Delete entity "${entity.displayName}"?`)) return;
     try {
@@ -334,6 +356,16 @@ export default function ClientDetailPage() {
                     </td>
                     <td>
                       <div className="action-buttons">
+                        <button
+                          className="sync-btn"
+                          disabled={syncingEntityId === e.id}
+                          onClick={() => handleSyncEntity(e)}
+                        >
+                          {syncingEntityId === e.id ? 'Syncing...' : 'Sync'}
+                        </button>
+                        {syncResult?.entityId === e.id && (
+                          <span className={`sync-result ${syncResult.status}`}>{syncResult.message}</span>
+                        )}
                         <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>
                         <button className="delete-btn" onClick={() => handleDeleteEntity(e)}>Delete</button>
                       </div>

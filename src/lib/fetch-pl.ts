@@ -6,7 +6,7 @@ import { FinancialRow } from './models/financial';
 import { EntityConfig } from './types';
 import { getWarehouseData, setWarehouseData } from './warehouse';
 
-async function fetchSingleEntity(
+export async function fetchSingleEntity(
   clientId: string,
   entityId: string,
   sourceConfig: Record<string, string>,
