@@ -49,7 +49,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { firstName, lastName, status, authorizedPackageIds } = body;
+    const { firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds } = body;
 
     // Handle status changes: disable/enable Cognito user
     if (status !== undefined && status !== clientUser.status && clientUser.email) {
@@ -65,6 +65,7 @@ export async function PUT(
     if (lastName !== undefined) updates.lastName = lastName;
     if (status !== undefined) updates.status = status;
     if (authorizedPackageIds !== undefined) updates.authorizedPackageIds = authorizedPackageIds;
+    if (authorizedDashboardIds !== undefined) updates.authorizedDashboardIds = authorizedDashboardIds;
 
     await updateClientUser(id, updates);
     return NextResponse.json({ success: true });

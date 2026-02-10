@@ -46,8 +46,9 @@ export async function getAuthContext(selectedClientId?: string | null): Promise<
     clientId = membership.clientId;
   }
 
-  // Resolve package authorization for client users
+  // Resolve package/dashboard authorization for client users
   let authorizedPackageIds: string[] | null = null;
+  let authorizedDashboardIds: string[] | null = null;
   if (membership.clientUserId) {
     const clientUser = await getClientUser(membership.clientUserId);
     if (clientUser && clientUser.status === 'archived') {
@@ -55,6 +56,7 @@ export async function getAuthContext(selectedClientId?: string | null): Promise<
     }
     if (clientUser) {
       authorizedPackageIds = clientUser.authorizedPackageIds;
+      authorizedDashboardIds = clientUser.authorizedDashboardIds || [];
     }
   }
 
@@ -64,5 +66,6 @@ export async function getAuthContext(selectedClientId?: string | null): Promise<
     role: membership.role,
     isInternal,
     authorizedPackageIds,
+    authorizedDashboardIds,
   };
 }

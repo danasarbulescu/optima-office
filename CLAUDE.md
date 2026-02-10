@@ -10,9 +10,9 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 - **Dashboard**: A page within a package (e.g., "Monthly Dashboard"). Contains an ordered list of widgets.
 - **Widget**: An instance of a widget type placed on a dashboard. Has a type, sort order, and optional config.
 - **Widget Type**: A reusable component definition (e.g., "Revenue Current Month" KPI card). Defined in code, display names overridable via DynamoDB.
-- **Client User**: A sub-account within a client with restricted package access (e.g., a client employee who can only see certain reports). Managed by internal admins; auto-creates a Cognito login with email invite.
+- **Client User**: A sub-account within a client with restricted package/dashboard access (e.g., a client employee who can only see certain reports). Managed by internal admins; auto-creates a Cognito login (optionally sends invite). Access controlled at package level (all dashboards) and/or individual dashboard level.
 - **Data Source**: A configured external data connection (e.g., a CData Connect Cloud account). Global (not per-client). Entities optionally bind to a data source for credentials; unbound entities fall back to global env vars.
-- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many). Entity (many) → Data Source (0..many).
+- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many) + authorized Dashboards (many). Entity (many) → Data Source (0..many).
 
 ## Workflows
 
@@ -76,7 +76,7 @@ src/
       widget-data/
         financial-snapshot/route.ts — API: KPIs + P&L table data (GET)
         expense-trend/route.ts      — API: expense trend chart data (GET)
-      auth/context/route.ts         — API: get current user's auth context + authorizedPackageIds (GET)
+      auth/context/route.ts         — API: get current user's auth context + authorizedPackageIds/authorizedDashboardIds (GET)
       tools/sync-sandbox/route.ts   — API: sandbox sync preview + execute (POST)
   widgets/
     types.ts                        — WidgetType interface { id, name, category, component }
@@ -90,9 +90,9 @@ src/
 components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
-    ClientContext.tsx                — React context: client state, client switcher, impersonation, authorizedPackageIds
+    ClientContext.tsx                — React context: client state, client switcher, impersonation, authorizedPackageIds, authorizedDashboardIds
     EntityContext.tsx                — React context: multi-select entity state, dynamic entity list
-    PackageContext.tsx               — React context: packages + dashboards for current client (filtered by authorizedPackageIds)
+    PackageContext.tsx               — React context: packages + dashboards for current client (filtered by authorizedPackageIds + authorizedDashboardIds)
   utils/
     amplify-utils.ts                — Server-side Amplify runner
   lib/
@@ -113,7 +113,7 @@ components/
     dashboards.ts                   — DynamoDB CRUD for Dashboards table (getDashboards, getDashboardsByClient, getDashboardBySlug, resolveDashboard, addDashboard, updateDashboard, deleteDashboard)
     dashboard-widgets.ts            — DynamoDB CRUD for DashboardWidgets table (getWidgets, getWidgetsByType, addWidget, updateWidget, deleteWidget, deleteWidgetsByDashboard)
     widget-type-meta.ts             — DynamoDB CRUD for WidgetTypeMeta table (getAllWidgetTypeMeta, getWidgetTypeMeta, upsertWidgetTypeMeta, deleteWidgetTypeMeta)
-    auth-context.ts                 — Auth context helper: resolves user session → clientId, role, isInternal, authorizedPackageIds
+    auth-context.ts                 — Auth context helper: resolves user session → clientId, role, isInternal, authorizedPackageIds, authorizedDashboardIds
     cdata.ts                        — CData API client (fetchPLSummaries, CDataPLRow type)
     cache.ts                        — DynamoDB P&L cache (getCachedPL, setCachedPL, 24h staleness)
     dynamo.ts                       — DynamoDB document client + pagination helpers (scanAllItems, queryAllItems)
@@ -147,12 +147,12 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 - **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, status?).
 - **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role, clientUserId?).
 - **Roles**: `internal-admin` (sees all clients, can switch between them), `client-admin`, `client-viewer` (locked to their client).
-- **Client users**: Sub-accounts within a client with restricted package access. Stored in `ClientUsers` table (id, clientId, email, firstName, lastName, status, authorizedPackageIds, cognitoUserId). Created by internal admins; auto-creates Cognito user + sends email invite. Linked to `ClientMemberships` via `clientUserId`.
-- **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal, authorizedPackageIds }`. For client users, `authorizedPackageIds` is resolved from the linked `ClientUser` record. `null` = full access; `string[]` = restricted to those packages. Archived client users are denied access (returns null).
+- **Client users**: Sub-accounts within a client with restricted package/dashboard access. Stored in `ClientUsers` table (id, clientId, email, firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds, cognitoUserId). Created by internal admins; auto-creates Cognito user (optionally sends invite). Access managed via dedicated "Manage Access" modal after creation. Linked to `ClientMemberships` via `clientUserId`.
+- **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal, authorizedPackageIds, authorizedDashboardIds }`. For client users, both fields are resolved from the linked `ClientUser` record. `null` = full access; `string[]` = restricted. A dashboard is accessible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. Archived client users are denied access (returns null).
 - **Internal users**: See a client switcher dropdown in the header. Can switch between clients. See all packages/dashboards + admin pages (Clients, Widgets, Tools).
 - **External users**: Locked to their assigned client. No switcher visible. See only their client's packages and dashboards.
 - **Routing**: Auth-based. Dashboard URLs use `/{packageSlug}/{dashboardSlug}` pattern. Client selection via `x-client-id` header or stored in context.
-- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`, `authorizedPackageIds`.
+- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`, `authorizedPackageIds`, `authorizedDashboardIds`.
 - **Client impersonation**: Internal admins can click "View as Client" (when a specific client is selected) to see exactly what that client sees — only their packages/dashboards, no admin nav (Clients/Widgets/Tools), no client switcher. An amber banner shows "Viewing as {clientName}" with an Exit button. Purely client-side; auto-clears when switching clients.
 
 ## Package / Dashboard / Widget system
@@ -231,7 +231,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 
 ### React context
 
-`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `packagesLoading`, `refreshPackages`. Fetches packages and dashboards for the current client, re-fetches when client changes. Filters by `authorizedPackageIds` from `ClientContext` — client users only see their authorized packages and dashboards.
+`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `packagesLoading`, `refreshPackages`. Fetches packages and dashboards for the current client, re-fetches when client changes. Dual filtering: a dashboard is visible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. A package is visible if it's in `authorizedPackageIds` OR has any visible dashboards.
 
 ## Client & entity management
 
@@ -239,7 +239,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Client detail page**: `/clients/:id` — full management for a single client:
   - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
   - **Entities section**: table with displayName, data source(s). Add/Edit/Delete entity CRUD. Entities support multiple data source bindings — each binding has a data source dropdown + dynamic entity-level fields. Entity modals render stacked binding sections with Add/Remove buttons. Table shows first DS name + "(+N more)" for additional bindings.
-  - **Client Users section**: table with name, email, status badge, # packages. Add (creates Cognito + sends invite) / Edit (name, status, packages) / Delete (cascades Cognito + membership). Package authorization via checkboxes in modals.
+  - **Client Users section**: table with name, email, status badge, access count. Add (creates Cognito, optionally sends invite) / Edit (name, status) / Manage Access (dedicated modal with package→dashboard tree) / Delete (cascades Cognito + membership). Access configured via ManageAccessModal: package-level checkboxes (all dashboards) + individual dashboard checkboxes.
   - **Packages section**: nested accordion tables. Package → Dashboards → Widgets. Full CRUD at each level with modal forms. Auto-slug generation from display names.
 - **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, dataSourceBindings?, dataSourceId?, sourceConfig?, createdAt)
 - **GSI**: `byClient` index on `clientId` — used to query entities belonging to a specific client
@@ -315,13 +315,13 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 ### Entity & client management
 - **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ displayName, dataSourceBindings? }`; `PUT /api/entities/:id` — edit entity (accepts `dataSourceBindings`); `DELETE /api/entities/:id` — remove entity
 - **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
-- **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds)
-- **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account + invite email `{ clientId, email, firstName, lastName, authorizedPackageIds }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
+- **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds, authorizedDashboardIds)
+- **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account (optionally sends invite via `sendInvite` flag) `{ clientId, email, firstName, lastName, authorizedPackageIds, authorizedDashboardIds, sendInvite? }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
 
 ### Package / dashboard / widget management (internal admin only for writes)
 - **Packages**: `GET /api/packages?clientId=` — list packages; `POST /api/packages` — add package `{ clientId, slug, displayName, sortOrder }`; `PUT /api/packages/:id` — edit; `DELETE /api/packages/:id` — cascade delete (dashboards + widgets)
 - **Dashboards**: `GET /api/dashboards?packageId=|clientId=` — list dashboards; `POST /api/dashboards` — add `{ packageId, clientId, slug, displayName, sortOrder }`; `PUT /api/dashboards/:id` — edit; `DELETE /api/dashboards/:id` — cascade delete (widgets)
-- **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs (enforces package authorization for client users)
+- **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs (enforces package/dashboard authorization for client users)
 - **Dashboard widgets**: `GET /api/dashboards/:id/widgets` — list widgets; `POST /api/dashboards/:id/widgets` — add `{ widgetTypeId, sortOrder, config? }`; `PUT /api/dashboards/:id/widgets/:widgetId` — edit; `DELETE /api/dashboards/:id/widgets/:widgetId` — remove
 - **Widget types**: `GET /api/widget-types` — list all types with name overrides; `GET /api/widget-types/:id` — get single type detail; `PUT /api/widget-types/:id` — rename (empty displayName resets to default); `GET /api/widget-types/:id/usage` — list dashboards using this type (with client/package context)
 

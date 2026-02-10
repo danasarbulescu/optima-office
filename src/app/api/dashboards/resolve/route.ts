@@ -26,9 +26,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Dashboard not found" }, { status: 404 });
     }
 
-    // Check package-level authorization for client users
+    // Check package/dashboard-level authorization for client users
     if (auth.authorizedPackageIds != null) {
-      if (!auth.authorizedPackageIds.includes(dashboard.packageId)) {
+      const hasPackageAccess = auth.authorizedPackageIds.includes(dashboard.packageId);
+      const hasDashboardAccess = (auth.authorizedDashboardIds || []).includes(dashboard.id);
+      if (!hasPackageAccess && !hasDashboardAccess) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }

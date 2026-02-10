@@ -17,6 +17,7 @@ import {
   AddWidgetModal,
   AddClientUserModal,
   EditClientUserModal,
+  ManageAccessModal,
 } from "./modals";
 import "../clients.css";
 
@@ -46,6 +47,7 @@ export default function ClientDetailPage() {
   const [clientUsers, setClientUsers] = useState<ClientUser[]>([]);
   const [addClientUserOpen, setAddClientUserOpen] = useState(false);
   const [editingClientUser, setEditingClientUser] = useState<ClientUser | null>(null);
+  const [managingAccessUser, setManagingAccessUser] = useState<ClientUser | null>(null);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
 
   // Accordion state
@@ -354,7 +356,7 @@ export default function ClientDetailPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Status</th>
-                <th>Packages</th>
+                <th>Access</th>
                 <th></th>
               </tr>
             </thead>
@@ -368,9 +370,10 @@ export default function ClientDetailPage() {
                       {cu.status.charAt(0).toUpperCase() + cu.status.slice(1)}
                     </span>
                   </td>
-                  <td>{cu.authorizedPackageIds?.length || 0}</td>
+                  <td>{(cu.authorizedPackageIds?.length || 0) + (cu.authorizedDashboardIds?.length || 0) || "None"}</td>
                   <td>
                     <div className="action-buttons">
+                      <button className="edit-btn" onClick={() => setManagingAccessUser(cu)}>Access</button>
                       <button className="edit-btn" onClick={() => setEditingClientUser(cu)}>Edit</button>
                       <button className="delete-btn" onClick={() => handleDeleteClientUser(cu)}>Delete</button>
                     </div>
@@ -494,7 +497,6 @@ export default function ClientDetailPage() {
       {addClientUserOpen && (
         <AddClientUserModal
           clientId={clientId}
-          packages={packages}
           onClose={() => setAddClientUserOpen(false)}
           onSaved={() => { setAddClientUserOpen(false); afterClientUserMutation(); }}
         />
@@ -502,9 +504,17 @@ export default function ClientDetailPage() {
       {editingClientUser && (
         <EditClientUserModal
           clientUser={editingClientUser}
-          packages={packages}
           onClose={() => setEditingClientUser(null)}
           onSaved={() => { setEditingClientUser(null); afterClientUserMutation(); }}
+        />
+      )}
+      {managingAccessUser && (
+        <ManageAccessModal
+          clientUser={managingAccessUser}
+          packages={packages}
+          dashboardsByPackage={dashboardsByPackage}
+          onClose={() => setManagingAccessUser(null)}
+          onSaved={() => { setManagingAccessUser(null); afterClientUserMutation(); }}
         />
       )}
     </div>

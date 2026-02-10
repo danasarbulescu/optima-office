@@ -31,6 +31,7 @@ export async function addClientUser(data: {
   firstName: string;
   lastName: string;
   authorizedPackageIds: string[];
+  authorizedDashboardIds?: string[];
   cognitoUserId?: string;
 }): Promise<ClientUser> {
   if (!TABLE_NAME) throw new Error('CLIENT_USERS_TABLE not configured');
@@ -43,6 +44,7 @@ export async function addClientUser(data: {
     lastName: data.lastName,
     status: 'active',
     authorizedPackageIds: data.authorizedPackageIds,
+    authorizedDashboardIds: data.authorizedDashboardIds || [],
     cognitoUserId: data.cognitoUserId,
     createdAt: new Date().toISOString(),
   };
@@ -52,7 +54,7 @@ export async function addClientUser(data: {
 
 export async function updateClientUser(
   id: string,
-  updates: Partial<Pick<ClientUser, 'firstName' | 'lastName' | 'email' | 'status' | 'authorizedPackageIds' | 'cognitoUserId'>>,
+  updates: Partial<Pick<ClientUser, 'firstName' | 'lastName' | 'email' | 'status' | 'authorizedPackageIds' | 'authorizedDashboardIds' | 'cognitoUserId'>>,
 ): Promise<void> {
   if (!TABLE_NAME) throw new Error('CLIENT_USERS_TABLE not configured');
 

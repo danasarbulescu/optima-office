@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { clientId, email, firstName, lastName, authorizedPackageIds, sendInvite = true } = body;
+    const { clientId, email, firstName, lastName, authorizedPackageIds, authorizedDashboardIds, sendInvite = true } = body;
 
     if (!clientId || !email || !firstName || !lastName) {
       return NextResponse.json(
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       firstName,
       lastName,
       authorizedPackageIds: authorizedPackageIds || [],
+      authorizedDashboardIds: authorizedDashboardIds || [],
       cognitoUserId,
     });
 

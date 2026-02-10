@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       isInternal: false,
       client,
       authorizedPackageIds: auth.authorizedPackageIds ?? null,
+      authorizedDashboardIds: auth.authorizedDashboardIds ?? null,
     });
   } catch (err: any) {
     console.error("Auth context error:", err);

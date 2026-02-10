@@ -11,6 +11,7 @@ interface ClientContextValue {
   clientLoading: boolean;
   isImpersonating: boolean;
   authorizedPackageIds: string[] | null; // null = full access; string[] = restricted
+  authorizedDashboardIds: string[] | null; // null = full access; string[] = restricted
   setCurrentClientId: (id: string) => void;
   startImpersonating: () => void;
   stopImpersonating: () => void;
@@ -25,6 +26,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [clientLoading, setClientLoading] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [authorizedPackageIds, setAuthorizedPackageIds] = useState<string[] | null>(null);
+  const [authorizedDashboardIds, setAuthorizedDashboardIds] = useState<string[] | null>(null);
 
   // Auto-clear impersonation when client changes
   const setCurrentClientId = (id: string) => {
@@ -56,11 +58,13 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         if (data.isInternal) {
           setClients(data.clients || []);
           setAuthorizedPackageIds(null); // Internal users have full access
+          setAuthorizedDashboardIds(null);
           // Default to "*" (all clients) for internal users
           setCurrentClientIdRaw('*');
         } else {
           setCurrentClientIdRaw(data.clientId);
           setAuthorizedPackageIds(data.authorizedPackageIds ?? null);
+          setAuthorizedDashboardIds(data.authorizedDashboardIds ?? null);
           if (data.client) {
             setClients([data.client]);
           }
@@ -86,6 +90,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         clientLoading,
         isImpersonating,
         authorizedPackageIds,
+        authorizedDashboardIds,
         setCurrentClientId,
         startImpersonating,
         stopImpersonating,

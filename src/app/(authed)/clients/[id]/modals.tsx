@@ -878,27 +878,18 @@ export function AddWidgetModal({
 
 export function AddClientUserModal({
   clientId,
-  packages,
   onClose,
   onSaved,
 }: {
   clientId: string;
-  packages: Package[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  const togglePackage = (id: string) => {
-    setSelectedPackageIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
 
   const handleSave = async (sendInvite: boolean) => {
     setSaving(true);
@@ -912,7 +903,8 @@ export function AddClientUserModal({
           email: email.trim(),
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          authorizedPackageIds: selectedPackageIds,
+          authorizedPackageIds: [],
+          authorizedDashboardIds: [],
           sendInvite,
         }),
       });
@@ -944,26 +936,6 @@ export function AddClientUserModal({
           <label>Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
-        {packages.length > 0 && (
-          <>
-            <div className="modal-separator" />
-            <div className="modal-field">
-              <label>Authorized Packages</label>
-              <div className="widget-select-list">
-                {packages.map(pkg => (
-                  <label key={pkg.id} className="widget-select-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedPackageIds.includes(pkg.id)}
-                      onChange={() => togglePackage(pkg.id)}
-                    />
-                    {pkg.displayName}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
@@ -991,29 +963,18 @@ export function AddClientUserModal({
 
 export function EditClientUserModal({
   clientUser,
-  packages,
   onClose,
   onSaved,
 }: {
   clientUser: ClientUser;
-  packages: Package[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [firstName, setFirstName] = useState(clientUser.firstName);
   const [lastName, setLastName] = useState(clientUser.lastName);
   const [status, setStatus] = useState(clientUser.status);
-  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
-    clientUser.authorizedPackageIds || []
-  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  const togglePackage = (id: string) => {
-    setSelectedPackageIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -1026,7 +987,6 @@ export function EditClientUserModal({
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           status,
-          authorizedPackageIds: selectedPackageIds,
         }),
       });
       if (!res.ok) {
@@ -1064,26 +1024,6 @@ export function EditClientUserModal({
             <option value="archived">Archived</option>
           </select>
         </div>
-        {packages.length > 0 && (
-          <>
-            <div className="modal-separator" />
-            <div className="modal-field">
-              <label>Authorized Packages</label>
-              <div className="widget-select-list">
-                {packages.map(pkg => (
-                  <label key={pkg.id} className="widget-select-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedPackageIds.includes(pkg.id)}
-                      onChange={() => togglePackage(pkg.id)}
-                    />
-                    {pkg.displayName}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
@@ -1092,6 +1032,137 @@ export function EditClientUserModal({
             onClick={handleSave}
             disabled={saving || !firstName.trim() || !lastName.trim()}
           >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Manage Access Modal ─── */
+
+export function ManageAccessModal({
+  clientUser,
+  packages,
+  dashboardsByPackage,
+  onClose,
+  onSaved,
+}: {
+  clientUser: ClientUser;
+  packages: Package[];
+  dashboardsByPackage: Record<string, Dashboard[]>;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
+    clientUser.authorizedPackageIds || []
+  );
+  const [selectedDashboardIds, setSelectedDashboardIds] = useState<string[]>(
+    clientUser.authorizedDashboardIds || []
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const togglePackage = (pkgId: string) => {
+    setSelectedPackageIds(prev => {
+      if (prev.includes(pkgId)) {
+        return prev.filter(id => id !== pkgId);
+      } else {
+        // When checking a package, remove its individual dashboard IDs (now redundant)
+        const pkgDashIds = (dashboardsByPackage[pkgId] || []).map(d => d.id);
+        setSelectedDashboardIds(dIds => dIds.filter(id => !pkgDashIds.includes(id)));
+        return [...prev, pkgId];
+      }
+    });
+  };
+
+  const toggleDashboard = (dashId: string) => {
+    setSelectedDashboardIds(prev =>
+      prev.includes(dashId) ? prev.filter(id => id !== dashId) : [...prev, dashId]
+    );
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      // Clean: remove dashboard IDs that belong to checked packages (redundant)
+      const allDashboards = Object.values(dashboardsByPackage).flat();
+      const cleanedDashboardIds = selectedDashboardIds.filter(dId => {
+        const dash = allDashboards.find(d => d.id === dId);
+        return dash && !selectedPackageIds.includes(dash.packageId);
+      });
+
+      const res = await fetch(`/api/client-users/${encodeURIComponent(clientUser.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          authorizedPackageIds: selectedPackageIds,
+          authorizedDashboardIds: cleanedDashboardIds,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update access");
+      }
+      onSaved();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ width: 520 }}>
+        <h2>Manage Access &mdash; {clientUser.firstName} {clientUser.lastName}</h2>
+        {packages.length === 0 ? (
+          <div className="entities-empty-sub">No packages configured for this client.</div>
+        ) : (
+          <div className="access-tree">
+            {packages.map(pkg => {
+              const pkgChecked = selectedPackageIds.includes(pkg.id);
+              const pkgDashboards = dashboardsByPackage[pkg.id] || [];
+              return (
+                <div key={pkg.id} className="access-tree-package">
+                  <label className="access-tree-package-label">
+                    <input
+                      type="checkbox"
+                      checked={pkgChecked}
+                      onChange={() => togglePackage(pkg.id)}
+                    />
+                    <span>{pkg.displayName}</span>
+                    {pkgChecked && <span className="access-tree-hint">(all dashboards)</span>}
+                  </label>
+                  {pkgDashboards.length > 0 && (
+                    <div className="access-tree-dashboards">
+                      {pkgDashboards.map(d => {
+                        const dashChecked = pkgChecked || selectedDashboardIds.includes(d.id);
+                        return (
+                          <label key={d.id} className="access-tree-dashboard-label">
+                            <input
+                              type="checkbox"
+                              checked={dashChecked}
+                              disabled={pkgChecked}
+                              onChange={() => toggleDashboard(d.id)}
+                            />
+                            <span>{d.displayName}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {error && <div className="modal-error">{error}</div>}
+        <div className="modal-actions">
+          <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
