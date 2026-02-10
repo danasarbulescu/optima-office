@@ -25,6 +25,14 @@ export async function GET(request: NextRequest) {
     if (!dashboard) {
       return NextResponse.json({ error: "Dashboard not found" }, { status: 404 });
     }
+
+    // Check package-level authorization for client users
+    if (auth.authorizedPackageIds != null) {
+      if (!auth.authorizedPackageIds.includes(dashboard.packageId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     return NextResponse.json({ dashboard });
   } catch (err: any) {
     console.error("Dashboard resolve error:", err);

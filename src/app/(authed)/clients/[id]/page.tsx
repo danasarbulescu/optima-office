@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { Client, EntityConfig, Package, Dashboard, DashboardWidget } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
 import { PackageRow } from "./PackageAccordion";
 import {
@@ -15,6 +15,8 @@ import {
   AddDashboardModal,
   EditDashboardModal,
   AddWidgetModal,
+  AddClientUserModal,
+  EditClientUserModal,
 } from "./modals";
 import "../clients.css";
 
@@ -41,6 +43,9 @@ export default function ClientDetailPage() {
   const [addDashboardForPackage, setAddDashboardForPackage] = useState<string | null>(null);
   const [editingDashboard, setEditingDashboard] = useState<Dashboard | null>(null);
   const [addWidgetForDashboard, setAddWidgetForDashboard] = useState<Dashboard | null>(null);
+  const [clientUsers, setClientUsers] = useState<ClientUser[]>([]);
+  const [addClientUserOpen, setAddClientUserOpen] = useState(false);
+  const [editingClientUser, setEditingClientUser] = useState<ClientUser | null>(null);
 
   // Accordion state
   const [expandedPkgId, setExpandedPkgId] = useState<string | null>(null);
@@ -101,9 +106,21 @@ export default function ClientDetailPage() {
     } catch { /* non-fatal */ }
   }, [clientId]);
 
+  const fetchClientUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/client-users?clientId=${clientId}`, {
+        headers: { "x-client-id": clientId },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setClientUsers(data.clientUsers);
+      }
+    } catch { /* non-fatal */ }
+  }, [clientId]);
+
   useEffect(() => {
     (async () => {
-      await Promise.all([fetchClient(), fetchEntities(), fetchPackagesData()]);
+      await Promise.all([fetchClient(), fetchEntities(), fetchPackagesData(), fetchClientUsers()]);
       setLoading(false);
     })();
   }, [fetchClient, fetchEntities, fetchPackagesData]);
@@ -133,6 +150,10 @@ export default function ClientDetailPage() {
     fetchPackagesData();
   };
 
+  const afterClientUserMutation = () => {
+    fetchClientUsers();
+  };
+
   const handleDeleteClient = async () => {
     if (!client) return;
     const msg = entities.length > 0
@@ -140,6 +161,9 @@ export default function ClientDetailPage() {
       : `Delete client "${client.displayName}"?`;
     if (!confirm(msg)) return;
     try {
+      for (const cu of clientUsers) {
+        await fetch(`/api/client-users/${encodeURIComponent(cu.id)}`, { method: "DELETE" });
+      }
       for (const e of entities) {
         await fetch(`/api/entities/${encodeURIComponent(e.id)}`, { method: "DELETE" });
       }
@@ -180,6 +204,17 @@ export default function ClientDetailPage() {
       const res = await fetch(`/api/dashboards/${encodeURIComponent(dashboard.id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete dashboard");
       afterPackageMutation();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteClientUser = async (cu: ClientUser) => {
+    if (!confirm(`Delete client user "${cu.firstName} ${cu.lastName}"? This will also remove their login access.`)) return;
+    try {
+      const res = await fetch(`/api/client-users/${encodeURIComponent(cu.id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete client user");
+      afterClientUserMutation();
     } catch (err: any) {
       setError(err.message);
     }
@@ -270,6 +305,49 @@ export default function ClientDetailPage() {
                     <div className="action-buttons">
                       <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>
                       <button className="delete-btn" onClick={() => handleDeleteEntity(e)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Client Users Section */}
+      <div className="entities-section">
+        <div className="entities-section-header">
+          <h3>Client Users</h3>
+          <button className="add-entity-btn" onClick={() => setAddClientUserOpen(true)}>New Client User</button>
+        </div>
+        {clientUsers.length === 0 ? (
+          <div className="entities-empty-sub">No client users yet.</div>
+        ) : (
+          <table className="entities-sub-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Packages</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientUsers.map((cu) => (
+                <tr key={cu.id}>
+                  <td>{cu.firstName} {cu.lastName}</td>
+                  <td>{cu.email}</td>
+                  <td>
+                    <span className={`status-badge ${cu.status === "active" ? "status-active" : "status-archived"}`}>
+                      {cu.status.charAt(0).toUpperCase() + cu.status.slice(1)}
+                    </span>
+                  </td>
+                  <td>{cu.authorizedPackageIds?.length || 0}</td>
+                  <td>
+                    <div className="action-buttons">
+                      <button className="edit-btn" onClick={() => setEditingClientUser(cu)}>Edit</button>
+                      <button className="delete-btn" onClick={() => handleDeleteClientUser(cu)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -384,6 +462,22 @@ export default function ClientDetailPage() {
           existingWidgetTypeIds={(allWidgets[addWidgetForDashboard.id] || []).map(w => w.widgetTypeId)}
           onClose={() => setAddWidgetForDashboard(null)}
           onSaved={() => { setAddWidgetForDashboard(null); afterPackageMutation(); }}
+        />
+      )}
+      {addClientUserOpen && (
+        <AddClientUserModal
+          clientId={clientId}
+          packages={packages}
+          onClose={() => setAddClientUserOpen(false)}
+          onSaved={() => { setAddClientUserOpen(false); afterClientUserMutation(); }}
+        />
+      )}
+      {editingClientUser && (
+        <EditClientUserModal
+          clientUser={editingClientUser}
+          packages={packages}
+          onClose={() => setEditingClientUser(null)}
+          onSaved={() => { setEditingClientUser(null); afterClientUserMutation(); }}
         />
       )}
     </div>

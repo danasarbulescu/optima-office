@@ -10,6 +10,7 @@ interface ClientContextValue {
   isInternal: boolean;
   clientLoading: boolean;
   isImpersonating: boolean;
+  authorizedPackageIds: string[] | null; // null = full access; string[] = restricted
   setCurrentClientId: (id: string) => void;
   startImpersonating: () => void;
   stopImpersonating: () => void;
@@ -23,6 +24,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [isInternal, setIsInternal] = useState(false);
   const [clientLoading, setClientLoading] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [authorizedPackageIds, setAuthorizedPackageIds] = useState<string[] | null>(null);
 
   // Auto-clear impersonation when client changes
   const setCurrentClientId = (id: string) => {
@@ -53,10 +55,12 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
         if (data.isInternal) {
           setClients(data.clients || []);
+          setAuthorizedPackageIds(null); // Internal users have full access
           // Default to "*" (all clients) for internal users
           setCurrentClientIdRaw('*');
         } else {
           setCurrentClientIdRaw(data.clientId);
+          setAuthorizedPackageIds(data.authorizedPackageIds ?? null);
           if (data.client) {
             setClients([data.client]);
           }
@@ -81,6 +85,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         isInternal,
         clientLoading,
         isImpersonating,
+        authorizedPackageIds,
         setCurrentClientId,
         startImpersonating,
         stopImpersonating,

@@ -46,6 +46,17 @@ const clientMembershipsTable = new dynamodb.Table(cacheStack, 'ClientMemberships
   removalPolicy: RemovalPolicy.DESTROY,
 });
 
+// DynamoDB table for client user sub-accounts (per-client)
+const clientUsersTable = new dynamodb.Table(cacheStack, 'ClientUsers', {
+  partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: RemovalPolicy.DESTROY,
+});
+clientUsersTable.addGlobalSecondaryIndex({
+  indexName: 'byClient',
+  partitionKey: { name: 'clientId', type: dynamodb.AttributeType.STRING },
+});
+
 // DynamoDB table for reporting packages (per-client)
 const packagesTable = new dynamodb.Table(cacheStack, 'Packages', {
   partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
@@ -102,6 +113,18 @@ packagesTable.grantReadWriteData(computeRole);
 dashboardsTable.grantReadWriteData(computeRole);
 dashboardWidgetsTable.grantReadWriteData(computeRole);
 widgetTypeMetaTable.grantReadWriteData(computeRole);
+clientUsersTable.grantReadWriteData(computeRole);
+
+// Cognito admin operations for client user management
+computeRole.addToPolicy(new iam.PolicyStatement({
+  actions: [
+    'cognito-idp:AdminCreateUser',
+    'cognito-idp:AdminDisableUser',
+    'cognito-idp:AdminEnableUser',
+    'cognito-idp:AdminDeleteUser',
+  ],
+  resources: [backend.auth.resources.userPool.userPoolArn],
+}));
 
 // Sandbox sync tool needs ListTables + read/write access to all Amplify DynamoDB tables
 computeRole.addToPolicy(new iam.PolicyStatement({
@@ -129,6 +152,7 @@ backend.addOutput({
     dashboardsTableName: dashboardsTable.tableName,
     dashboardWidgetsTableName: dashboardWidgetsTable.tableName,
     widgetTypeMetaTableName: widgetTypeMetaTable.tableName,
+    clientUsersTableName: clientUsersTable.tableName,
     ssrComputeRoleArn: computeRole.roleArn,
   },
 });

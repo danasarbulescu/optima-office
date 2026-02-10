@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       role: auth.role,
       isInternal: false,
       client,
+      authorizedPackageIds: auth.authorizedPackageIds ?? null,
     });
   } catch (err: any) {
     console.error("Auth context error:", err);

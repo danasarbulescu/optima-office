@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { fetchAuthSession } from 'aws-amplify/auth/server';
 import { runWithAmplifyServerContext } from '@/utils/amplify-utils';
 import { getMembershipForUser } from './client-membership';
+import { getClientUser } from './client-users';
 import { AuthContext } from './types';
 
 /**
@@ -45,10 +46,23 @@ export async function getAuthContext(selectedClientId?: string | null): Promise<
     clientId = membership.clientId;
   }
 
+  // Resolve package authorization for client users
+  let authorizedPackageIds: string[] | null = null;
+  if (membership.clientUserId) {
+    const clientUser = await getClientUser(membership.clientUserId);
+    if (clientUser && clientUser.status === 'archived') {
+      return null; // Archived client users cannot access the app
+    }
+    if (clientUser) {
+      authorizedPackageIds = clientUser.authorizedPackageIds;
+    }
+  }
+
   return {
     userId,
     clientId,
     role: membership.role,
     isInternal,
+    authorizedPackageIds,
   };
 }

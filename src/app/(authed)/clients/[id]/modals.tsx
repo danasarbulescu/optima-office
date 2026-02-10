@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Client, EntityConfig, Package, Dashboard } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, ClientUser } from "@/lib/types";
 
 /* ─── Edit Client Modal ─── */
 
@@ -614,6 +614,224 @@ export function AddWidgetModal({
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
           <button className="modal-save-btn" onClick={handleSave} disabled={saving || selectedIds.length === 0}>
             {saving ? "Adding..." : `Add ${selectedIds.length > 0 ? `(${selectedIds.length})` : ""}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Add Client User Modal ─── */
+
+export function AddClientUserModal({
+  clientId,
+  packages,
+  onClose,
+  onSaved,
+}: {
+  clientId: string;
+  packages: Package[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const togglePackage = (id: string) => {
+    setSelectedPackageIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/client-users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-client-id": clientId },
+        body: JSON.stringify({
+          clientId,
+          email: email.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          authorizedPackageIds: selectedPackageIds,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create client user");
+      }
+      onSaved();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2>New Client User</h2>
+        <div className="modal-field">
+          <label>First Name</label>
+          <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} autoFocus />
+        </div>
+        <div className="modal-field">
+          <label>Last Name</label>
+          <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} />
+        </div>
+        <div className="modal-field">
+          <label>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+        {packages.length > 0 && (
+          <>
+            <div className="modal-separator" />
+            <div className="modal-field">
+              <label>Authorized Packages</label>
+              <div className="widget-select-list">
+                {packages.map(pkg => (
+                  <label key={pkg.id} className="widget-select-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedPackageIds.includes(pkg.id)}
+                      onChange={() => togglePackage(pkg.id)}
+                    />
+                    {pkg.displayName}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+        {error && <div className="modal-error">{error}</div>}
+        <div className="modal-actions">
+          <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
+          <button
+            className="modal-save-btn"
+            onClick={handleSave}
+            disabled={saving || !firstName.trim() || !lastName.trim() || !email.trim()}
+          >
+            {saving ? "Creating..." : "Create & Send Invite"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Edit Client User Modal ─── */
+
+export function EditClientUserModal({
+  clientUser,
+  packages,
+  onClose,
+  onSaved,
+}: {
+  clientUser: ClientUser;
+  packages: Package[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState(clientUser.firstName);
+  const [lastName, setLastName] = useState(clientUser.lastName);
+  const [status, setStatus] = useState(clientUser.status);
+  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
+    clientUser.authorizedPackageIds || []
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const togglePackage = (id: string) => {
+    setSelectedPackageIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/client-users/${encodeURIComponent(clientUser.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          status,
+          authorizedPackageIds: selectedPackageIds,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update client user");
+      }
+      onSaved();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2>Edit Client User</h2>
+        <div className="modal-field">
+          <label>First Name</label>
+          <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} autoFocus />
+        </div>
+        <div className="modal-field">
+          <label>Last Name</label>
+          <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} />
+        </div>
+        <div className="modal-field">
+          <label>Email</label>
+          <input type="email" value={clientUser.email} disabled className="input-disabled" />
+        </div>
+        <div className="modal-field">
+          <label>Status</label>
+          <select className="status-select" value={status} onChange={e => setStatus(e.target.value as 'active' | 'archived')}>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+        {packages.length > 0 && (
+          <>
+            <div className="modal-separator" />
+            <div className="modal-field">
+              <label>Authorized Packages</label>
+              <div className="widget-select-list">
+                {packages.map(pkg => (
+                  <label key={pkg.id} className="widget-select-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedPackageIds.includes(pkg.id)}
+                      onChange={() => togglePackage(pkg.id)}
+                    />
+                    {pkg.displayName}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+        {error && <div className="modal-error">{error}</div>}
+        <div className="modal-actions">
+          <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
+          <button
+            className="modal-save-btn"
+            onClick={handleSave}
+            disabled={saving || !firstName.trim() || !lastName.trim()}
+          >
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

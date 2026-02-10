@@ -28,6 +28,7 @@ export interface ClientMembership {
   userId: string;       // Cognito sub
   clientId: string;     // "*" = internal (all clients)
   role: ClientRole;
+  clientUserId?: string; // Links to ClientUsers table for restricted access
 }
 
 export interface AuthContext {
@@ -35,6 +36,19 @@ export interface AuthContext {
   clientId: string;     // Resolved client (for internal, the currently-selected one)
   role: ClientRole;
   isInternal: boolean;  // true if clientId === "*"
+  authorizedPackageIds?: string[] | null; // null/undefined = full access; string[] = restricted
+}
+
+export interface ClientUser {
+  id: string;
+  clientId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  status: 'active' | 'archived';
+  authorizedPackageIds: string[];
+  cognitoUserId?: string;
+  createdAt: string;
 }
 
 export interface PnLMonthEntry {
