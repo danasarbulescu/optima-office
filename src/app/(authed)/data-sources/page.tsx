@@ -127,6 +127,12 @@ function AddDataSourceModal({
   const typeConfig = DATA_SOURCE_TYPES[type];
   const fields = typeConfig?.fields || [];
 
+  const handleTypeChange = (newType: string) => {
+    setType(newType);
+    setConfig({});
+    setVisibleFields(new Set());
+  };
+
   const toggleFieldVisibility = (key: string) => {
     setVisibleFields(prev => {
       const next = new Set(prev);
@@ -173,6 +179,14 @@ function AddDataSourceModal({
             placeholder="e.g. Main CData Account"
             autoFocus
           />
+        </div>
+        <div className="modal-field">
+          <label>Type</label>
+          <select value={type} onChange={e => handleTypeChange(e.target.value)}>
+            {typeKeys.map(k => (
+              <option key={k} value={k}>{DATA_SOURCE_TYPES[k].displayName}</option>
+            ))}
+          </select>
         </div>
         {fields.length > 0 && (
           <>

@@ -238,7 +238,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Clients list page**: `/clients` — sortable table (displayName, slug), click through to client detail. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
 - **Client detail page**: `/clients/:id` — full management for a single client:
   - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
-  - **Entities section**: table with displayName, data source, catalog ID. Add/Edit/Delete entity CRUD with optional data source binding. Entity-level fields (e.g. catalogId) rendered dynamically from `DATA_SOURCE_TYPES[type].entityFields`.
+  - **Entities section**: table with displayName, data source. Add/Edit/Delete entity CRUD. Entity-level fields rendered dynamically in modals based on the selected data source's type (from `DATA_SOURCE_TYPES[type].entityFields`). If no data sources exist, shows hint text; if data sources exist, selection is required.
   - **Client Users section**: table with name, email, status badge, # packages. Add (creates Cognito + sends invite) / Edit (name, status, packages) / Delete (cascades Cognito + membership). Package authorization via checkboxes in modals.
   - **Packages section**: nested accordion tables. Package → Dashboards → Widgets. Full CRUD at each level with modal forms. Auto-slug generation from display names.
 - **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, dataSourceId?, sourceConfig?, createdAt)
@@ -273,10 +273,10 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 ## Data sources
 
 - **Admin page**: `/data-sources` — internal admin only. Table listing all data sources with name, type, status. CRUD via modals.
-- **Type registry**: `src/lib/data-source-types.ts` — defines known types (currently `cdata` = CData Connect Cloud) with connection-level `fields` (key, label, sensitive flag, placeholder) and entity-level `entityFields`. Connection fields are rendered in the data source admin modal; entity fields are rendered in the entity add/edit modal based on the selected data source's type.
+- **Type registry**: `src/lib/data-source-types.ts` — defines known types (e.g. `cdata` = CData Connect Cloud, `turbotax` = TurboTax) with connection-level `fields` (key, label, sensitive flag, placeholder) and entity-level `entityFields`. Type is selected via dropdown when creating a data source. Connection fields are rendered in the data source admin modal; entity fields are rendered dynamically in the entity add/edit modal based on the selected data source's type.
 - **DynamoDB**: `DataSources` table (id, type, displayName, config, status, createdAt). No GSI — global scan (few records).
 - **CRUD**: `src/lib/data-sources.ts` — `getDataSources()`, `getDataSource(id)`, `addDataSource()`, `updateDataSource()`, `deleteDataSource()`
-- **Entity binding**: Entities optionally reference a data source via `dataSourceId`. Entity modals show a dropdown with active data sources + "(Use default)" option.
+- **Entity binding**: Entities optionally reference a data source via `dataSourceId`. Entity modals show a dropdown of active data sources (required when available). When no data sources exist, a hint is shown and entities can be saved without one. Switching data sources clears entity-level field values.
 - **Fetch integration**: `src/lib/fetch-pl.ts` resolves adapter type + credentials from the entity's data source. Falls back to global `CDATA_USER`/`CDATA_PAT` env vars if no `dataSourceId`.
 - **Delete protection**: API returns 409 Conflict if entities still reference a data source being deleted.
 

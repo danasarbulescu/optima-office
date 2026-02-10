@@ -120,8 +120,13 @@ export function AddEntityModal({
 
   const activeSources = dataSources.filter(ds => ds.status === 'active');
   const selectedDs = activeSources.find(ds => ds.id === dataSourceId);
-  const dsType = selectedDs?.type || 'cdata';
-  const entityFields = DATA_SOURCE_TYPES[dsType]?.entityFields || [];
+  const dsType = selectedDs?.type;
+  const entityFields = dsType ? (DATA_SOURCE_TYPES[dsType]?.entityFields || []) : [];
+
+  const handleDataSourceChange = (newDsId: string) => {
+    setDataSourceId(newDsId);
+    setSourceConfig({});
+  };
 
   const updateSourceConfig = (key: string, value: string) => {
     setSourceConfig(prev => ({ ...prev, [key]: value }));
@@ -160,12 +165,16 @@ export function AddEntityModal({
         </div>
         <div className="modal-field">
           <label>Data Source</label>
-          <select value={dataSourceId} onChange={e => setDataSourceId(e.target.value)}>
-            <option value="">(Use default)</option>
-            {activeSources.map(ds => (
-              <option key={ds.id} value={ds.id}>{ds.displayName}</option>
-            ))}
-          </select>
+          {activeSources.length === 0 ? (
+            <div className="modal-hint">Please define a Data Source first.</div>
+          ) : (
+            <select value={dataSourceId} onChange={e => handleDataSourceChange(e.target.value)}>
+              <option value="" disabled>Select a data source...</option>
+              {activeSources.map(ds => (
+                <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+              ))}
+            </select>
+          )}
         </div>
         {entityFields.length > 0 && (
           <>
@@ -186,7 +195,7 @@ export function AddEntityModal({
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || !entityFieldsValid}>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || (activeSources.length > 0 && !dataSourceId) || !entityFieldsValid}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -218,8 +227,13 @@ export function EditEntityModal({
 
   const activeSources = dataSources.filter(ds => ds.status === 'active');
   const selectedDs = activeSources.find(ds => ds.id === dataSourceId);
-  const dsType = selectedDs?.type || 'cdata';
-  const entityFields = DATA_SOURCE_TYPES[dsType]?.entityFields || [];
+  const dsType = selectedDs?.type;
+  const entityFields = dsType ? (DATA_SOURCE_TYPES[dsType]?.entityFields || []) : [];
+
+  const handleDataSourceChange = (newDsId: string) => {
+    setDataSourceId(newDsId);
+    setSourceConfig({});
+  };
 
   const updateSourceConfig = (key: string, value: string) => {
     setSourceConfig(prev => ({ ...prev, [key]: value }));
@@ -258,12 +272,16 @@ export function EditEntityModal({
         </div>
         <div className="modal-field">
           <label>Data Source</label>
-          <select value={dataSourceId} onChange={e => setDataSourceId(e.target.value)}>
-            <option value="">(Use default)</option>
-            {activeSources.map(ds => (
-              <option key={ds.id} value={ds.id}>{ds.displayName}</option>
-            ))}
-          </select>
+          {activeSources.length === 0 ? (
+            <div className="modal-hint">Please define a Data Source first.</div>
+          ) : (
+            <select value={dataSourceId} onChange={e => handleDataSourceChange(e.target.value)}>
+              <option value="" disabled>Select a data source...</option>
+              {activeSources.map(ds => (
+                <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+              ))}
+            </select>
+          )}
         </div>
         {entityFields.length > 0 && (
           <>
@@ -284,7 +302,7 @@ export function EditEntityModal({
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || !entityFieldsValid}>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || (activeSources.length > 0 && !dataSourceId) || !entityFieldsValid}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>

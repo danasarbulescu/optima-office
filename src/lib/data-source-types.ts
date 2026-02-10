@@ -22,6 +22,17 @@ export const DATA_SOURCE_TYPES: Record<string, DataSourceTypeConfig> = {
       { key: 'catalogId', label: 'Catalog ID', placeholder: 'e.g. BrooklynRestaurants' },
     ],
   },
+  turbotax: {
+    displayName: 'TurboTax',
+    fields: [
+      { key: 'user', label: 'Username' },
+      { key: 'pat', label: 'Personal Access Token', sensitive: true },
+    ],
+    entityFields: [
+      { key: 'sourceId', label: 'Source ID' },
+      { key: 'secretKey', label: 'Secret Key', sensitive: true },
+    ],
+  },
 };
 
 export function getDataSourceTypeConfig(type: string): DataSourceTypeConfig | undefined {

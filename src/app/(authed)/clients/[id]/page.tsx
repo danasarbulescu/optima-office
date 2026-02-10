@@ -304,7 +304,6 @@ export default function ClientDetailPage() {
               <tr>
                 <th>Entity Name</th>
                 <th>Data Source</th>
-                <th>Catalog ID</th>
                 <th></th>
               </tr>
             </thead>
@@ -314,8 +313,7 @@ export default function ClientDetailPage() {
                 return (
                   <tr key={e.id}>
                     <td>{e.displayName}</td>
-                    <td>{ds ? ds.displayName : <span className="text-muted">Default</span>}</td>
-                    <td><code>{e.sourceConfig?.catalogId || e.catalogId}</code></td>
+                    <td>{ds ? ds.displayName : <span className="text-muted">–</span>}</td>
                     <td>
                       <div className="action-buttons">
                         <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>
