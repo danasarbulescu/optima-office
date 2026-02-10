@@ -28,11 +28,11 @@ amplify/
 src/
   app/
     layout.tsx                      — Root layout with ConfigureAmplify
-    page.tsx                        — Home redirector (auth check)
+    page.tsx                        — Home redirector (bootstrap → first dashboard or /clients)
     globals.css                     — Global styles (header, multi-select dropdown, controls, package nav)
     login/page.tsx                  — Login page with Authenticator
     (authed)/
-      layout.tsx                    — Protected layout (header, PackageNav, client switcher, entity selector, sign out)
+      layout.tsx                    — Protected layout (BootstrapProvider → ClientProvider → PackageProvider → EntityProvider, header, PackageNav, client switcher, entity selector, sign out)
       loading.tsx                   — Loading skeleton for page transitions
       [packageSlug]/
         page.tsx                    — Package index: redirects to first dashboard in the package
@@ -55,12 +55,14 @@ src/
         page.tsx                    — Sandbox data sync tool (preview + execute)
         tools.css                   — Tools page styles
     api/
+      bootstrap/route.ts            — API: layout-level bootstrap (auth + clients + packages + dashboards + entities in one call)
       data-sources/route.ts         — API: list data sources (GET), add data source (POST) — internal admin only
       data-sources/[id]/route.ts    — API: get (GET), edit (PUT), delete with entity ref check (DELETE) — internal admin only
       entities/route.ts             — API: list entities (GET), add entity (POST)
       entities/[id]/route.ts        — API: edit entity (PUT), delete entity (DELETE)
       clients/route.ts              — API: list clients (GET), add client (POST) — internal admin only
       clients/[id]/route.ts         — API: edit client (PUT), delete client (DELETE) — internal admin only
+      clients/[id]/bootstrap/route.ts — API: client detail bootstrap (client + entities + packages + dashboards + widgets + users + data sources)
       client-users/route.ts         — API: list client users (GET), create + Cognito invite (POST) — internal admin only
       client-users/[id]/route.ts    — API: get (GET), update + Cognito enable/disable (PUT), delete + cascade (DELETE)
       packages/route.ts             — API: list packages (GET), add package (POST) — internal admin only
@@ -90,9 +92,10 @@ src/
 components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
-    ClientContext.tsx                — React context: client state, client switcher, impersonation, authorizedPackageIds, authorizedDashboardIds
-    EntityContext.tsx                — React context: multi-select entity state, dynamic entity list
-    PackageContext.tsx               — React context: packages + dashboards for current client (filtered by authorizedPackageIds + authorizedDashboardIds)
+    BootstrapContext.tsx             — React context: single /api/bootstrap call on mount, provides auth + clients + packages + dashboards + entities to child contexts
+    ClientContext.tsx                — React context: reads auth/clients from BootstrapContext, client switcher (triggers bootstrap.refetch), impersonation, authorizedPackageIds, authorizedDashboardIds
+    EntityContext.tsx                — React context: reads entities from BootstrapContext, multi-select entity state
+    PackageContext.tsx               — React context: reads packages + dashboards from BootstrapContext, applies authorization filtering locally
   utils/
     amplify-utils.ts                — Server-side Amplify runner
   lib/
@@ -152,7 +155,7 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 - **Internal users**: See a client switcher dropdown in the header. Can switch between clients. See all packages/dashboards + admin pages (Clients, Widgets, Tools).
 - **External users**: Locked to their assigned client. No switcher visible. See only their client's packages and dashboards.
 - **Routing**: Auth-based. Dashboard URLs use `/{packageSlug}/{dashboardSlug}` pattern. Client selection via `x-client-id` header or stored in context.
-- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`, `authorizedPackageIds`, `authorizedDashboardIds`.
+- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `clientLoading`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`, `authorizedPackageIds`, `authorizedDashboardIds`. Reads auth + clients from `BootstrapContext` (no direct API calls). Client switch triggers `bootstrap.refetch(newClientId)` to refresh all layout data.
 - **Client impersonation**: Internal admins can click "View as Client" (when a specific client is selected) to see exactly what that client sees — only their packages/dashboards, no admin nav (Clients/Widgets/Tools), no client switcher. An amber banner shows "Viewing as {clientName}" with an Exit button. Purely client-side; auto-clears when switching clients.
 
 ## Package / Dashboard / Widget system
@@ -231,12 +234,12 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 
 ### React context
 
-`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `packagesLoading`, `refreshPackages`. Fetches packages and dashboards for the current client, re-fetches when client changes. Dual filtering: a dashboard is visible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. A package is visible if it's in `authorizedPackageIds` OR has any visible dashboards.
+`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `packagesLoading`, `refreshPackages`. Reads packages and dashboards from `BootstrapContext` (no direct API calls), applies authorization filtering locally. `refreshPackages` triggers `bootstrap.refetch()`. Dual filtering: a dashboard is visible if its package is in `authorizedPackageIds` OR its ID is in `authorizedDashboardIds`. A package is visible if it's in `authorizedPackageIds` OR has any visible dashboards.
 
 ## Client & entity management
 
-- **Clients list page**: `/clients` — sortable table (displayName, slug), click through to client detail. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
-- **Client detail page**: `/clients/:id` — full management for a single client:
+- **Clients list page**: `/clients` — sortable table (displayName, slug), click through to client detail. Initial load uses bootstrap clients from `useClient()` (no separate API call); `fetchData()` callback used for CRUD refresh. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
+- **Client detail page**: `/clients/:id` — full management for a single client. Initial load uses single `/api/clients/:id/bootstrap` call; individual fetch callbacks used for CRUD refresh:
   - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
   - **Entities section**: table with displayName, data source(s). Add/Edit/Delete entity CRUD. Entities support multiple data source bindings — each binding has a data source dropdown + dynamic entity-level fields. Entity modals render stacked binding sections with Add/Remove buttons. Table shows first DS name + "(+N more)" for additional bindings.
   - **Client Users section**: table with name, email, status badge, access count. Add (creates Cognito, optionally sends invite) / Edit (name, status) / Manage Access (dedicated modal with package→dashboard tree) / Delete (cascades Cognito + membership). Access configured via ManageAccessModal: package-level checkboxes (all dashboards) + individual dashboard checkboxes.
@@ -258,7 +261,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 
 - **Entity selector**: Multi-select checkbox dropdown in header (select one, multiple, or all entities)
 - **Multi-select merge**: When multiple entities selected, fetches each in parallel, merges financial rows by category (sums all period values via `mergeFinancialRows`). Output is structurally identical to single-entity data so all compute functions work unchanged.
-- **React context**: `EntityProvider` / `useEntity()` in `src/context/EntityContext.tsx` provides `entities`, `entitiesLoading`, `selectedEntities`, `setSelectedEntities`, `refreshEntities`
+- **React context**: `EntityProvider` / `useEntity()` in `src/context/EntityContext.tsx` provides `entities`, `entitiesLoading`, `selectedEntities`, `setSelectedEntities`, `refreshEntities`. Reads entities from `BootstrapContext` (no direct API calls). `refreshEntities` triggers `bootstrap.refetch()`
 - **Auto-refetch**: Dashboard pages auto-fetch on mount when entities are ready
 
 ## DynamoDB caching (`src/lib/cache.ts`)
@@ -315,7 +318,9 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 ### Entity & client management
 - **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ displayName, dataSourceBindings? }`; `PUT /api/entities/:id` — edit entity (accepts `dataSourceBindings`); `DELETE /api/entities/:id` — remove entity
 - **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
-- **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds, authorizedDashboardIds)
+- **Bootstrap**: `GET /api/bootstrap` — single layout-level call returning auth context + clients + packages + dashboards + entities. Accepts optional `?clientId=` for client switches. Replaces separate auth/context + packages + dashboards + entities calls on page load
+- **Client detail bootstrap**: `GET /api/clients/:id/bootstrap` — single call for client detail page returning client + entities + packages + dashboards + widgetsByDashboard + clientUsers + dataSources (internal admin only)
+- **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds, authorizedDashboardIds). Superseded by `/api/bootstrap` for layout init but still available for direct use
 - **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account (optionally sends invite via `sendInvite` flag) `{ clientId, email, firstName, lastName, authorizedPackageIds, authorizedDashboardIds, sendInvite? }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
 
 ### Package / dashboard / widget management (internal admin only for writes)
