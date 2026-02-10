@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { clientId, email, firstName, lastName, authorizedPackageIds } = body;
+    const { clientId, email, firstName, lastName, authorizedPackageIds, sendInvite = true } = body;
 
     if (!clientId || !email || !firstName || !lastName) {
       return NextResponse.json(
@@ -47,8 +47,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Create Cognito user (sends invite email)
-    const cognitoUserId = await createCognitoUser(email, firstName, lastName);
+    // 1. Create Cognito user (invite email controlled by sendInvite flag)
+    const cognitoUserId = await createCognitoUser(email, firstName, lastName, {
+      suppressInvite: !sendInvite,
+    });
 
     // 2. Create ClientUsers DynamoDB record
     const clientUser = await addClientUser({

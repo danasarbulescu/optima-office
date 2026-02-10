@@ -451,6 +451,16 @@
   cursor: not-allowed;
 }
 
+.modal-save-secondary {
+  background: transparent;
+  border: 1px solid #3b6cf5;
+  color: #3b6cf5;
+}
+
+.modal-save-secondary:hover:not(:disabled) {
+  background: rgba(59, 108, 245, 0.1);
+}
+
 .modal-hint {
   color: #8b8d98;
   font-size: 13px;
@@ -507,6 +517,12 @@
   font-weight: 600;
   color: #6a6b78;
   text-transform: uppercase;
+}
+
+.binding-ds-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e1e2e8;
 }
 
 .remove-binding-btn {

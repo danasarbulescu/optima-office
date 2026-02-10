@@ -213,18 +213,19 @@ export function AddEntityModal({
             return (
               <div key={index} className="binding-section">
                 <div className="binding-header">
-                  <span className="binding-number">#{index + 1}</span>
+                  <span className="binding-ds-name">{ds ? ds.displayName : 'Select a data source'}</span>
                   <button type="button" className="remove-binding-btn" onClick={() => removeBinding(index)}>Remove</button>
                 </div>
-                <div className="modal-field">
-                  <label>Data Source</label>
-                  <select value={binding.dataSourceId} onChange={e => updateBindingDataSource(index, e.target.value)}>
-                    <option value="" disabled>Select a data source...</option>
-                    {activeSources.map(ds => (
-                      <option key={ds.id} value={ds.id}>{ds.displayName}</option>
-                    ))}
-                  </select>
-                </div>
+                {!binding.dataSourceId && (
+                  <div className="modal-field">
+                    <select value="" onChange={e => updateBindingDataSource(index, e.target.value)}>
+                      <option value="" disabled>Select a data source...</option>
+                      {activeSources.map(ds => (
+                        <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {entityFields.map(f => {
                   const fieldKey = `${index}-${f.key}`;
                   return (
@@ -398,18 +399,19 @@ export function EditEntityModal({
             return (
               <div key={index} className="binding-section">
                 <div className="binding-header">
-                  <span className="binding-number">#{index + 1}</span>
+                  <span className="binding-ds-name">{ds ? ds.displayName : 'Select a data source'}</span>
                   <button type="button" className="remove-binding-btn" onClick={() => removeBinding(index)}>Remove</button>
                 </div>
-                <div className="modal-field">
-                  <label>Data Source</label>
-                  <select value={binding.dataSourceId} onChange={e => updateBindingDataSource(index, e.target.value)}>
-                    <option value="" disabled>Select a data source...</option>
-                    {activeSources.map(ds => (
-                      <option key={ds.id} value={ds.id}>{ds.displayName}</option>
-                    ))}
-                  </select>
-                </div>
+                {!binding.dataSourceId && (
+                  <div className="modal-field">
+                    <select value="" onChange={e => updateBindingDataSource(index, e.target.value)}>
+                      <option value="" disabled>Select a data source...</option>
+                      {activeSources.map(ds => (
+                        <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {entityFields.map(f => {
                   const fieldKey = `${index}-${f.key}`;
                   return (
@@ -898,7 +900,7 @@ export function AddClientUserModal({
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (sendInvite: boolean) => {
     setSaving(true);
     setError("");
     try {
@@ -911,6 +913,7 @@ export function AddClientUserModal({
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           authorizedPackageIds: selectedPackageIds,
+          sendInvite,
         }),
       });
       if (!res.ok) {
@@ -965,11 +968,18 @@ export function AddClientUserModal({
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
           <button
-            className="modal-save-btn"
-            onClick={handleSave}
+            className="modal-save-btn modal-save-secondary"
+            onClick={() => handleSave(false)}
             disabled={saving || !firstName.trim() || !lastName.trim() || !email.trim()}
           >
-            {saving ? "Creating..." : "Create & Send Invite"}
+            {saving ? "Creating..." : "Create"}
+          </button>
+          <button
+            className="modal-save-btn"
+            onClick={() => handleSave(true)}
+            disabled={saving || !firstName.trim() || !lastName.trim() || !email.trim()}
+          >
+            {saving ? "Creating..." : "Create & Invite"}
           </button>
         </div>
       </div>

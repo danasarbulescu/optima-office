@@ -10,13 +10,14 @@ const cognitoClient = new CognitoIdentityProviderClient({});
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || '';
 
 /**
- * Create a Cognito user and send an invite email with a temporary password.
+ * Create a Cognito user, optionally sending an invite email with a temporary password.
  * Returns the Cognito user's sub (UUID).
  */
 export async function createCognitoUser(
   email: string,
   firstName: string,
   lastName: string,
+  options?: { suppressInvite?: boolean },
 ): Promise<string> {
   if (!USER_POOL_ID) throw new Error('COGNITO_USER_POOL_ID not configured');
 
@@ -30,6 +31,7 @@ export async function createCognitoUser(
       { Name: 'family_name', Value: lastName },
     ],
     DesiredDeliveryMediums: ['EMAIL'],
+    ...(options?.suppressInvite && { MessageAction: 'SUPPRESS' }),
   }));
 
   const cognitoUserId = result.User?.Attributes?.find(a => a.Name === 'sub')?.Value;
