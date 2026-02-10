@@ -26,18 +26,22 @@ export async function getEntities(clientId?: string): Promise<EntityConfig[]> {
 export async function addEntity(clientId: string, entity: {
   catalogId: string;
   displayName: string;
+  dataSourceId?: string;
 }): Promise<void> {
   if (!TABLE_NAME) throw new Error('ENTITIES_TABLE not configured');
 
+  const item: Record<string, unknown> = {
+    id: crypto.randomUUID(),
+    clientId,
+    catalogId: entity.catalogId,
+    displayName: entity.displayName,
+    createdAt: new Date().toISOString(),
+  };
+  if (entity.dataSourceId) item.dataSourceId = entity.dataSourceId;
+
   await docClient.send(new PutCommand({
     TableName: TABLE_NAME,
-    Item: {
-      id: crypto.randomUUID(),
-      clientId,
-      catalogId: entity.catalogId,
-      displayName: entity.displayName,
-      createdAt: new Date().toISOString(),
-    },
+    Item: item,
   }));
 }
 

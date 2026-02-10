@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser, DataSource } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
 import { PackageRow } from "./PackageAccordion";
 import {
@@ -46,6 +46,7 @@ export default function ClientDetailPage() {
   const [clientUsers, setClientUsers] = useState<ClientUser[]>([]);
   const [addClientUserOpen, setAddClientUserOpen] = useState(false);
   const [editingClientUser, setEditingClientUser] = useState<ClientUser | null>(null);
+  const [dataSources, setDataSources] = useState<DataSource[]>([]);
 
   // Accordion state
   const [expandedPkgId, setExpandedPkgId] = useState<string | null>(null);
@@ -118,9 +119,19 @@ export default function ClientDetailPage() {
     } catch { /* non-fatal */ }
   }, [clientId]);
 
+  const fetchDataSources = useCallback(async () => {
+    try {
+      const res = await fetch("/api/data-sources");
+      if (res.ok) {
+        const data = await res.json();
+        setDataSources(data.dataSources);
+      }
+    } catch { /* non-fatal */ }
+  }, []);
+
   useEffect(() => {
     (async () => {
-      await Promise.all([fetchClient(), fetchEntities(), fetchPackagesData(), fetchClientUsers()]);
+      await Promise.all([fetchClient(), fetchEntities(), fetchPackagesData(), fetchClientUsers(), fetchDataSources()]);
       setLoading(false);
     })();
   }, [fetchClient, fetchEntities, fetchPackagesData]);
@@ -293,22 +304,27 @@ export default function ClientDetailPage() {
               <tr>
                 <th>Entity Name</th>
                 <th>CData Catalog ID</th>
+                <th>Data Source</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {entities.map((e) => (
-                <tr key={e.id}>
-                  <td>{e.displayName}</td>
-                  <td><code>{e.catalogId}</code></td>
-                  <td>
-                    <div className="action-buttons">
-                      <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>
-                      <button className="delete-btn" onClick={() => handleDeleteEntity(e)}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {entities.map((e) => {
+                const ds = e.dataSourceId ? dataSources.find(d => d.id === e.dataSourceId) : null;
+                return (
+                  <tr key={e.id}>
+                    <td>{e.displayName}</td>
+                    <td><code>{e.catalogId}</code></td>
+                    <td>{ds ? ds.displayName : <span className="text-muted">Default</span>}</td>
+                    <td>
+                      <div className="action-buttons">
+                        <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>
+                        <button className="delete-btn" onClick={() => handleDeleteEntity(e)}>Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -416,6 +432,7 @@ export default function ClientDetailPage() {
       {addEntityOpen && (
         <AddEntityModal
           clientId={clientId}
+          dataSources={dataSources}
           onClose={() => setAddEntityOpen(false)}
           onSaved={() => { setAddEntityOpen(false); afterEntityMutation(); }}
         />
@@ -423,6 +440,7 @@ export default function ClientDetailPage() {
       {editingEntity && (
         <EditEntityModal
           entity={editingEntity}
+          dataSources={dataSources}
           onClose={() => setEditingEntity(null)}
           onSaved={() => { setEditingEntity(null); afterEntityMutation(); }}
         />

@@ -1,0 +1,94 @@
+.data-sources-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.data-sources-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.data-sources-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #e1e2e8;
+}
+
+.data-sources-table-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.data-sources-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1a1b23;
+  overflow: hidden;
+}
+
+.data-sources-table th,
+.data-sources-table td {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.data-sources-table th {
+  background: #252636;
+  font-weight: 600;
+  color: #9a9caa;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.data-sources-table tr:not(:last-child) td {
+  border-bottom: 1px solid #2a2b35;
+}
+
+.data-sources-empty {
+  text-align: center;
+  padding: 40px 24px;
+  color: #6a6b78;
+  font-size: 15px;
+}
+
+.type-badge {
+  background: #252636;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 13px;
+  color: #9a9caa;
+}
+
+.config-summary {
+  font-size: 13px;
+  color: #6a6b78;
+}
+
+.modal-field input[type="password"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #141520;
+  color: #e1e2e8;
+  box-sizing: border-box;
+}
+
+.modal-field input[type="password"]:focus {
+  outline: none;
+  border-color: #3b6cf5;
+  box-shadow: 0 0 0 2px rgba(59, 108, 245, 0.2);
+}
+
+.input-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

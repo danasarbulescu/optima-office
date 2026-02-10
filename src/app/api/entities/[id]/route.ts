@@ -14,15 +14,16 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { catalogId, displayName } = body;
+    const { catalogId, displayName, dataSourceId } = body;
 
     if (catalogId !== undefined && !/^[a-zA-Z0-9_]+$/.test(catalogId)) {
       return NextResponse.json({ error: "catalogId must contain only letters, numbers, and underscores" }, { status: 400 });
     }
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, unknown> = {};
     if (catalogId !== undefined) updates.catalogId = catalogId;
     if (displayName !== undefined) updates.displayName = displayName;
+    if (dataSourceId !== undefined) updates.dataSourceId = dataSourceId || null;
 
     await updateEntity(id, updates);
     return NextResponse.json({ success: true });

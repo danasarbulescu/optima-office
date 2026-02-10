@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { catalogId, displayName } = body;
+    const { catalogId, displayName, dataSourceId } = body;
 
     if (!catalogId || !displayName) {
       return NextResponse.json({ error: "catalogId and displayName are required" }, { status: 400 });
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "catalogId must contain only letters, numbers, and underscores" }, { status: 400 });
     }
 
-    await addEntity(auth.clientId, { catalogId, displayName });
+    await addEntity(auth.clientId, { catalogId, displayName, dataSourceId });
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err: any) {
     console.error("Entities POST error:", err);

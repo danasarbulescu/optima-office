@@ -1,10 +1,17 @@
 import { getAdapter } from './adapters';
 import { getCachedPL, setCachedPL } from './cache';
+import { getDataSource } from './data-sources';
 import { mergeFinancialRows } from './merge';
 import { FinancialRow } from './models/financial';
 import { EntityConfig } from './types';
 
-async function fetchSingleEntity(clientId: string, catalogId: string, displayName: string, refresh: boolean): Promise<FinancialRow[]> {
+async function fetchSingleEntity(
+  clientId: string,
+  catalogId: string,
+  displayName: string,
+  refresh: boolean,
+  dataSourceId?: string,
+): Promise<FinancialRow[]> {
   if (!refresh) {
     try {
       const cached = await getCachedPL(clientId, catalogId);
@@ -14,11 +21,26 @@ async function fetchSingleEntity(clientId: string, catalogId: string, displayNam
     }
   }
 
-  const adapter = getAdapter('quickbooks');
-  const freshRows = await adapter.fetchFinancialData(catalogId, {
+  // Resolve adapter type + credentials from the entity's data source (or env var defaults)
+  let adapterType = 'quickbooks';
+  let credentials = {
     user: process.env.CDATA_USER ?? '',
     pat: process.env.CDATA_PAT ?? '',
-  });
+  };
+
+  if (dataSourceId) {
+    const ds = await getDataSource(dataSourceId);
+    if (ds && ds.status === 'active') {
+      adapterType = ds.type === 'cdata' ? 'quickbooks' : ds.type;
+      credentials = {
+        user: ds.config.user ?? '',
+        pat: ds.config.pat ?? '',
+      };
+    }
+  }
+
+  const adapter = getAdapter(adapterType);
+  const freshRows = await adapter.fetchFinancialData(catalogId, credentials);
 
   if (freshRows.length > 0) {
     setCachedPL(clientId, catalogId, displayName, freshRows).catch((err) =>
@@ -43,7 +65,7 @@ export async function fetchPLForEntities(
   if (entityIds.length === 1) {
     const entity = entities.find(e => e.id === entityIds[0]);
     if (!entity) return { rows: [], entityName: 'Unknown' };
-    const rows = await fetchSingleEntity(clientId, entity.catalogId, entity.displayName, refresh);
+    const rows = await fetchSingleEntity(clientId, entity.catalogId, entity.displayName, refresh, entity.dataSourceId);
     return { rows, entityName: entity.displayName };
   }
 
@@ -53,7 +75,7 @@ export async function fetchPLForEntities(
     .filter((e): e is EntityConfig => !!e);
 
   const results = await Promise.all(
-    resolvedEntities.map(e => fetchSingleEntity(clientId, e.catalogId, e.displayName, refresh))
+    resolvedEntities.map(e => fetchSingleEntity(clientId, e.catalogId, e.displayName, refresh, e.dataSourceId))
   );
 
   const nonEmpty = results.filter(r => r.length > 0);

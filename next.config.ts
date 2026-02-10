@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
     DASHBOARD_WIDGETS_TABLE: process.env.DASHBOARD_WIDGETS_TABLE || amplifyOutputs?.custom?.dashboardWidgetsTableName || '',
     WIDGET_TYPE_META_TABLE: process.env.WIDGET_TYPE_META_TABLE || amplifyOutputs?.custom?.widgetTypeMetaTableName || '',
     CLIENT_USERS_TABLE: process.env.CLIENT_USERS_TABLE || amplifyOutputs?.custom?.clientUsersTableName || '',
+    DATA_SOURCES_TABLE: process.env.DATA_SOURCES_TABLE || amplifyOutputs?.custom?.dataSourcesTableName || '',
     COGNITO_USER_POOL_ID: process.env.COGNITO_USER_POOL_ID || amplifyOutputs?.auth?.user_pool_id || '',
   },
 };

@@ -10,7 +10,8 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 - **Dashboard**: A page within a package (e.g., "Monthly Dashboard"). Contains an ordered list of widgets.
 - **Widget**: An instance of a widget type placed on a dashboard. Has a type, sort order, and optional config.
 - **Widget Type**: A reusable component definition (e.g., "Revenue Current Month" KPI card). Defined in code, display names overridable via DynamoDB.
-- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many)
+- **Client User**: A sub-account within a client with restricted package access (e.g., a client employee who can only see certain reports). Managed by internal admins; auto-creates a Cognito login with email invite.
+- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many).
 
 ## Workflows
 
@@ -22,7 +23,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 ```
 amplify/
   auth/resource.ts                  — Cognito auth (email, no self-signup)
-  backend.ts                        — defineBackend (auth + 8 DynamoDB tables + SSR compute role)
+  backend.ts                        — defineBackend (auth + 9 DynamoDB tables + SSR compute role + Cognito admin IAM)
 src/
   app/
     layout.tsx                      — Root layout with ConfigureAmplify
@@ -37,7 +38,9 @@ src/
         [dashboardSlug]/page.tsx    — Dashboard page: resolves dashboard by slugs, fetches widgets, renders widget-driven content
       clients/
         page.tsx                    — Client list: sortable table, add/archive/delete clients
-        [id]/page.tsx               — Client detail: entities, packages, dashboards, widgets CRUD (nested accordions)
+        [id]/page.tsx               — Client detail: entities, client users, packages, dashboards, widgets CRUD
+        [id]/modals.tsx             — CRUD modals: EditClient, Add/EditEntity, Add/EditPackage, Add/EditDashboard, AddWidget, Add/EditClientUser
+        [id]/PackageAccordion.tsx   — Nested accordion for Package → Dashboard → Widget hierarchy
         clients.css                 — Clients page styles
       widgets/
         page.tsx                    — Widget types admin: list all widget types, rename (DynamoDB override)
@@ -50,6 +53,8 @@ entities/route.ts             — API: list entities (GET), add entity (POST)
       entities/[id]/route.ts        — API: edit entity (PUT), delete entity (DELETE)
       clients/route.ts              — API: list clients (GET), add client (POST) — internal admin only
       clients/[id]/route.ts         — API: edit client (PUT), delete client (DELETE) — internal admin only
+      client-users/route.ts         — API: list client users (GET), create + Cognito invite (POST) — internal admin only
+      client-users/[id]/route.ts    — API: get (GET), update + Cognito enable/disable (PUT), delete + cascade (DELETE)
       packages/route.ts             — API: list packages (GET), add package (POST) — internal admin only
       packages/[id]/route.ts        — API: edit package (PUT), delete package + cascade (DELETE)
       dashboards/route.ts           — API: list dashboards (GET), add dashboard (POST)
@@ -62,7 +67,7 @@ entities/route.ts             — API: list entities (GET), add entity (POST)
       widget-data/
         financial-snapshot/route.ts — API: KPIs + P&L table data (GET)
         expense-trend/route.ts      — API: expense trend chart data (GET)
-      auth/context/route.ts         — API: get current user's auth context (GET)
+      auth/context/route.ts         — API: get current user's auth context + authorizedPackageIds (GET)
       tools/sync-sandbox/route.ts   — API: sandbox sync preview + execute (POST)
   widgets/
     types.ts                        — WidgetType interface { id, name, category, component }
@@ -76,13 +81,13 @@ entities/route.ts             — API: list entities (GET), add entity (POST)
 components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
-    ClientContext.tsx                — React context: client state, client switcher, impersonation
+    ClientContext.tsx                — React context: client state, client switcher, impersonation, authorizedPackageIds
     EntityContext.tsx                — React context: multi-select entity state, dynamic entity list
-    PackageContext.tsx               — React context: packages + dashboards for current client
+    PackageContext.tsx               — React context: packages + dashboards for current client (filtered by authorizedPackageIds)
   utils/
     amplify-utils.ts                — Server-side Amplify runner
   lib/
-    types.ts                        — Shared interfaces (EntityConfig, Client, AuthContext, Package, Dashboard, DashboardWidget, WidgetTypeMeta, KPIs, PnLByMonth, PLCacheEntry)
+    types.ts                        — Shared interfaces (EntityConfig, Client, ClientUser, AuthContext, Package, Dashboard, DashboardWidget, WidgetTypeMeta, KPIs, PnLByMonth, PLCacheEntry)
     models/financial.ts             — Source-agnostic financial types (FinancialRow, FinancialDataSet)
     adapters/
       base.ts                       — DataAdapter interface + DataSourceCredentials
@@ -90,12 +95,14 @@ components/
       index.ts                      — Adapter registry (getAdapter)
     entities.ts                     — DynamoDB CRUD for Entities table
     clients.ts                      — DynamoDB CRUD for Clients table
-    client-membership.ts            — DynamoDB CRUD for ClientMemberships table
+    client-membership.ts            — DynamoDB CRUD for ClientMemberships table (getMembership, setMembership, deleteMembership)
+    client-users.ts                 — DynamoDB CRUD for ClientUsers table (getClientUsers, getClientUser, addClientUser, updateClientUser, deleteClientUser)
+    cognito-admin.ts                — Cognito admin operations (createCognitoUser, disableCognitoUser, enableCognitoUser, deleteCognitoUser)
     packages.ts                     — DynamoDB CRUD for Packages table (getPackages, getPackageBySlug, addPackage, updatePackage, deletePackage)
     dashboards.ts                   — DynamoDB CRUD for Dashboards table (getDashboards, getDashboardsByClient, getDashboardBySlug, resolveDashboard, addDashboard, updateDashboard, deleteDashboard)
     dashboard-widgets.ts            — DynamoDB CRUD for DashboardWidgets table (getWidgets, addWidget, updateWidget, deleteWidget, deleteWidgetsByDashboard)
     widget-type-meta.ts             — DynamoDB CRUD for WidgetTypeMeta table (getAllWidgetTypeMeta, getWidgetTypeMeta, upsertWidgetTypeMeta, deleteWidgetTypeMeta)
-    auth-context.ts                 — Auth context helper: resolves user session → clientId, role, isInternal
+    auth-context.ts                 — Auth context helper: resolves user session → clientId, role, isInternal, authorizedPackageIds
     cdata.ts                        — CData API client (fetchPLSummaries, CDataPLRow type)
     cache.ts                        — DynamoDB P&L cache (getCachedPL, setCachedPL, 24h staleness)
     dynamo.ts                       — DynamoDB document client + pagination helpers (scanAllItems, queryAllItems)
@@ -109,7 +116,7 @@ scripts/
   check-deployments.ts              — Poll Amplify deployment status (--watch for continuous polling)
   add-client.ts                     — CLI for creating clients and assigning user memberships
   migrate-to-clients.ts             — Migration script: creates default client, patches entities, assigns admin roles
-next.config.ts                      — Inlines env vars (CData creds + 8 DynamoDB table names) at build time
+next.config.ts                      — Inlines env vars (CData creds + 9 DynamoDB table names + Cognito User Pool ID) at build time
 tsconfig.json                       — Main TS config (esnext module, bundler resolution)
 amplify.yml                         — Amplify CI/CD pipeline (backend deploy + frontend build)
 .env.example                        — Env var template (CDATA_USER, CDATA_PAT, CDATA_CATALOG)
@@ -121,19 +128,20 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 - **Language**: TypeScript (strict mode, ES2020 target)
 - **Frontend**: React 18 + Next.js 15 (App Router) + @aws-amplify/ui-react
 - **Backend**: AWS Amplify Gen 2 (Cognito auth + DynamoDB + SSR compute role)
-- **Key dependencies**: axios, aws-amplify, @aws-amplify/adapter-nextjs, @aws-amplify/ui-react, @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, recharts, next, react
+- **Key dependencies**: axios, aws-amplify, @aws-amplify/adapter-nextjs, @aws-amplify/ui-react, @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, @aws-sdk/client-cognito-identity-provider, recharts, next, react
 - **Web app config**: CData credentials set as Amplify hosting environment variables (or `.env.local` for local dev)
 
 ## Multi-tenant architecture
 
 - **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, status?).
-- **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role).
+- **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role, clientUserId?).
 - **Roles**: `internal-admin` (sees all clients, can switch between them), `client-admin`, `client-viewer` (locked to their client).
-- **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal }`.
+- **Client users**: Sub-accounts within a client with restricted package access. Stored in `ClientUsers` table (id, clientId, email, firstName, lastName, status, authorizedPackageIds, cognitoUserId). Created by internal admins; auto-creates Cognito user + sends email invite. Linked to `ClientMemberships` via `clientUserId`.
+- **Auth context**: `src/lib/auth-context.ts` resolves the current user's session into `{ userId, clientId, role, isInternal, authorizedPackageIds }`. For client users, `authorizedPackageIds` is resolved from the linked `ClientUser` record. `null` = full access; `string[]` = restricted to those packages. Archived client users are denied access (returns null).
 - **Internal users**: See a client switcher dropdown in the header. Can switch between clients. See all packages/dashboards + admin pages (Clients, Widgets, Tools).
 - **External users**: Locked to their assigned client. No switcher visible. See only their client's packages and dashboards.
 - **Routing**: Auth-based. Dashboard URLs use `/{packageSlug}/{dashboardSlug}` pattern. Client selection via `x-client-id` header or stored in context.
-- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`.
+- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`, `authorizedPackageIds`.
 - **Client impersonation**: Internal admins can click "View as Client" (when a specific client is selected) to see exactly what that client sees — only their packages/dashboards, no admin nav (Clients/Widgets/Tools), no client switcher. An amber banner shows "Viewing as {clientName}" with an Exit button. Purely client-side; auto-clears when switching clients.
 
 ## Package / Dashboard / Widget system
@@ -200,16 +208,18 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 | Dashboards | `id` | `byPackage` (packageId), `byClient` (clientId) | `DASHBOARDS_TABLE` |
 | DashboardWidgets | `id` | `byDashboard` (dashboardId) | `DASHBOARD_WIDGETS_TABLE` |
 | WidgetTypeMeta | `id` | — | `WIDGET_TYPE_META_TABLE` |
+| ClientUsers | `id` | `byClient` (clientId) | `CLIENT_USERS_TABLE` |
 
 ### Cascade deletes
 
 - Delete package → deletes all dashboards in the package → deletes all widgets in those dashboards
 - Delete dashboard → deletes all widgets in the dashboard
-- Delete client → deletes all entities (client detail page handles this)
+- Delete client → deletes all client users (Cognito + membership + record) → deletes all entities (client detail page handles this)
+- Delete client user → deletes Cognito user → deletes ClientMembership → deletes ClientUser record
 
 ### React context
 
-`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `packagesLoading`, `refreshPackages`. Fetches packages and dashboards for the current client, re-fetches when client changes.
+`PackageProvider` / `usePackages()` in `src/context/PackageContext.tsx` provides `packages`, `dashboardsByPackage`, `packagesLoading`, `refreshPackages`. Fetches packages and dashboards for the current client, re-fetches when client changes. Filters by `authorizedPackageIds` from `ClientContext` — client users only see their authorized packages and dashboards.
 
 ## Client & entity management
 
@@ -217,13 +227,14 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Client detail page**: `/clients/:id` — full management for a single client:
   - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
   - **Entities section**: table with displayName + catalogId. Add/Edit/Delete entity CRUD.
+  - **Client Users section**: table with name, email, status badge, # packages. Add (creates Cognito + sends invite) / Edit (name, status, packages) / Delete (cascades Cognito + membership). Package authorization via checkboxes in modals.
   - **Packages section**: nested accordion tables. Package → Dashboards → Widgets. Full CRUD at each level with modal forms. Auto-slug generation from display names.
 - **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, createdAt)
 - **GSI**: `byClient` index on `clientId` — used to query entities belonging to a specific client
 - **ID model**: Internal UUID (`id`) is auto-generated; `catalogId` is the CData catalog name (e.g. `BrooklynRestaurants`)
 - **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { catalogId, displayName })`, `updateEntity()`, `deleteEntity()`
 - **API routes**: `GET/POST /api/entities`, `PUT/DELETE /api/entities/:id`; `GET/POST /api/clients`, `PUT/DELETE /api/clients/:id`
-- **Env var**: `ENTITIES_TABLE`, `CLIENTS_TABLE` — DynamoDB table names
+- **Env var**: `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_USERS_TABLE` — DynamoDB table names
 
 ## Widgets admin page
 
@@ -277,12 +288,13 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 ### Entity & client management
 - **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ catalogId, displayName }`; `PUT /api/entities/:id` — edit entity; `DELETE /api/entities/:id` — remove entity
 - **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
-- **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list)
+- **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds)
+- **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account + invite email `{ clientId, email, firstName, lastName, authorizedPackageIds }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
 
 ### Package / dashboard / widget management (internal admin only for writes)
 - **Packages**: `GET /api/packages?clientId=` — list packages; `POST /api/packages` — add package `{ clientId, slug, displayName, sortOrder }`; `PUT /api/packages/:id` — edit; `DELETE /api/packages/:id` — cascade delete (dashboards + widgets)
 - **Dashboards**: `GET /api/dashboards?packageId=|clientId=` — list dashboards; `POST /api/dashboards` — add `{ packageId, clientId, slug, displayName, sortOrder }`; `PUT /api/dashboards/:id` — edit; `DELETE /api/dashboards/:id` — cascade delete (widgets)
-- **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs
+- **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs (enforces package authorization for client users)
 - **Dashboard widgets**: `GET /api/dashboards/:id/widgets` — list widgets; `POST /api/dashboards/:id/widgets` — add `{ widgetTypeId, sortOrder, config? }`; `PUT /api/dashboards/:id/widgets/:widgetId` — edit; `DELETE /api/dashboards/:id/widgets/:widgetId` — remove
 - **Widget types**: `GET /api/widget-types` — list all types with name overrides; `PUT /api/widget-types/:id` — rename (empty displayName resets to default)
 
@@ -312,7 +324,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 
 ## Build-time env inlining (`next.config.ts`)
 
-CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`) and all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`) are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names fall back to `amplify_outputs.json` custom outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
+CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`), and `COGNITO_USER_POOL_ID` are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names and User Pool ID fall back to `amplify_outputs.json` custom/auth outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
 
 ## Local development
 
@@ -324,7 +336,7 @@ npx ampx sandbox
 npm run dev
 ```
 
-Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`.
+Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`.
 
 ## Deployment
 

@@ -57,6 +57,13 @@ clientUsersTable.addGlobalSecondaryIndex({
   partitionKey: { name: 'clientId', type: dynamodb.AttributeType.STRING },
 });
 
+// DynamoDB table for data source connections (global)
+const dataSourcesTable = new dynamodb.Table(cacheStack, 'DataSources', {
+  partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+  billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+  removalPolicy: RemovalPolicy.DESTROY,
+});
+
 // DynamoDB table for reporting packages (per-client)
 const packagesTable = new dynamodb.Table(cacheStack, 'Packages', {
   partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
@@ -114,6 +121,7 @@ dashboardsTable.grantReadWriteData(computeRole);
 dashboardWidgetsTable.grantReadWriteData(computeRole);
 widgetTypeMetaTable.grantReadWriteData(computeRole);
 clientUsersTable.grantReadWriteData(computeRole);
+dataSourcesTable.grantReadWriteData(computeRole);
 
 // Cognito admin operations for client user management
 computeRole.addToPolicy(new iam.PolicyStatement({
@@ -153,6 +161,7 @@ backend.addOutput({
     dashboardWidgetsTableName: dashboardWidgetsTable.tableName,
     widgetTypeMetaTableName: widgetTypeMetaTable.tableName,
     clientUsersTableName: clientUsersTable.tableName,
+    dataSourcesTableName: dataSourcesTable.tableName,
     ssrComputeRoleArn: computeRole.roleArn,
   },
 });

@@ -5,10 +5,20 @@ export interface EntityConfig {
   clientId: string;    // Client this entity belongs to
   catalogId: string;   // CData catalog name (e.g. "BrooklynRestaurants")
   displayName: string; // Human-readable label for the UI
+  dataSourceId?: string; // References DataSources table; omit = use env var defaults
   createdAt?: string;
   email?: string;
   firstName?: string;
   lastName?: string;
+}
+
+export interface DataSource {
+  id: string;
+  type: string;                    // 'cdata' for now
+  displayName: string;
+  config: Record<string, string>;  // Type-specific: {user, pat} for CData
+  status: 'active' | 'archived';
+  createdAt: string;
 }
 
 export interface Client {

@@ -215,6 +215,7 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
           {isInternal && !isImpersonating && (
             <>
               <Link href="/clients" className="nav-link">Clients</Link>
+              <Link href="/data-sources" className="nav-link">Data Sources</Link>
               <Link href="/widgets" className="nav-link">Widgets</Link>
               <Link href="/tools" className="nav-link">Tools</Link>
             </>

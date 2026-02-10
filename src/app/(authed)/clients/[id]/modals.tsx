@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Client, EntityConfig, Package, Dashboard, ClientUser } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, ClientUser, DataSource } from "@/lib/types";
 
 /* ─── Edit Client Modal ─── */
 
@@ -102,15 +102,18 @@ export function EditClientModal({
 
 export function AddEntityModal({
   clientId,
+  dataSources,
   onClose,
   onSaved,
 }: {
   clientId: string;
+  dataSources: DataSource[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState("");
   const [catalogId, setCatalogId] = useState("");
+  const [dataSourceId, setDataSourceId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -121,7 +124,7 @@ export function AddEntityModal({
       const res = await fetch("/api/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-client-id": clientId },
-        body: JSON.stringify({ catalogId, displayName }),
+        body: JSON.stringify({ catalogId, displayName, dataSourceId: dataSourceId || undefined }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -135,6 +138,8 @@ export function AddEntityModal({
     }
   };
 
+  const activeSources = dataSources.filter(ds => ds.status === 'active');
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -146,6 +151,15 @@ export function AddEntityModal({
         <div className="modal-field">
           <label>CData Catalog ID</label>
           <input type="text" value={catalogId} onChange={(e) => setCatalogId(e.target.value)} placeholder="e.g. BrooklynRestaurants" />
+        </div>
+        <div className="modal-field">
+          <label>Data Source</label>
+          <select value={dataSourceId} onChange={e => setDataSourceId(e.target.value)}>
+            <option value="">(Use default)</option>
+            {activeSources.map(ds => (
+              <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+            ))}
+          </select>
         </div>
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
@@ -163,15 +177,18 @@ export function AddEntityModal({
 
 export function EditEntityModal({
   entity,
+  dataSources,
   onClose,
   onSaved,
 }: {
   entity: EntityConfig;
+  dataSources: DataSource[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState(entity.displayName);
   const [catalogId, setCatalogId] = useState(entity.catalogId);
+  const [dataSourceId, setDataSourceId] = useState(entity.dataSourceId || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -182,7 +199,7 @@ export function EditEntityModal({
       const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catalogId, displayName }),
+        body: JSON.stringify({ catalogId, displayName, dataSourceId: dataSourceId || "" }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -196,6 +213,8 @@ export function EditEntityModal({
     }
   };
 
+  const activeSources = dataSources.filter(ds => ds.status === 'active');
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -207,6 +226,15 @@ export function EditEntityModal({
         <div className="modal-field">
           <label>CData Catalog ID</label>
           <input type="text" value={catalogId} onChange={(e) => setCatalogId(e.target.value)} />
+        </div>
+        <div className="modal-field">
+          <label>Data Source</label>
+          <select value={dataSourceId} onChange={e => setDataSourceId(e.target.value)}>
+            <option value="">(Use default)</option>
+            {activeSources.map(ds => (
+              <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+            ))}
+          </select>
         </div>
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
