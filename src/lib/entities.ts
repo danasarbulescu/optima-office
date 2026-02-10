@@ -1,6 +1,7 @@
 import { PutCommand, DeleteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, scanAllItems, queryAllItems } from './dynamo';
 import { EntityConfig, DataSourceBinding } from './types';
+import { deleteWarehouseData } from './warehouse';
 
 const TABLE_NAME = process.env.ENTITIES_TABLE || '';
 
@@ -89,8 +90,11 @@ export async function updateEntity(
 export async function deleteEntity(id: string): Promise<void> {
   if (!TABLE_NAME) throw new Error('ENTITIES_TABLE not configured');
 
-  await docClient.send(new DeleteCommand({
-    TableName: TABLE_NAME,
-    Key: { id },
-  }));
+  await Promise.all([
+    docClient.send(new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+    })),
+    deleteWarehouseData(id),
+  ]);
 }

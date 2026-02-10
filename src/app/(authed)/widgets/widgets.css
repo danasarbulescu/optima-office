@@ -224,6 +224,10 @@
   margin: 0;
 }
 
+.preview-kpi-wrapper {
+  max-width: 260px;
+}
+
 /* ─── Preview Source Selector ─── */
 
 .preview-source {
@@ -236,6 +240,11 @@
   color: #9a9caa;
   font-weight: 500;
   margin-bottom: 6px;
+}
+
+.preview-source-hint {
+  font-size: 13px;
+  color: #6a6b78;
 }
 
 .preview-source-controls {

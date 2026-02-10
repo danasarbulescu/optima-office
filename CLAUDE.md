@@ -133,6 +133,7 @@ scripts/
   check-deployments.ts              — Poll Amplify deployment status (--watch for continuous polling)
   add-client.ts                     — CLI for creating clients and assigning user memberships
   migrate-to-clients.ts             — Migration script: creates default client, patches entities, assigns admin roles
+  clean-orphaned-warehouse.ts       — Find/delete orphaned FinancialData rows (preview only by default, --execute to delete)
 next.config.ts                      — Inlines env vars (CData creds + 10 DynamoDB table names + Cognito User Pool ID) at build time
 tsconfig.json                       — Main TS config (esnext module, bundler resolution)
 amplify.yml                         — Amplify CI/CD pipeline (backend deploy + frontend build)
@@ -234,6 +235,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - Delete package → deletes all dashboards in the package → deletes all widgets in those dashboards
 - Delete dashboard → deletes all widgets in the dashboard
 - Delete client → deletes all client users (Cognito + membership + record) → deletes all entities (client detail page handles this)
+- Delete entity → deletes all warehouse data (FinancialData table) in parallel
 - Delete client user → deletes Cognito user → deletes ClientMembership → deletes ClientUser record
 
 ### React context
@@ -259,7 +261,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 ## Widgets admin pages
 
 - **List page**: `/widgets` (internal admin only). Lists all widget types from the static registry with DynamoDB name overrides. Widget names are clickable links to detail pages. Admins can rename widget types (stored in `WidgetTypeMeta` table) or reset to original names.
-- **Detail page**: `/widgets/[id]` — shows widget type info (name, category, component, KPI config for KPI widgets), rename action, live preview (renders the actual widget component using warehouse data from a configured entity), and a usage table listing all dashboards across all clients that use this widget type. Client names link to `/clients/[id]`. Preview entity selection is persisted in WidgetTypeMeta table (shared across all widget types).
+- **Detail page**: `/widgets/[id]` — shows widget type info (name, category, component, KPI config for KPI widgets), rename action, live preview (renders the actual widget component using warehouse data from a configured entity, with month picker), and a usage table listing all dashboards across all clients that use this widget type. Client names link to `/clients/[id]`. Preview entity selection is persisted in WidgetTypeMeta table (shared across all widget types). Month picker defaults to latest month with non-zero data.
 
 ## Multi-entity support
 
@@ -276,6 +278,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Metadata**: Special `#metadata` sort key stores `lastSyncedAt`, `entityName`, `sourceType` per entity
 - **Read**: `getWarehouseData(entityId)` — queries all items for entity, assembles into `FinancialRow[]`
 - **Write**: `setWarehouseData(entityId, entityName, rows, sourceType)` — explodes `FinancialRow[]` into per-period items, batch writes in chunks of 25
+- **Delete**: `deleteWarehouseData(entityId)` — queries all items for entity, batch deletes in chunks of 25. Called by `deleteEntity` cascade
 - **Scale**: ~9 categories × ~36 months = ~325 items per entity
 - **Env var**: `FINANCIAL_DATA_TABLE`
 
@@ -344,7 +347,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 - **Dashboards**: `GET /api/dashboards?packageId=|clientId=` — list dashboards; `POST /api/dashboards` — add `{ packageId, clientId, slug, displayName, sortOrder }`; `PUT /api/dashboards/:id` — edit; `DELETE /api/dashboards/:id` — cascade delete (widgets)
 - **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs (enforces package/dashboard authorization for client users)
 - **Dashboard widgets**: `GET /api/dashboards/:id/widgets` — list widgets; `POST /api/dashboards/:id/widgets` — add `{ widgetTypeId, sortOrder, config? }`; `PUT /api/dashboards/:id/widgets/:widgetId` — edit; `DELETE /api/dashboards/:id/widgets/:widgetId` — remove
-- **Widget types**: `GET /api/widget-types` — list all types with name overrides; `GET /api/widget-types/:id` — get single type detail; `PUT /api/widget-types/:id` — rename (empty displayName resets to default); `GET /api/widget-types/:id/usage` — list dashboards using this type (with client/package context); `GET /api/widget-types/:id/preview` — preview data (KPIs/PnL/trend) computed from configured entity's warehouse data; `GET /api/widget-types/preview-config` — get saved preview entity ID; `PUT /api/widget-types/preview-config` — save preview entity `{ entityId }`
+- **Widget types**: `GET /api/widget-types` — list all types with name overrides; `GET /api/widget-types/:id` — get single type detail; `PUT /api/widget-types/:id` — rename (empty displayName resets to default); `GET /api/widget-types/:id/usage` — list dashboards using this type (with client/package context); `GET /api/widget-types/:id/preview?month=YYYY-MM` — preview data (KPIs/PnL/trend) computed from configured entity's warehouse data (month optional, defaults to latest with non-zero data); `GET /api/widget-types/preview-config` — get saved preview entity ID; `PUT /api/widget-types/preview-config` — save preview entity `{ entityId }`
 
 ### Widget data (financial data endpoints)
 - **Financial snapshot**: `GET /api/widget-data/financial-snapshot?month=YYYY-MM&entities=id1,id2&refresh=true` — returns `{ kpis, pnlByMonth, selectedMonth, entityName }`

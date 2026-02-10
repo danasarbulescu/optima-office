@@ -50,11 +50,12 @@ export default function WidgetTypeDetailPage() {
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(true);
 
-  // Preview entity state
+  // Preview entity + month state
   const [entities, setEntities] = useState<EntityConfig[]>([]);
   const [previewEntityId, setPreviewEntityId] = useState("");
   const [savedEntityId, setSavedEntityId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [previewMonth, setPreviewMonth] = useState("");
 
   const fetchWidgetType = useCallback(async () => {
     try {
@@ -77,13 +78,17 @@ export default function WidgetTypeDetailPage() {
     } catch { /* non-fatal */ }
   }, [id]);
 
-  const fetchPreview = useCallback(async () => {
+  const fetchPreview = useCallback(async (month?: string) => {
     setPreviewLoading(true);
     try {
-      const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}/preview`);
+      const params = month ? `?month=${month}` : '';
+      const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}/preview${params}`);
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
+        if (data.selectedMonth && !month) {
+          setPreviewMonth(data.selectedMonth);
+        }
       }
     } catch { /* non-fatal */ }
     finally { setPreviewLoading(false); }
@@ -130,6 +135,7 @@ export default function WidgetTypeDetailPage() {
       });
       if (res.ok) {
         setSavedEntityId(previewEntityId);
+        setPreviewMonth('');
         fetchPreview();
       }
     } catch { /* non-fatal */ }
@@ -212,28 +218,49 @@ export default function WidgetTypeDetailPage() {
 
         <div className="preview-source">
           <label className="preview-source-label">Preview entity</label>
-          <div className="preview-source-controls">
-            <select
-              value={previewEntityId}
-              onChange={(e) => setPreviewEntityId(e.target.value)}
-              disabled={saving}
-            >
-              <option value="">Select an entity...</option>
-              {entities.map((e) => (
-                <option key={e.id} value={e.id}>{e.displayName}</option>
-              ))}
-            </select>
-            {hasUnsavedChange && (
-              <button
-                className="preview-save-btn"
-                disabled={!previewEntityId || saving}
-                onClick={handleSavePreviewEntity}
+          {entities.length === 0 ? (
+            <div className="preview-source-hint">
+              No entities available. <Link href="/clients" className="widget-usage-link">Create a client entity</Link> first.
+            </div>
+          ) : (
+            <div className="preview-source-controls">
+              <select
+                value={previewEntityId}
+                onChange={(e) => setPreviewEntityId(e.target.value)}
+                disabled={saving}
               >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            )}
-          </div>
+                <option value="">Select an entity...</option>
+                {entities.map((e) => (
+                  <option key={e.id} value={e.id}>{e.displayName}</option>
+                ))}
+              </select>
+              {hasUnsavedChange && (
+                <button
+                  className="preview-save-btn"
+                  disabled={!previewEntityId || saving}
+                  onClick={handleSavePreviewEntity}
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
+
+        {previewData?.available && previewMonth && (
+          <div className="preview-source">
+            <label className="preview-source-label">Month</label>
+            <input
+              type="month"
+              className="month-picker"
+              value={previewMonth}
+              onChange={(e) => {
+                setPreviewMonth(e.target.value);
+                fetchPreview(e.target.value);
+              }}
+            />
+          </div>
+        )}
 
         {previewLoading ? (
           <div className="widget-detail-empty">Loading preview...</div>
@@ -246,7 +273,7 @@ export default function WidgetTypeDetailPage() {
         ) : (
           <div className="widget-preview-frame">
             {widgetType.component === 'KpiCard' && kpiConfig && previewData.kpis && (
-              <div className="widget-grid" style={{ maxWidth: 280 }}>
+              <div className="preview-kpi-wrapper">
                 <KpiCard config={kpiConfig} kpis={previewData.kpis} />
               </div>
             )}

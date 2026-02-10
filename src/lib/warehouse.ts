@@ -94,3 +94,30 @@ export async function setWarehouseData(
     }));
   }
 }
+
+/**
+ * Delete all warehouse data for an entity (data items + metadata).
+ */
+export async function deleteWarehouseData(entityId: string): Promise<void> {
+  if (!TABLE_NAME) return;
+
+  const items = await queryAllItems<FinancialDataItem>({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'entityId = :eid',
+    ExpressionAttributeValues: { ':eid': entityId },
+    ProjectionExpression: 'entityId, sk',
+  });
+
+  if (items.length === 0) return;
+
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const chunk = items.slice(i, i + BATCH_SIZE);
+    await docClient.send(new BatchWriteCommand({
+      RequestItems: {
+        [TABLE_NAME]: chunk.map(item => ({
+          DeleteRequest: { Key: { entityId: item.entityId, sk: item.sk } },
+        })),
+      },
+    }));
+  }
+}

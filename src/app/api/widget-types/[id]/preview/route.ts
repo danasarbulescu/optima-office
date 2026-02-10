@@ -47,13 +47,20 @@ export async function GET(
     return NextResponse.json({ available: false });
   }
 
-  // Derive the latest month from the data
-  const allPeriods = rows.flatMap(r => Object.keys(r.periods));
-  if (allPeriods.length === 0) {
+  // Derive the latest month that has non-zero data (CData returns future months as 0)
+  const activePeriods = [...new Set(rows.flatMap(r =>
+    Object.entries(r.periods).filter(([, v]) => v !== 0).map(([p]) => p),
+  ))].sort();
+  if (activePeriods.length === 0) {
     return NextResponse.json({ available: false });
   }
-  const latestMonth = allPeriods.sort().pop()!;
-  const [yearStr, moStr] = latestMonth.split('-');
+
+  // Use ?month= param if provided, otherwise default to latest active month
+  const monthParam = request.nextUrl.searchParams.get('month');
+  const selectedMonth = (monthParam && /^\d{4}-\d{2}$/.test(monthParam))
+    ? monthParam
+    : activePeriods[activePeriods.length - 1];
+  const [yearStr, moStr] = selectedMonth.split('-');
   const year = Number(yearStr);
   const monthIdx = parseInt(moStr, 10) - 1;
 
@@ -66,16 +73,16 @@ export async function GET(
   switch (wt.component) {
     case 'KpiCard': {
       const kpis = computeKPIs(curGroups, pyHasData ? pyGroups : null, monthIdx);
-      return NextResponse.json({ available: true, component: 'KpiCard', kpis, selectedMonth: latestMonth });
+      return NextResponse.json({ available: true, component: 'KpiCard', kpis, selectedMonth });
     }
     case 'PnlTable': {
-      const pnl = build13MonthPnL(curGroups, pyHasData ? pyGroups : null, latestMonth);
-      return NextResponse.json({ available: true, component: 'PnlTable', pnl, selectedMonth: latestMonth });
+      const pnl = build13MonthPnL(curGroups, pyHasData ? pyGroups : null, selectedMonth);
+      return NextResponse.json({ available: true, component: 'PnlTable', pnl, selectedMonth });
     }
     case 'TrendChart': {
-      const startMonth = subtractMonths(latestMonth, 11);
-      const data = buildExpensesTrend(rows, startMonth, latestMonth);
-      return NextResponse.json({ available: true, component: 'TrendChart', data, entityName: 'Preview' });
+      const startMonth = subtractMonths(selectedMonth, 11);
+      const data = buildExpensesTrend(rows, startMonth, selectedMonth);
+      return NextResponse.json({ available: true, component: 'TrendChart', data, selectedMonth, entityName: 'Preview' });
     }
     default:
       return NextResponse.json({ available: false });
