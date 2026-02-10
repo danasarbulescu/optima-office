@@ -972,11 +972,14 @@ export function EditClientUserModal({
 }) {
   const [firstName, setFirstName] = useState(clientUser.firstName);
   const [lastName, setLastName] = useState(clientUser.lastName);
+  const [email, setEmail] = useState(clientUser.email);
   const [status, setStatus] = useState(clientUser.status);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSave = async () => {
+  const emailChanged = email.trim().toLowerCase() !== clientUser.email.toLowerCase();
+
+  const handleSave = async (sendInvite?: boolean) => {
     setSaving(true);
     setError("");
     try {
@@ -987,6 +990,7 @@ export function EditClientUserModal({
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           status,
+          ...(emailChanged && { email: email.trim(), sendInvite: !!sendInvite }),
         }),
       });
       if (!res.ok) {
@@ -1015,7 +1019,7 @@ export function EditClientUserModal({
         </div>
         <div className="modal-field">
           <label>Email</label>
-          <input type="email" value={clientUser.email} disabled className="input-disabled" />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
         <div className="modal-field">
           <label>Status</label>
@@ -1027,13 +1031,32 @@ export function EditClientUserModal({
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button
-            className="modal-save-btn"
-            onClick={handleSave}
-            disabled={saving || !firstName.trim() || !lastName.trim()}
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
+          {emailChanged ? (
+            <>
+              <button
+                className="modal-save-btn modal-save-secondary"
+                onClick={() => handleSave(false)}
+                disabled={saving || !firstName.trim() || !lastName.trim() || !email.trim()}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+              <button
+                className="modal-save-btn"
+                onClick={() => handleSave(true)}
+                disabled={saving || !firstName.trim() || !lastName.trim() || !email.trim()}
+              >
+                {saving ? "Saving..." : "Save & Invite"}
+              </button>
+            </>
+          ) : (
+            <button
+              className="modal-save-btn"
+              onClick={() => handleSave()}
+              disabled={saving || !firstName.trim() || !lastName.trim()}
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          )}
         </div>
       </div>
     </div>

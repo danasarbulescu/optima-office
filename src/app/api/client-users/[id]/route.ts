@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
 import { getClientUser, updateClientUser, deleteClientUser } from "@/lib/client-users";
-import { disableCognitoUser, enableCognitoUser, deleteCognitoUser } from "@/lib/cognito-admin";
-import { deleteMembership } from "@/lib/client-membership";
+import { createCognitoUser, disableCognitoUser, enableCognitoUser, deleteCognitoUser } from "@/lib/cognito-admin";
+import { setMembership, deleteMembership } from "@/lib/client-membership";
 
 export async function GET(
   request: NextRequest,
@@ -49,7 +49,52 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds } = body;
+    const { firstName, lastName, email, sendInvite, status, authorizedPackageIds, authorizedDashboardIds } = body;
+
+    const emailChanged = email && email.trim().toLowerCase() !== clientUser.email.toLowerCase();
+
+    // Handle email change: recreate Cognito user + update membership
+    if (emailChanged) {
+      const newEmail = email.trim();
+      const newFirstName = (firstName ?? clientUser.firstName).trim();
+      const newLastName = (lastName ?? clientUser.lastName).trim();
+
+      // Delete old Cognito user
+      if (clientUser.email) {
+        try {
+          await deleteCognitoUser(clientUser.email);
+        } catch (err: any) {
+          console.warn("Cognito delete warning during email change:", err.message);
+        }
+      }
+
+      // Create new Cognito user
+      const newCognitoUserId = await createCognitoUser(
+        newEmail, newFirstName, newLastName,
+        { suppressInvite: !sendInvite },
+      );
+
+      // Update membership: delete old, create new
+      if (clientUser.cognitoUserId) {
+        try {
+          await deleteMembership(clientUser.cognitoUserId);
+        } catch (err: any) {
+          console.warn("Membership delete warning during email change:", err.message);
+        }
+      }
+      await setMembership(newCognitoUserId, clientUser.clientId, 'client-viewer', clientUser.id);
+
+      // Update DynamoDB record
+      const updates: Record<string, unknown> = { email: newEmail, cognitoUserId: newCognitoUserId };
+      if (firstName !== undefined) updates.firstName = firstName;
+      if (lastName !== undefined) updates.lastName = lastName;
+      if (status !== undefined) updates.status = status;
+      if (authorizedPackageIds !== undefined) updates.authorizedPackageIds = authorizedPackageIds;
+      if (authorizedDashboardIds !== undefined) updates.authorizedDashboardIds = authorizedDashboardIds;
+
+      await updateClientUser(id, updates);
+      return NextResponse.json({ success: true });
+    }
 
     // Handle status changes: disable/enable Cognito user
     if (status !== undefined && status !== clientUser.status && clientUser.email) {
