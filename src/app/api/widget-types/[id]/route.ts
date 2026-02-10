@@ -1,7 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
 import { getWidgetType } from "@/widgets/registry";
-import { upsertWidgetTypeMeta, deleteWidgetTypeMeta } from "@/lib/widget-type-meta";
+import { getWidgetTypeMeta, upsertWidgetTypeMeta, deleteWidgetTypeMeta } from "@/lib/widget-type-meta";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const auth = await getAuthContext(request.headers.get("x-client-id"));
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!auth.isInternal) {
+    return NextResponse.json({ error: "Forbidden: internal admin only" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const wt = getWidgetType(id);
+  if (!wt) {
+    return NextResponse.json({ error: "Widget type not found in registry" }, { status: 404 });
+  }
+
+  const override = await getWidgetTypeMeta(id);
+  const widgetType = {
+    ...wt,
+    originalName: wt.name,
+    name: override?.displayName || wt.name,
+    hasOverride: !!override,
+  };
+
+  return NextResponse.json({ widgetType });
+}
 
 export async function PUT(
   request: NextRequest,

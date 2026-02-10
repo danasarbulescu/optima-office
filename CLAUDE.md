@@ -11,7 +11,8 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 - **Widget**: An instance of a widget type placed on a dashboard. Has a type, sort order, and optional config.
 - **Widget Type**: A reusable component definition (e.g., "Revenue Current Month" KPI card). Defined in code, display names overridable via DynamoDB.
 - **Client User**: A sub-account within a client with restricted package access (e.g., a client employee who can only see certain reports). Managed by internal admins; auto-creates a Cognito login with email invite.
-- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many).
+- **Data Source**: A configured external data connection (e.g., a CData Connect Cloud account). Global (not per-client). Entities optionally bind to a data source for credentials; unbound entities fall back to global env vars.
+- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many). Entity (many) → Data Source (0..1).
 
 ## Workflows
 
@@ -23,7 +24,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 ```
 amplify/
   auth/resource.ts                  — Cognito auth (email, no self-signup)
-  backend.ts                        — defineBackend (auth + 9 DynamoDB tables + SSR compute role + Cognito admin IAM)
+  backend.ts                        — defineBackend (auth + 10 DynamoDB tables + SSR compute role + Cognito admin IAM)
 src/
   app/
     layout.tsx                      — Root layout with ConfigureAmplify
@@ -42,14 +43,21 @@ src/
         [id]/modals.tsx             — CRUD modals: EditClient, Add/EditEntity, Add/EditPackage, Add/EditDashboard, AddWidget, Add/EditClientUser
         [id]/PackageAccordion.tsx   — Nested accordion for Package → Dashboard → Widget hierarchy
         clients.css                 — Clients page styles
+      data-sources/
+        page.tsx                    — Data sources admin: list, add, edit, delete data sources (internal admin only)
+        data-sources.css            — Data sources page styles
       widgets/
-        page.tsx                    — Widget types admin: list all widget types, rename (DynamoDB override)
-        widgets.css                 — Widgets page styles
+        page.tsx                    — Widget types admin: list all widget types (clickable), rename (DynamoDB override)
+        [id]/page.tsx               — Widget type detail: info, KPI config, usage table (which dashboards use it)
+        EditWidgetTypeModal.tsx     — Shared rename modal (used by list + detail pages)
+        widgets.css                 — Widgets page + detail page styles
       tools/
         page.tsx                    — Sandbox data sync tool (preview + execute)
         tools.css                   — Tools page styles
     api/
-entities/route.ts             — API: list entities (GET), add entity (POST)
+      data-sources/route.ts         — API: list data sources (GET), add data source (POST) — internal admin only
+      data-sources/[id]/route.ts    — API: get (GET), edit (PUT), delete with entity ref check (DELETE) — internal admin only
+      entities/route.ts             — API: list entities (GET), add entity (POST)
       entities/[id]/route.ts        — API: edit entity (PUT), delete entity (DELETE)
       clients/route.ts              — API: list clients (GET), add client (POST) — internal admin only
       clients/[id]/route.ts         — API: edit client (PUT), delete client (DELETE) — internal admin only
@@ -63,7 +71,8 @@ entities/route.ts             — API: list entities (GET), add entity (POST)
       dashboards/[id]/widgets/route.ts       — API: list widgets (GET), add widget (POST)
       dashboards/[id]/widgets/[widgetId]/route.ts — API: edit widget (PUT), delete widget (DELETE)
       widget-types/route.ts         — API: list all widget types with DynamoDB name overrides (GET)
-      widget-types/[id]/route.ts    — API: rename widget type or reset to default (PUT)
+      widget-types/[id]/route.ts    — API: get widget type detail (GET), rename or reset to default (PUT)
+      widget-types/[id]/usage/route.ts — API: get dashboards using this widget type (GET)
       widget-data/
         financial-snapshot/route.ts — API: KPIs + P&L table data (GET)
         expense-trend/route.ts      — API: expense trend chart data (GET)
@@ -87,12 +96,14 @@ components/
   utils/
     amplify-utils.ts                — Server-side Amplify runner
   lib/
-    types.ts                        — Shared interfaces (EntityConfig, Client, ClientUser, AuthContext, Package, Dashboard, DashboardWidget, WidgetTypeMeta, KPIs, PnLByMonth, PLCacheEntry)
+    types.ts                        — Shared interfaces (EntityConfig, Client, ClientUser, DataSource, AuthContext, Package, Dashboard, DashboardWidget, WidgetTypeMeta, KPIs, PnLByMonth, PLCacheEntry)
     models/financial.ts             — Source-agnostic financial types (FinancialRow, FinancialDataSet)
     adapters/
       base.ts                       — DataAdapter interface + DataSourceCredentials
       quickbooks.ts                 — QuickBooksAdapter: normalizes CData rows to FinancialRow
       index.ts                      — Adapter registry (getAdapter)
+    data-source-types.ts            — Data source type registry (credential field definitions per type, e.g. CData)
+    data-sources.ts                 — DynamoDB CRUD for DataSources table (getDataSources, getDataSource, addDataSource, updateDataSource, deleteDataSource)
     entities.ts                     — DynamoDB CRUD for Entities table
     clients.ts                      — DynamoDB CRUD for Clients table
     client-membership.ts            — DynamoDB CRUD for ClientMemberships table (getMembership, setMembership, deleteMembership)
@@ -100,13 +111,13 @@ components/
     cognito-admin.ts                — Cognito admin operations (createCognitoUser, disableCognitoUser, enableCognitoUser, deleteCognitoUser)
     packages.ts                     — DynamoDB CRUD for Packages table (getPackages, getPackageBySlug, addPackage, updatePackage, deletePackage)
     dashboards.ts                   — DynamoDB CRUD for Dashboards table (getDashboards, getDashboardsByClient, getDashboardBySlug, resolveDashboard, addDashboard, updateDashboard, deleteDashboard)
-    dashboard-widgets.ts            — DynamoDB CRUD for DashboardWidgets table (getWidgets, addWidget, updateWidget, deleteWidget, deleteWidgetsByDashboard)
+    dashboard-widgets.ts            — DynamoDB CRUD for DashboardWidgets table (getWidgets, getWidgetsByType, addWidget, updateWidget, deleteWidget, deleteWidgetsByDashboard)
     widget-type-meta.ts             — DynamoDB CRUD for WidgetTypeMeta table (getAllWidgetTypeMeta, getWidgetTypeMeta, upsertWidgetTypeMeta, deleteWidgetTypeMeta)
     auth-context.ts                 — Auth context helper: resolves user session → clientId, role, isInternal, authorizedPackageIds
     cdata.ts                        — CData API client (fetchPLSummaries, CDataPLRow type)
     cache.ts                        — DynamoDB P&L cache (getCachedPL, setCachedPL, 24h staleness)
     dynamo.ts                       — DynamoDB document client + pagination helpers (scanAllItems, queryAllItems)
-    fetch-pl.ts                     — Shared fetch helper (cache-first, adapter-based, multi-entity merge)
+    fetch-pl.ts                     — Shared fetch helper (cache-first, adapter-based, per-entity data source credentials, multi-entity merge)
     merge.ts                        — mergeFinancialRows: sums period values by category across entities
     compute.ts                      — buildGroupValues, computeKPIs, build13MonthPnL, buildExpensesTrend
     format.ts                       — formatAbbrev, formatPct, formatVariance
@@ -116,7 +127,7 @@ scripts/
   check-deployments.ts              — Poll Amplify deployment status (--watch for continuous polling)
   add-client.ts                     — CLI for creating clients and assigning user memberships
   migrate-to-clients.ts             — Migration script: creates default client, patches entities, assigns admin roles
-next.config.ts                      — Inlines env vars (CData creds + 9 DynamoDB table names + Cognito User Pool ID) at build time
+next.config.ts                      — Inlines env vars (CData creds + 10 DynamoDB table names + Cognito User Pool ID) at build time
 tsconfig.json                       — Main TS config (esnext module, bundler resolution)
 amplify.yml                         — Amplify CI/CD pipeline (backend deploy + frontend build)
 .env.example                        — Env var template (CDATA_USER, CDATA_PAT, CDATA_CATALOG)
@@ -189,7 +200,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 `PackageNav` component in the authed layout renders navigation from packages/dashboards:
 - Packages with a single dashboard render as a direct link: `/{packageSlug}/{dashboardSlug}`
 - Packages with multiple dashboards render as a dropdown menu
-- Internal admins also see Clients, Widgets, Tools links (hidden during impersonation)
+- Internal admins also see Clients, Data Sources, Widgets, Tools links (hidden during impersonation)
 
 ### Dashboard page rendering (`src/app/(authed)/[packageSlug]/[dashboardSlug]/page.tsx`)
 
@@ -209,6 +220,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 | DashboardWidgets | `id` | `byDashboard` (dashboardId) | `DASHBOARD_WIDGETS_TABLE` |
 | WidgetTypeMeta | `id` | — | `WIDGET_TYPE_META_TABLE` |
 | ClientUsers | `id` | `byClient` (clientId) | `CLIENT_USERS_TABLE` |
+| DataSources | `id` | — | `DATA_SOURCES_TABLE` |
 
 ### Cascade deletes
 
@@ -226,19 +238,20 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Clients list page**: `/clients` — sortable table (displayName, slug), click through to client detail. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
 - **Client detail page**: `/clients/:id` — full management for a single client:
   - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
-  - **Entities section**: table with displayName + catalogId. Add/Edit/Delete entity CRUD.
+  - **Entities section**: table with displayName, catalogId, data source. Add/Edit/Delete entity CRUD with optional data source binding.
   - **Client Users section**: table with name, email, status badge, # packages. Add (creates Cognito + sends invite) / Edit (name, status, packages) / Delete (cascades Cognito + membership). Package authorization via checkboxes in modals.
   - **Packages section**: nested accordion tables. Package → Dashboards → Widgets. Full CRUD at each level with modal forms. Auto-slug generation from display names.
-- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, createdAt)
+- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, dataSourceId?, createdAt)
 - **GSI**: `byClient` index on `clientId` — used to query entities belonging to a specific client
 - **ID model**: Internal UUID (`id`) is auto-generated; `catalogId` is the CData catalog name (e.g. `BrooklynRestaurants`)
-- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { catalogId, displayName })`, `updateEntity()`, `deleteEntity()`
+- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { catalogId, displayName, dataSourceId? })`, `updateEntity()`, `deleteEntity()`
 - **API routes**: `GET/POST /api/entities`, `PUT/DELETE /api/entities/:id`; `GET/POST /api/clients`, `PUT/DELETE /api/clients/:id`
-- **Env var**: `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_USERS_TABLE` — DynamoDB table names
+- **Env var**: `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE` — DynamoDB table names
 
-## Widgets admin page
+## Widgets admin pages
 
-Admin page at `/widgets` (internal admin only). Lists all widget types from the static registry with DynamoDB name overrides. Admins can rename widget types (stored in `WidgetTypeMeta` table) or reset to original names.
+- **List page**: `/widgets` (internal admin only). Lists all widget types from the static registry with DynamoDB name overrides. Widget names are clickable links to detail pages. Admins can rename widget types (stored in `WidgetTypeMeta` table) or reset to original names.
+- **Detail page**: `/widgets/[id]` — shows widget type info (name, category, component, KPI config for KPI widgets), rename action, and a usage table listing all dashboards across all clients that use this widget type. Client names link to `/clients/[id]`.
 
 ## Multi-entity support
 
@@ -256,12 +269,22 @@ Admin page at `/widgets` (internal admin only). Lists all widget types from the 
 - **Combined mode**: Each entity cached individually; combined view does parallel cache lookups then in-memory merge
 - **Env var**: `PL_CACHE_TABLE` — DynamoDB table name
 
+## Data sources
+
+- **Admin page**: `/data-sources` — internal admin only. Table listing all data sources with name, type, status. CRUD via modals.
+- **Type registry**: `src/lib/data-source-types.ts` — defines known types (currently `cdata` = CData Connect Cloud) with credential field definitions (key, label, sensitive flag, placeholder). Used by admin page for dynamic form rendering and API for validation.
+- **DynamoDB**: `DataSources` table (id, type, displayName, config, status, createdAt). No GSI — global scan (few records).
+- **CRUD**: `src/lib/data-sources.ts` — `getDataSources()`, `getDataSource(id)`, `addDataSource()`, `updateDataSource()`, `deleteDataSource()`
+- **Entity binding**: Entities optionally reference a data source via `dataSourceId`. Entity modals show a dropdown with active data sources + "(Use default)" option.
+- **Fetch integration**: `src/lib/fetch-pl.ts` resolves adapter type + credentials from the entity's data source. Falls back to global `CDATA_USER`/`CDATA_PAT` env vars if no `dataSourceId`.
+- **Delete protection**: API returns 409 Conflict if entities still reference a data source being deleted.
+
 ## Data abstraction layer
 
 - **Financial model**: `FinancialRow { category, periods: Record<"2024-01", number> }` in `src/lib/models/financial.ts` — source-agnostic representation
 - **Adapter pattern**: `DataAdapter` interface in `src/lib/adapters/base.ts` — each data source implements `fetchFinancialData(catalogId, credentials) → FinancialRow[]`
 - **QuickBooksAdapter**: `src/lib/adapters/quickbooks.ts` — wraps CData, normalizes `Jan_2024` columns to `2024-01` period keys
-- **Adapter registry**: `getAdapter('quickbooks')` in `src/lib/adapters/index.ts`
+- **Adapter registry**: `getAdapter(type)` in `src/lib/adapters/index.ts` — type resolved from entity's data source record (e.g. `cdata` → `quickbooks`)
 - **Downstream code** (cache, compute, merge) works exclusively with `FinancialRow` — no source-specific types
 
 ## CData integration (`src/lib/cdata.ts`)
@@ -285,8 +308,11 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 
 ## API
 
+### Data source management (internal admin only)
+- **Data sources**: `GET /api/data-sources` — list all data sources; `POST /api/data-sources` — add `{ type, displayName, config }`; `GET /api/data-sources/:id` — get single; `PUT /api/data-sources/:id` — update `{ displayName, config, status }`; `DELETE /api/data-sources/:id` — delete (409 if entities bound)
+
 ### Entity & client management
-- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ catalogId, displayName }`; `PUT /api/entities/:id` — edit entity; `DELETE /api/entities/:id` — remove entity
+- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ catalogId, displayName, dataSourceId? }`; `PUT /api/entities/:id` — edit entity (accepts `dataSourceId`); `DELETE /api/entities/:id` — remove entity
 - **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds)
 - **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account + invite email `{ clientId, email, firstName, lastName, authorizedPackageIds }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)
@@ -296,7 +322,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 - **Dashboards**: `GET /api/dashboards?packageId=|clientId=` — list dashboards; `POST /api/dashboards` — add `{ packageId, clientId, slug, displayName, sortOrder }`; `PUT /api/dashboards/:id` — edit; `DELETE /api/dashboards/:id` — cascade delete (widgets)
 - **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs (enforces package authorization for client users)
 - **Dashboard widgets**: `GET /api/dashboards/:id/widgets` — list widgets; `POST /api/dashboards/:id/widgets` — add `{ widgetTypeId, sortOrder, config? }`; `PUT /api/dashboards/:id/widgets/:widgetId` — edit; `DELETE /api/dashboards/:id/widgets/:widgetId` — remove
-- **Widget types**: `GET /api/widget-types` — list all types with name overrides; `PUT /api/widget-types/:id` — rename (empty displayName resets to default)
+- **Widget types**: `GET /api/widget-types` — list all types with name overrides; `GET /api/widget-types/:id` — get single type detail; `PUT /api/widget-types/:id` — rename (empty displayName resets to default); `GET /api/widget-types/:id/usage` — list dashboards using this type (with client/package context)
 
 ### Widget data (financial data endpoints)
 - **Financial snapshot**: `GET /api/widget-data/financial-snapshot?month=YYYY-MM&entities=id1,id2&refresh=true` — returns `{ kpis, pnlByMonth, selectedMonth, entityName }`
@@ -324,7 +350,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 
 ## Build-time env inlining (`next.config.ts`)
 
-CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`), and `COGNITO_USER_POOL_ID` are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names and User Pool ID fall back to `amplify_outputs.json` custom/auth outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
+CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`), and `COGNITO_USER_POOL_ID` are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names and User Pool ID fall back to `amplify_outputs.json` custom/auth outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
 
 ## Local development
 
@@ -336,7 +362,7 @@ npx ampx sandbox
 npm run dev
 ```
 
-Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`.
+Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`.
 
 ## Deployment
 

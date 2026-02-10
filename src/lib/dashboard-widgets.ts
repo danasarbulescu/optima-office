@@ -1,5 +1,5 @@
 import { PutCommand, DeleteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, queryAllItems } from './dynamo';
+import { docClient, queryAllItems, scanAllItems } from './dynamo';
 import { DashboardWidget } from './types';
 
 const TABLE_NAME = process.env.DASHBOARD_WIDGETS_TABLE || '';
@@ -54,6 +54,15 @@ export async function updateWidget(
 export async function deleteWidget(id: string): Promise<void> {
   if (!TABLE_NAME) throw new Error('DASHBOARD_WIDGETS_TABLE not configured');
   await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { id } }));
+}
+
+export async function getWidgetsByType(widgetTypeId: string): Promise<DashboardWidget[]> {
+  if (!TABLE_NAME) return [];
+  return scanAllItems<DashboardWidget>({
+    TableName: TABLE_NAME,
+    FilterExpression: 'widgetTypeId = :wt',
+    ExpressionAttributeValues: { ':wt': widgetTypeId },
+  });
 }
 
 export async function deleteWidgetsByDashboard(dashboardId: string): Promise<void> {
