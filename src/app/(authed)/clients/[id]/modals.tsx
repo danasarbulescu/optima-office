@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Client, EntityConfig, Package, Dashboard, ClientUser, DataSource } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, ClientUser, DataSource, getEntityBindings } from "@/lib/types";
 import { DATA_SOURCE_TYPES } from "@/lib/data-source-types";
+
+interface BindingState {
+  dataSourceId: string;
+  sourceConfig: Record<string, string>;
+}
 
 /* ─── Edit Client Modal ─── */
 
@@ -113,35 +118,61 @@ export function AddEntityModal({
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState("");
-  const [dataSourceId, setDataSourceId] = useState("");
-  const [sourceConfig, setSourceConfig] = useState<Record<string, string>>({});
+  const [bindings, setBindings] = useState<BindingState[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
 
   const activeSources = dataSources.filter(ds => ds.status === 'active');
-  const selectedDs = activeSources.find(ds => ds.id === dataSourceId);
-  const dsType = selectedDs?.type;
-  const entityFields = dsType ? (DATA_SOURCE_TYPES[dsType]?.entityFields || []) : [];
 
-  const handleDataSourceChange = (newDsId: string) => {
-    setDataSourceId(newDsId);
-    setSourceConfig({});
+  const toggleFieldVisibility = (key: string) => {
+    setVisibleFields(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   };
 
-  const updateSourceConfig = (key: string, value: string) => {
-    setSourceConfig(prev => ({ ...prev, [key]: value }));
+  const addBinding = () => {
+    setBindings(prev => [...prev, { dataSourceId: '', sourceConfig: {} }]);
   };
 
-  const entityFieldsValid = entityFields.every(f => (sourceConfig[f.key] || '').trim());
+  const removeBinding = (index: number) => {
+    setBindings(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateBindingDataSource = (index: number, dsId: string) => {
+    setBindings(prev => prev.map((b, i) =>
+      i === index ? { dataSourceId: dsId, sourceConfig: {} } : b
+    ));
+  };
+
+  const updateBindingSourceConfig = (index: number, key: string, value: string) => {
+    setBindings(prev => prev.map((b, i) =>
+      i === index ? { ...b, sourceConfig: { ...b.sourceConfig, [key]: value } } : b
+    ));
+  };
+
+  const allBindingsValid = bindings.every(b => {
+    if (!b.dataSourceId) return false;
+    const ds = activeSources.find(d => d.id === b.dataSourceId);
+    if (!ds) return false;
+    const ef = DATA_SOURCE_TYPES[ds.type]?.entityFields || [];
+    return ef.every(f => (b.sourceConfig[f.key] || '').trim());
+  });
 
   const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
+      const dataSourceBindings = bindings
+        .filter(b => b.dataSourceId)
+        .map(b => ({ dataSourceId: b.dataSourceId, sourceConfig: b.sourceConfig }));
+
       const res = await fetch("/api/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-client-id": clientId },
-        body: JSON.stringify({ displayName, dataSourceId: dataSourceId || undefined, sourceConfig }),
+        body: JSON.stringify({ displayName, dataSourceBindings }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -163,39 +194,90 @@ export function AddEntityModal({
           <label>Entity Name</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. Brooklyn Restaurants" autoFocus />
         </div>
-        <div className="modal-field">
-          <label>Data Source</label>
-          {activeSources.length === 0 ? (
-            <div className="modal-hint">Please define a Data Source first.</div>
-          ) : (
-            <select value={dataSourceId} onChange={e => handleDataSourceChange(e.target.value)}>
-              <option value="" disabled>Select a data source...</option>
-              {activeSources.map(ds => (
-                <option key={ds.id} value={ds.id}>{ds.displayName}</option>
-              ))}
-            </select>
+        <div className="modal-separator" />
+        <div className="bindings-header">
+          <label>Data Sources</label>
+          {activeSources.length > 0 && (
+            <button type="button" className="add-binding-btn" onClick={addBinding}>+ Add Data Source</button>
           )}
         </div>
-        {entityFields.length > 0 && (
-          <>
-            <div className="modal-separator" />
-            {entityFields.map(f => (
-              <div className="modal-field" key={f.key}>
-                <label>{f.label}</label>
-                <input
-                  type="text"
-                  value={sourceConfig[f.key] || ""}
-                  onChange={e => updateSourceConfig(f.key, e.target.value)}
-                  placeholder={f.placeholder}
-                />
+        {activeSources.length === 0 ? (
+          <div className="modal-hint">Please define a Data Source first.</div>
+        ) : bindings.length === 0 ? (
+          <div className="modal-hint">No data sources added. Click &quot;+ Add Data Source&quot; above.</div>
+        ) : (
+          bindings.map((binding, index) => {
+            const ds = activeSources.find(d => d.id === binding.dataSourceId);
+            const dsType = ds?.type;
+            const entityFields = dsType ? (DATA_SOURCE_TYPES[dsType]?.entityFields || []) : [];
+            return (
+              <div key={index} className="binding-section">
+                <div className="binding-header">
+                  <span className="binding-number">#{index + 1}</span>
+                  <button type="button" className="remove-binding-btn" onClick={() => removeBinding(index)}>Remove</button>
+                </div>
+                <div className="modal-field">
+                  <label>Data Source</label>
+                  <select value={binding.dataSourceId} onChange={e => updateBindingDataSource(index, e.target.value)}>
+                    <option value="" disabled>Select a data source...</option>
+                    {activeSources.map(ds => (
+                      <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+                {entityFields.map(f => {
+                  const fieldKey = `${index}-${f.key}`;
+                  return (
+                    <div className="modal-field" key={f.key}>
+                      <label>{f.label}</label>
+                      {f.sensitive ? (
+                        <div className="password-field-wrapper">
+                          <input
+                            type={visibleFields.has(fieldKey) ? "text" : "password"}
+                            value={binding.sourceConfig[f.key] || ""}
+                            onChange={e => updateBindingSourceConfig(index, f.key, e.target.value)}
+                            placeholder={f.placeholder}
+                          />
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => toggleFieldVisibility(fieldKey)}
+                            tabIndex={-1}
+                            aria-label={visibleFields.has(fieldKey) ? "Hide value" : "Show value"}
+                          >
+                            {visibleFields.has(fieldKey) ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                              </svg>
+                            ) : (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={binding.sourceConfig[f.key] || ""}
+                          onChange={e => updateBindingSourceConfig(index, f.key, e.target.value)}
+                          placeholder={f.placeholder}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </>
+            );
+          })
         )}
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || (activeSources.length > 0 && !dataSourceId) || !entityFieldsValid}>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || (bindings.length > 0 && !allBindingsValid)}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -218,37 +300,64 @@ export function EditEntityModal({
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState(entity.displayName);
-  const [dataSourceId, setDataSourceId] = useState(entity.dataSourceId || "");
-  const [sourceConfig, setSourceConfig] = useState<Record<string, string>>(
-    entity.sourceConfig || { catalogId: entity.catalogId }
-  );
+  const [bindings, setBindings] = useState<BindingState[]>(() => {
+    const existing = getEntityBindings(entity);
+    return existing.map(b => ({ dataSourceId: b.dataSourceId, sourceConfig: { ...b.sourceConfig } }));
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
 
   const activeSources = dataSources.filter(ds => ds.status === 'active');
-  const selectedDs = activeSources.find(ds => ds.id === dataSourceId);
-  const dsType = selectedDs?.type;
-  const entityFields = dsType ? (DATA_SOURCE_TYPES[dsType]?.entityFields || []) : [];
 
-  const handleDataSourceChange = (newDsId: string) => {
-    setDataSourceId(newDsId);
-    setSourceConfig({});
+  const toggleFieldVisibility = (key: string) => {
+    setVisibleFields(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   };
 
-  const updateSourceConfig = (key: string, value: string) => {
-    setSourceConfig(prev => ({ ...prev, [key]: value }));
+  const addBinding = () => {
+    setBindings(prev => [...prev, { dataSourceId: '', sourceConfig: {} }]);
   };
 
-  const entityFieldsValid = entityFields.every(f => (sourceConfig[f.key] || '').trim());
+  const removeBinding = (index: number) => {
+    setBindings(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateBindingDataSource = (index: number, dsId: string) => {
+    setBindings(prev => prev.map((b, i) =>
+      i === index ? { dataSourceId: dsId, sourceConfig: {} } : b
+    ));
+  };
+
+  const updateBindingSourceConfig = (index: number, key: string, value: string) => {
+    setBindings(prev => prev.map((b, i) =>
+      i === index ? { ...b, sourceConfig: { ...b.sourceConfig, [key]: value } } : b
+    ));
+  };
+
+  const allBindingsValid = bindings.every(b => {
+    if (!b.dataSourceId) return false;
+    const ds = activeSources.find(d => d.id === b.dataSourceId);
+    if (!ds) return false;
+    const ef = DATA_SOURCE_TYPES[ds.type]?.entityFields || [];
+    return ef.every(f => (b.sourceConfig[f.key] || '').trim());
+  });
 
   const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
+      const dataSourceBindings = bindings
+        .filter(b => b.dataSourceId)
+        .map(b => ({ dataSourceId: b.dataSourceId, sourceConfig: b.sourceConfig }));
+
       const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, dataSourceId: dataSourceId || "", sourceConfig }),
+        body: JSON.stringify({ displayName, dataSourceBindings }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -270,39 +379,90 @@ export function EditEntityModal({
           <label>Entity Name</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
-        <div className="modal-field">
-          <label>Data Source</label>
-          {activeSources.length === 0 ? (
-            <div className="modal-hint">Please define a Data Source first.</div>
-          ) : (
-            <select value={dataSourceId} onChange={e => handleDataSourceChange(e.target.value)}>
-              <option value="" disabled>Select a data source...</option>
-              {activeSources.map(ds => (
-                <option key={ds.id} value={ds.id}>{ds.displayName}</option>
-              ))}
-            </select>
+        <div className="modal-separator" />
+        <div className="bindings-header">
+          <label>Data Sources</label>
+          {activeSources.length > 0 && (
+            <button type="button" className="add-binding-btn" onClick={addBinding}>+ Add Data Source</button>
           )}
         </div>
-        {entityFields.length > 0 && (
-          <>
-            <div className="modal-separator" />
-            {entityFields.map(f => (
-              <div className="modal-field" key={f.key}>
-                <label>{f.label}</label>
-                <input
-                  type="text"
-                  value={sourceConfig[f.key] || ""}
-                  onChange={e => updateSourceConfig(f.key, e.target.value)}
-                  placeholder={f.placeholder}
-                />
+        {activeSources.length === 0 ? (
+          <div className="modal-hint">Please define a Data Source first.</div>
+        ) : bindings.length === 0 ? (
+          <div className="modal-hint">No data sources added. Click &quot;+ Add Data Source&quot; above.</div>
+        ) : (
+          bindings.map((binding, index) => {
+            const ds = activeSources.find(d => d.id === binding.dataSourceId);
+            const dsType = ds?.type;
+            const entityFields = dsType ? (DATA_SOURCE_TYPES[dsType]?.entityFields || []) : [];
+            return (
+              <div key={index} className="binding-section">
+                <div className="binding-header">
+                  <span className="binding-number">#{index + 1}</span>
+                  <button type="button" className="remove-binding-btn" onClick={() => removeBinding(index)}>Remove</button>
+                </div>
+                <div className="modal-field">
+                  <label>Data Source</label>
+                  <select value={binding.dataSourceId} onChange={e => updateBindingDataSource(index, e.target.value)}>
+                    <option value="" disabled>Select a data source...</option>
+                    {activeSources.map(ds => (
+                      <option key={ds.id} value={ds.id}>{ds.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+                {entityFields.map(f => {
+                  const fieldKey = `${index}-${f.key}`;
+                  return (
+                    <div className="modal-field" key={f.key}>
+                      <label>{f.label}</label>
+                      {f.sensitive ? (
+                        <div className="password-field-wrapper">
+                          <input
+                            type={visibleFields.has(fieldKey) ? "text" : "password"}
+                            value={binding.sourceConfig[f.key] || ""}
+                            onChange={e => updateBindingSourceConfig(index, f.key, e.target.value)}
+                            placeholder={f.placeholder}
+                          />
+                          <button
+                            type="button"
+                            className="password-toggle-btn"
+                            onClick={() => toggleFieldVisibility(fieldKey)}
+                            tabIndex={-1}
+                            aria-label={visibleFields.has(fieldKey) ? "Hide value" : "Show value"}
+                          >
+                            {visibleFields.has(fieldKey) ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                              </svg>
+                            ) : (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          value={binding.sourceConfig[f.key] || ""}
+                          onChange={e => updateBindingSourceConfig(index, f.key, e.target.value)}
+                          placeholder={f.placeholder}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </>
+            );
+          })
         )}
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || (activeSources.length > 0 && !dataSourceId) || !entityFieldsValid}>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || (bindings.length > 0 && !allBindingsValid)}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>

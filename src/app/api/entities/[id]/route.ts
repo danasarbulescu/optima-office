@@ -14,23 +14,36 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { displayName, dataSourceId, sourceConfig } = body;
+    const { displayName, dataSourceBindings } = body;
 
-    // Support sourceConfig.catalogId or legacy top-level catalogId
-    const catalogId = sourceConfig?.catalogId || body.catalogId;
-    if (catalogId !== undefined && catalogId && !/^[a-zA-Z0-9_]+$/.test(catalogId)) {
-      return NextResponse.json({ error: "Catalog ID must contain only letters, numbers, and underscores" }, { status: 400 });
+    // Validate catalogId regex within each binding
+    if (dataSourceBindings) {
+      for (const binding of dataSourceBindings) {
+        const catId = binding.sourceConfig?.catalogId;
+        if (catId && !/^[a-zA-Z0-9_]+$/.test(catId)) {
+          return NextResponse.json({ error: "Catalog ID must contain only letters, numbers, and underscores" }, { status: 400 });
+        }
+      }
     }
 
     const updates: Record<string, unknown> = {};
-    if (sourceConfig !== undefined) {
-      updates.sourceConfig = sourceConfig;
-      if (sourceConfig.catalogId) updates.catalogId = sourceConfig.catalogId;
-    } else if (catalogId !== undefined) {
-      updates.catalogId = catalogId;
-    }
     if (displayName !== undefined) updates.displayName = displayName;
-    if (dataSourceId !== undefined) updates.dataSourceId = dataSourceId || null;
+
+    if (dataSourceBindings !== undefined) {
+      updates.dataSourceBindings = dataSourceBindings;
+      // Sync legacy fields from first binding for backward compat
+      if (dataSourceBindings.length > 0) {
+        updates.dataSourceId = dataSourceBindings[0].dataSourceId;
+        updates.sourceConfig = dataSourceBindings[0].sourceConfig;
+        if (dataSourceBindings[0].sourceConfig?.catalogId) {
+          updates.catalogId = dataSourceBindings[0].sourceConfig.catalogId;
+        }
+      } else {
+        updates.dataSourceId = null;
+        updates.sourceConfig = null;
+        updates.catalogId = '';
+      }
+    }
 
     await updateEntity(id, updates);
     return NextResponse.json({ success: true });

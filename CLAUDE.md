@@ -12,7 +12,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 - **Widget Type**: A reusable component definition (e.g., "Revenue Current Month" KPI card). Defined in code, display names overridable via DynamoDB.
 - **Client User**: A sub-account within a client with restricted package access (e.g., a client employee who can only see certain reports). Managed by internal admins; auto-creates a Cognito login with email invite.
 - **Data Source**: A configured external data connection (e.g., a CData Connect Cloud account). Global (not per-client). Entities optionally bind to a data source for credentials; unbound entities fall back to global env vars.
-- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many). Entity (many) → Data Source (0..1).
+- **Hierarchy**: Client (1) → Entity (many) + Package (many) → Dashboard (many) → Widget (many). Client (1) → Client User (many) → authorized Packages (many). Entity (many) → Data Source (0..many).
 
 ## Workflows
 
@@ -238,14 +238,14 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Clients list page**: `/clients` — sortable table (displayName, slug), click through to client detail. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
 - **Client detail page**: `/clients/:id` — full management for a single client:
   - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
-  - **Entities section**: table with displayName, data source. Add/Edit/Delete entity CRUD. Entity-level fields rendered dynamically in modals based on the selected data source's type (from `DATA_SOURCE_TYPES[type].entityFields`). If no data sources exist, shows hint text; if data sources exist, selection is required.
+  - **Entities section**: table with displayName, data source(s). Add/Edit/Delete entity CRUD. Entities support multiple data source bindings — each binding has a data source dropdown + dynamic entity-level fields. Entity modals render stacked binding sections with Add/Remove buttons. Table shows first DS name + "(+N more)" for additional bindings.
   - **Client Users section**: table with name, email, status badge, # packages. Add (creates Cognito + sends invite) / Edit (name, status, packages) / Delete (cascades Cognito + membership). Package authorization via checkboxes in modals.
   - **Packages section**: nested accordion tables. Package → Dashboards → Widgets. Full CRUD at each level with modal forms. Auto-slug generation from display names.
-- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, dataSourceId?, sourceConfig?, createdAt)
+- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, dataSourceBindings?, dataSourceId?, sourceConfig?, createdAt)
 - **GSI**: `byClient` index on `clientId` — used to query entities belonging to a specific client
 - **ID model**: Internal UUID (`id`) is auto-generated; `catalogId` is kept as a top-level field for backward compat
-- **sourceConfig**: `Record<string, string>` storing entity-level fields per data source type (e.g. `{ catalogId: "BrooklynRestaurants" }` for CData). Legacy entities without `sourceConfig` fall back to top-level `catalogId`.
-- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { displayName, dataSourceId?, sourceConfig? })`, `updateEntity()`, `deleteEntity()`
+- **dataSourceBindings**: `DataSourceBinding[]` — array of `{ dataSourceId, sourceConfig }` for multi-data-source support. Legacy fields `dataSourceId` and `sourceConfig` are synced from `bindings[0]` on write for backward compat. `getEntityBindings(entity)` in `src/lib/types.ts` normalizes old and new formats into an array.
+- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { displayName, dataSourceBindings? })`, `updateEntity()`, `deleteEntity()`
 - **API routes**: `GET/POST /api/entities`, `PUT/DELETE /api/entities/:id`; `GET/POST /api/clients`, `PUT/DELETE /api/clients/:id`
 - **Env var**: `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE` — DynamoDB table names
 
@@ -276,9 +276,9 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Type registry**: `src/lib/data-source-types.ts` — defines known types (e.g. `cdata` = CData Connect Cloud, `turbotax` = TurboTax) with connection-level `fields` (key, label, sensitive flag, placeholder) and entity-level `entityFields`. Type is selected via dropdown when creating a data source. Connection fields are rendered in the data source admin modal; entity fields are rendered dynamically in the entity add/edit modal based on the selected data source's type.
 - **DynamoDB**: `DataSources` table (id, type, displayName, config, status, createdAt). No GSI — global scan (few records).
 - **CRUD**: `src/lib/data-sources.ts` — `getDataSources()`, `getDataSource(id)`, `addDataSource()`, `updateDataSource()`, `deleteDataSource()`
-- **Entity binding**: Entities optionally reference a data source via `dataSourceId`. Entity modals show a dropdown of active data sources (required when available). When no data sources exist, a hint is shown and entities can be saved without one. Switching data sources clears entity-level field values.
-- **Fetch integration**: `src/lib/fetch-pl.ts` resolves adapter type + credentials from the entity's data source. Falls back to global `CDATA_USER`/`CDATA_PAT` env vars if no `dataSourceId`.
-- **Delete protection**: API returns 409 Conflict if entities still reference a data source being deleted.
+- **Entity binding**: Entities support multiple data source bindings via `dataSourceBindings` array. Entity modals render stacked binding sections (each with a DS dropdown + entity-level fields) with Add/Remove buttons. When no data sources exist, a hint is shown and entities can be saved without bindings. Switching a binding's data source clears that binding's entity-level field values.
+- **Fetch integration**: `src/lib/fetch-pl.ts` resolves adapter type + credentials from the entity's primary (first) data source binding via legacy `dataSourceId`/`sourceConfig` fields. Falls back to global `CDATA_USER`/`CDATA_PAT` env vars if no binding.
+- **Delete protection**: API returns 409 Conflict if any entity references a data source being deleted (checks all bindings via `getEntityBindings()`).
 
 ## Data abstraction layer
 
@@ -313,7 +313,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 - **Data sources**: `GET /api/data-sources` — list all data sources; `POST /api/data-sources` — add `{ type, displayName, config }`; `GET /api/data-sources/:id` — get single; `PUT /api/data-sources/:id` — update `{ displayName, config, status }`; `DELETE /api/data-sources/:id` — delete (409 if entities bound)
 
 ### Entity & client management
-- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ displayName, dataSourceId?, sourceConfig? }`; `PUT /api/entities/:id` — edit entity (accepts `sourceConfig`, `dataSourceId`); `DELETE /api/entities/:id` — remove entity
+- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ displayName, dataSourceBindings? }`; `PUT /api/entities/:id` — edit entity (accepts `dataSourceBindings`); `DELETE /api/entities/:id` — remove entity
 - **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds)
 - **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account + invite email `{ clientId, email, firstName, lastName, authorizedPackageIds }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)

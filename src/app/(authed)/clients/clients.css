@@ -385,7 +385,8 @@
 }
 
 .modal-field input[type="text"],
-.modal-field input[type="email"] {
+.modal-field input[type="email"],
+.modal-field input[type="password"] {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #3a3b48;
@@ -454,6 +455,123 @@
   color: #8b8d98;
   font-size: 13px;
   font-style: italic;
+}
+
+/* Data source binding sections */
+.bindings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bindings-header label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9a9caa;
+}
+
+.add-binding-btn {
+  padding: 4px 12px;
+  border: 1px solid #3b6cf5;
+  border-radius: 4px;
+  background: transparent;
+  color: #3b6cf5;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.add-binding-btn:hover {
+  background: #3b6cf5;
+  color: #fff;
+}
+
+.binding-section {
+  background: #141520;
+  border: 1px solid #2a2b35;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.binding-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.binding-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6a6b78;
+  text-transform: uppercase;
+}
+
+.remove-binding-btn {
+  padding: 2px 10px;
+  border: 1px solid #e74c3c;
+  border-radius: 3px;
+  background: transparent;
+  color: #e74c3c;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.remove-binding-btn:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* Password field with visibility toggle */
+.password-field-wrapper {
+  position: relative;
+}
+
+.password-field-wrapper input[type="password"],
+.password-field-wrapper input[type="text"] {
+  width: 100%;
+  padding: 8px 40px 8px 12px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #141520;
+  color: #e1e2e8;
+  box-sizing: border-box;
+}
+
+.password-field-wrapper input[type="password"]:focus,
+.password-field-wrapper input[type="text"]:focus {
+  outline: none;
+  border-color: #3b6cf5;
+  box-shadow: 0 0 0 2px rgba(59, 108, 245, 0.2);
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  color: #6a6b78;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+}
+
+.password-toggle-btn:hover {
+  color: #e1e2e8;
+}
+
+.extra-ds-count {
+  font-size: 12px;
+  color: #6a6b78;
+  margin-left: 6px;
 }
 
 .modal-error {

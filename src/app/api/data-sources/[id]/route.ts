@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
 import { getDataSource, updateDataSource, deleteDataSource } from "@/lib/data-sources";
 import { getEntities } from "@/lib/entities";
+import { getEntityBindings } from "@/lib/types";
 
 export async function GET(
   request: NextRequest,
@@ -73,9 +74,11 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Check if any entities reference this data source
+    // Check if any entities reference this data source (in any binding)
     const allEntities = await getEntities();
-    const bound = allEntities.filter(e => e.dataSourceId === id);
+    const bound = allEntities.filter(e =>
+      getEntityBindings(e).some(b => b.dataSourceId === id)
+    );
     if (bound.length > 0) {
       return NextResponse.json(
         { error: `Cannot delete: ${bound.length} entit${bound.length === 1 ? 'y' : 'ies'} still reference this data source` },

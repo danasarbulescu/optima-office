@@ -1,16 +1,36 @@
 import { FinancialRow } from './models/financial';
 
+export interface DataSourceBinding {
+  dataSourceId: string;
+  sourceConfig: Record<string, string>;
+}
+
 export interface EntityConfig {
   id: string;          // Internal UUID (DynamoDB partition key)
   clientId: string;    // Client this entity belongs to
-  catalogId: string;   // CData catalog name (e.g. "BrooklynRestaurants")
+  catalogId: string;   // CData catalog name (legacy, kept for backward compat)
   displayName: string; // Human-readable label for the UI
-  dataSourceId?: string; // References DataSources table; omit = use env var defaults
-  sourceConfig?: Record<string, string>; // Entity-level fields per data source type
+  dataSourceId?: string; // Legacy single binding (synced from dataSourceBindings[0])
+  sourceConfig?: Record<string, string>; // Legacy single binding
+  dataSourceBindings?: DataSourceBinding[]; // Multiple data source bindings
   createdAt?: string;
   email?: string;
   firstName?: string;
   lastName?: string;
+}
+
+/** Normalizes entity bindings: returns dataSourceBindings if present, else reconstructs from legacy fields */
+export function getEntityBindings(entity: EntityConfig): DataSourceBinding[] {
+  if (entity.dataSourceBindings && entity.dataSourceBindings.length > 0) {
+    return entity.dataSourceBindings;
+  }
+  if (entity.dataSourceId) {
+    return [{
+      dataSourceId: entity.dataSourceId,
+      sourceConfig: entity.sourceConfig || { catalogId: entity.catalogId },
+    }];
+  }
+  return [];
 }
 
 export interface DataSource {

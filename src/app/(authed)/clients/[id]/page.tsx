@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser, DataSource } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser, DataSource, getEntityBindings } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
 import { PackageRow } from "./PackageAccordion";
 import {
@@ -309,11 +309,22 @@ export default function ClientDetailPage() {
             </thead>
             <tbody>
               {entities.map((e) => {
-                const ds = e.dataSourceId ? dataSources.find(d => d.id === e.dataSourceId) : null;
+                const eBindings = getEntityBindings(e);
+                const firstDs = eBindings.length > 0 ? dataSources.find(d => d.id === eBindings[0].dataSourceId) : null;
+                const extraCount = eBindings.length > 1 ? eBindings.length - 1 : 0;
                 return (
                   <tr key={e.id}>
                     <td>{e.displayName}</td>
-                    <td>{ds ? ds.displayName : <span className="text-muted">–</span>}</td>
+                    <td>
+                      {firstDs ? (
+                        <>
+                          {firstDs.displayName}
+                          {extraCount > 0 && <span className="extra-ds-count">(+{extraCount} more)</span>}
+                        </>
+                      ) : (
+                        <span className="text-muted">–</span>
+                      )}
+                    </td>
                     <td>
                       <div className="action-buttons">
                         <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>

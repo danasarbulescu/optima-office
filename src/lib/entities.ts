@@ -1,6 +1,6 @@
 import { PutCommand, DeleteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, scanAllItems, queryAllItems } from './dynamo';
-import { EntityConfig } from './types';
+import { EntityConfig, DataSourceBinding } from './types';
 
 const TABLE_NAME = process.env.ENTITIES_TABLE || '';
 
@@ -28,18 +28,31 @@ export async function addEntity(clientId: string, entity: {
   displayName: string;
   dataSourceId?: string;
   sourceConfig?: Record<string, string>;
+  dataSourceBindings?: DataSourceBinding[];
 }): Promise<void> {
   if (!TABLE_NAME) throw new Error('ENTITIES_TABLE not configured');
+
+  const bindings = entity.dataSourceBindings || [];
 
   const item: Record<string, unknown> = {
     id: crypto.randomUUID(),
     clientId,
-    catalogId: entity.sourceConfig?.catalogId || entity.catalogId || '',
     displayName: entity.displayName,
     createdAt: new Date().toISOString(),
+    dataSourceBindings: bindings,
   };
-  if (entity.dataSourceId) item.dataSourceId = entity.dataSourceId;
-  if (entity.sourceConfig) item.sourceConfig = entity.sourceConfig;
+
+  // Sync legacy fields from first binding for backward compat
+  if (bindings.length > 0) {
+    item.dataSourceId = bindings[0].dataSourceId;
+    item.sourceConfig = bindings[0].sourceConfig;
+    item.catalogId = bindings[0].sourceConfig?.catalogId || '';
+  } else {
+    // Fallback to legacy params if no bindings provided
+    item.catalogId = entity.sourceConfig?.catalogId || entity.catalogId || '';
+    if (entity.dataSourceId) item.dataSourceId = entity.dataSourceId;
+    if (entity.sourceConfig) item.sourceConfig = entity.sourceConfig;
+  }
 
   await docClient.send(new PutCommand({
     TableName: TABLE_NAME,
