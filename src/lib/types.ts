@@ -6,6 +6,7 @@ export interface EntityConfig {
   catalogId: string;   // CData catalog name (e.g. "BrooklynRestaurants")
   displayName: string; // Human-readable label for the UI
   dataSourceId?: string; // References DataSources table; omit = use env var defaults
+  sourceConfig?: Record<string, string>; // Entity-level fields per data source type
   createdAt?: string;
   email?: string;
   firstName?: string;

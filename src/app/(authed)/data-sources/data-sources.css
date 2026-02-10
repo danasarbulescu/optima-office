@@ -71,9 +71,14 @@
   color: #6a6b78;
 }
 
-.modal-field input[type="password"] {
+.password-field-wrapper {
+  position: relative;
+}
+
+.password-field-wrapper input[type="password"],
+.password-field-wrapper input[type="text"] {
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 40px 8px 12px;
   border: 1px solid #3a3b48;
   border-radius: 4px;
   font-size: 14px;
@@ -82,10 +87,30 @@
   box-sizing: border-box;
 }
 
-.modal-field input[type="password"]:focus {
+.password-field-wrapper input[type="password"]:focus,
+.password-field-wrapper input[type="text"]:focus {
   outline: none;
   border-color: #3b6cf5;
   box-shadow: 0 0 0 2px rgba(59, 108, 245, 0.2);
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  color: #6a6b78;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+}
+
+.password-toggle-btn:hover {
+  color: #e1e2e8;
 }
 
 .input-disabled {

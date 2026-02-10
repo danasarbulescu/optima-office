@@ -14,14 +14,21 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { catalogId, displayName, dataSourceId } = body;
+    const { displayName, dataSourceId, sourceConfig } = body;
 
-    if (catalogId !== undefined && !/^[a-zA-Z0-9_]+$/.test(catalogId)) {
-      return NextResponse.json({ error: "catalogId must contain only letters, numbers, and underscores" }, { status: 400 });
+    // Support sourceConfig.catalogId or legacy top-level catalogId
+    const catalogId = sourceConfig?.catalogId || body.catalogId;
+    if (catalogId !== undefined && catalogId && !/^[a-zA-Z0-9_]+$/.test(catalogId)) {
+      return NextResponse.json({ error: "Catalog ID must contain only letters, numbers, and underscores" }, { status: 400 });
     }
 
     const updates: Record<string, unknown> = {};
-    if (catalogId !== undefined) updates.catalogId = catalogId;
+    if (sourceConfig !== undefined) {
+      updates.sourceConfig = sourceConfig;
+      if (sourceConfig.catalogId) updates.catalogId = sourceConfig.catalogId;
+    } else if (catalogId !== undefined) {
+      updates.catalogId = catalogId;
+    }
     if (displayName !== undefined) updates.displayName = displayName;
     if (dataSourceId !== undefined) updates.dataSourceId = dataSourceId || null;
 

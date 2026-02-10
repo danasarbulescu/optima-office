@@ -1,4 +1,4 @@
-import { DataAdapter, DataSourceCredentials } from './base';
+import { DataAdapter } from './base';
 import { FinancialRow } from '../models/financial';
 import { fetchPLSummaries, CDataPLRow } from '../cdata';
 
@@ -31,8 +31,8 @@ function normalizePLRow(row: CDataPLRow): FinancialRow {
 }
 
 export class QuickBooksAdapter implements DataAdapter {
-  async fetchFinancialData(catalogId: string, credentials: DataSourceCredentials): Promise<FinancialRow[]> {
-    const rawRows = await fetchPLSummaries(credentials.user, credentials.pat, catalogId);
+  async fetchFinancialData(sourceConfig: Record<string, string>, credentials: Record<string, string>): Promise<FinancialRow[]> {
+    const rawRows = await fetchPLSummaries(credentials.user, credentials.pat, sourceConfig.catalogId);
     return rawRows.map(normalizePLRow);
   }
 }

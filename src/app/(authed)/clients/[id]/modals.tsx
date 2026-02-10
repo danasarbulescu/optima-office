@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Client, EntityConfig, Package, Dashboard, ClientUser, DataSource } from "@/lib/types";
+import { DATA_SOURCE_TYPES } from "@/lib/data-source-types";
 
 /* ─── Edit Client Modal ─── */
 
@@ -112,10 +113,21 @@ export function AddEntityModal({
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState("");
-  const [catalogId, setCatalogId] = useState("");
   const [dataSourceId, setDataSourceId] = useState("");
+  const [sourceConfig, setSourceConfig] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const activeSources = dataSources.filter(ds => ds.status === 'active');
+  const selectedDs = activeSources.find(ds => ds.id === dataSourceId);
+  const dsType = selectedDs?.type || 'cdata';
+  const entityFields = DATA_SOURCE_TYPES[dsType]?.entityFields || [];
+
+  const updateSourceConfig = (key: string, value: string) => {
+    setSourceConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const entityFieldsValid = entityFields.every(f => (sourceConfig[f.key] || '').trim());
 
   const handleSave = async () => {
     setSaving(true);
@@ -124,7 +136,7 @@ export function AddEntityModal({
       const res = await fetch("/api/entities", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-client-id": clientId },
-        body: JSON.stringify({ catalogId, displayName, dataSourceId: dataSourceId || undefined }),
+        body: JSON.stringify({ displayName, dataSourceId: dataSourceId || undefined, sourceConfig }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -138,8 +150,6 @@ export function AddEntityModal({
     }
   };
 
-  const activeSources = dataSources.filter(ds => ds.status === 'active');
-
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -147,10 +157,6 @@ export function AddEntityModal({
         <div className="modal-field">
           <label>Entity Name</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. Brooklyn Restaurants" autoFocus />
-        </div>
-        <div className="modal-field">
-          <label>CData Catalog ID</label>
-          <input type="text" value={catalogId} onChange={(e) => setCatalogId(e.target.value)} placeholder="e.g. BrooklynRestaurants" />
         </div>
         <div className="modal-field">
           <label>Data Source</label>
@@ -161,10 +167,26 @@ export function AddEntityModal({
             ))}
           </select>
         </div>
+        {entityFields.length > 0 && (
+          <>
+            <div className="modal-separator" />
+            {entityFields.map(f => (
+              <div className="modal-field" key={f.key}>
+                <label>{f.label}</label>
+                <input
+                  type="text"
+                  value={sourceConfig[f.key] || ""}
+                  onChange={e => updateSourceConfig(f.key, e.target.value)}
+                  placeholder={f.placeholder}
+                />
+              </div>
+            ))}
+          </>
+        )}
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || !catalogId.trim()}>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || !entityFieldsValid}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -187,10 +209,23 @@ export function EditEntityModal({
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState(entity.displayName);
-  const [catalogId, setCatalogId] = useState(entity.catalogId);
   const [dataSourceId, setDataSourceId] = useState(entity.dataSourceId || "");
+  const [sourceConfig, setSourceConfig] = useState<Record<string, string>>(
+    entity.sourceConfig || { catalogId: entity.catalogId }
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const activeSources = dataSources.filter(ds => ds.status === 'active');
+  const selectedDs = activeSources.find(ds => ds.id === dataSourceId);
+  const dsType = selectedDs?.type || 'cdata';
+  const entityFields = DATA_SOURCE_TYPES[dsType]?.entityFields || [];
+
+  const updateSourceConfig = (key: string, value: string) => {
+    setSourceConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const entityFieldsValid = entityFields.every(f => (sourceConfig[f.key] || '').trim());
 
   const handleSave = async () => {
     setSaving(true);
@@ -199,7 +234,7 @@ export function EditEntityModal({
       const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catalogId, displayName, dataSourceId: dataSourceId || "" }),
+        body: JSON.stringify({ displayName, dataSourceId: dataSourceId || "", sourceConfig }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -213,8 +248,6 @@ export function EditEntityModal({
     }
   };
 
-  const activeSources = dataSources.filter(ds => ds.status === 'active');
-
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -222,10 +255,6 @@ export function EditEntityModal({
         <div className="modal-field">
           <label>Entity Name</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
-        </div>
-        <div className="modal-field">
-          <label>CData Catalog ID</label>
-          <input type="text" value={catalogId} onChange={(e) => setCatalogId(e.target.value)} />
         </div>
         <div className="modal-field">
           <label>Data Source</label>
@@ -236,10 +265,26 @@ export function EditEntityModal({
             ))}
           </select>
         </div>
+        {entityFields.length > 0 && (
+          <>
+            <div className="modal-separator" />
+            {entityFields.map(f => (
+              <div className="modal-field" key={f.key}>
+                <label>{f.label}</label>
+                <input
+                  type="text"
+                  value={sourceConfig[f.key] || ""}
+                  onChange={e => updateSourceConfig(f.key, e.target.value)}
+                  placeholder={f.placeholder}
+                />
+              </div>
+            ))}
+          </>
+        )}
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || !catalogId.trim()}>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || !entityFieldsValid}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>

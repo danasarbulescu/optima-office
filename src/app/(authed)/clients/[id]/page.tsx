@@ -199,7 +199,7 @@ export default function ClientDetailPage() {
   };
 
   const handleDeletePackage = async (pkg: Package) => {
-    if (!confirm(`Delete package "${pkg.displayName}" and all its dashboards/widgets?`)) return;
+    if (!confirm(`Delete package "${pkg.displayName}"? This will delete all its dashboards.`)) return;
     try {
       const res = await fetch(`/api/packages/${encodeURIComponent(pkg.id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete package");
@@ -210,7 +210,7 @@ export default function ClientDetailPage() {
   };
 
   const handleDeleteDashboard = async (dashboard: Dashboard) => {
-    if (!confirm(`Delete dashboard "${dashboard.displayName}" and all its widgets?`)) return;
+    if (!confirm(`Delete dashboard "${dashboard.displayName}"?`)) return;
     try {
       const res = await fetch(`/api/dashboards/${encodeURIComponent(dashboard.id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete dashboard");
@@ -303,8 +303,8 @@ export default function ClientDetailPage() {
             <thead>
               <tr>
                 <th>Entity Name</th>
-                <th>CData Catalog ID</th>
                 <th>Data Source</th>
+                <th>Catalog ID</th>
                 <th></th>
               </tr>
             </thead>
@@ -314,8 +314,8 @@ export default function ClientDetailPage() {
                 return (
                   <tr key={e.id}>
                     <td>{e.displayName}</td>
-                    <td><code>{e.catalogId}</code></td>
                     <td>{ds ? ds.displayName : <span className="text-muted">Default</span>}</td>
+                    <td><code>{e.sourceConfig?.catalogId || e.catalogId}</code></td>
                     <td>
                       <div className="action-buttons">
                         <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>

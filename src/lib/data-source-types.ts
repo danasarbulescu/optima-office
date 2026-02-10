@@ -7,7 +7,8 @@ export interface DataSourceTypeField {
 
 export interface DataSourceTypeConfig {
   displayName: string;
-  fields: DataSourceTypeField[];
+  fields: DataSourceTypeField[];        // connection-level (username, PAT)
+  entityFields: DataSourceTypeField[];  // entity-level (catalog ID, etc.)
 }
 
 export const DATA_SOURCE_TYPES: Record<string, DataSourceTypeConfig> = {
@@ -16,6 +17,9 @@ export const DATA_SOURCE_TYPES: Record<string, DataSourceTypeConfig> = {
     fields: [
       { key: 'user', label: 'Username', placeholder: 'e.g. user@company.com' },
       { key: 'pat', label: 'Personal Access Token', sensitive: true },
+    ],
+    entityFields: [
+      { key: 'catalogId', label: 'Catalog ID', placeholder: 'e.g. BrooklynRestaurants' },
     ],
   },
 };

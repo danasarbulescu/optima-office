@@ -64,7 +64,6 @@ export default function DataSourcesPage() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Type</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -73,11 +72,6 @@ export default function DataSourcesPage() {
               {dataSources.map((ds) => (
                 <tr key={ds.id}>
                   <td>{ds.displayName}</td>
-                  <td>
-                    <span className="type-badge">
-                      {DATA_SOURCE_TYPES[ds.type]?.displayName || ds.type}
-                    </span>
-                  </td>
                   <td>
                     <span className={`status-badge ${ds.status === "active" ? "status-active" : "status-archived"}`}>
                       {ds.status.charAt(0).toUpperCase() + ds.status.slice(1)}
@@ -128,9 +122,18 @@ function AddDataSourceModal({
   const [config, setConfig] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
 
   const typeConfig = DATA_SOURCE_TYPES[type];
   const fields = typeConfig?.fields || [];
+
+  const toggleFieldVisibility = (key: string) => {
+    setVisibleFields(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const updateConfig = (key: string, value: string) => {
     setConfig(prev => ({ ...prev, [key]: value }));
@@ -162,18 +165,6 @@ function AddDataSourceModal({
       <div className="modal-content">
         <h2>New Data Source</h2>
         <div className="modal-field">
-          <label>Type</label>
-          {typeKeys.length === 1 ? (
-            <input type="text" value={typeConfig?.displayName || type} disabled className="input-disabled" />
-          ) : (
-            <select value={type} onChange={e => { setType(e.target.value); setConfig({}); }}>
-              {typeKeys.map(k => (
-                <option key={k} value={k}>{DATA_SOURCE_TYPES[k].displayName}</option>
-              ))}
-            </select>
-          )}
-        </div>
-        <div className="modal-field">
           <label>Display Name</label>
           <input
             type="text"
@@ -189,12 +180,43 @@ function AddDataSourceModal({
             {fields.map(f => (
               <div className="modal-field" key={f.key}>
                 <label>{f.label}</label>
-                <input
-                  type={f.sensitive ? "password" : "text"}
-                  value={config[f.key] || ""}
-                  onChange={e => updateConfig(f.key, e.target.value)}
-                  placeholder={f.placeholder}
-                />
+                {f.sensitive ? (
+                  <div className="password-field-wrapper">
+                    <input
+                      type={visibleFields.has(f.key) ? "text" : "password"}
+                      value={config[f.key] || ""}
+                      onChange={e => updateConfig(f.key, e.target.value)}
+                      placeholder={f.placeholder}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => toggleFieldVisibility(f.key)}
+                      tabIndex={-1}
+                      aria-label={visibleFields.has(f.key) ? "Hide value" : "Show value"}
+                    >
+                      {visibleFields.has(f.key) ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={config[f.key] || ""}
+                    onChange={e => updateConfig(f.key, e.target.value)}
+                    placeholder={f.placeholder}
+                  />
+                )}
               </div>
             ))}
           </>
@@ -231,9 +253,18 @@ function EditDataSourceModal({
   const [config, setConfig] = useState<Record<string, string>>(dataSource.config || {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
 
   const typeConfig = DATA_SOURCE_TYPES[dataSource.type];
   const fields = typeConfig?.fields || [];
+
+  const toggleFieldVisibility = (key: string) => {
+    setVisibleFields(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const updateConfig = (key: string, value: string) => {
     setConfig(prev => ({ ...prev, [key]: value }));
@@ -265,10 +296,6 @@ function EditDataSourceModal({
       <div className="modal-content">
         <h2>Edit Data Source</h2>
         <div className="modal-field">
-          <label>Type</label>
-          <input type="text" value={typeConfig?.displayName || dataSource.type} disabled className="input-disabled" />
-        </div>
-        <div className="modal-field">
           <label>Display Name</label>
           <input
             type="text"
@@ -290,12 +317,43 @@ function EditDataSourceModal({
             {fields.map(f => (
               <div className="modal-field" key={f.key}>
                 <label>{f.label}</label>
-                <input
-                  type={f.sensitive ? "password" : "text"}
-                  value={config[f.key] || ""}
-                  onChange={e => updateConfig(f.key, e.target.value)}
-                  placeholder={f.placeholder}
-                />
+                {f.sensitive ? (
+                  <div className="password-field-wrapper">
+                    <input
+                      type={visibleFields.has(f.key) ? "text" : "password"}
+                      value={config[f.key] || ""}
+                      onChange={e => updateConfig(f.key, e.target.value)}
+                      placeholder={f.placeholder}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => toggleFieldVisibility(f.key)}
+                      tabIndex={-1}
+                      aria-label={visibleFields.has(f.key) ? "Hide value" : "Show value"}
+                    >
+                      {visibleFields.has(f.key) ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={config[f.key] || ""}
+                    onChange={e => updateConfig(f.key, e.target.value)}
+                    placeholder={f.placeholder}
+                  />
+                )}
               </div>
             ))}
           </>

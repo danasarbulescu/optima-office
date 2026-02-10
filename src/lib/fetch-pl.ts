@@ -7,23 +7,25 @@ import { EntityConfig } from './types';
 
 async function fetchSingleEntity(
   clientId: string,
-  catalogId: string,
+  sourceConfig: Record<string, string>,
   displayName: string,
   refresh: boolean,
   dataSourceId?: string,
 ): Promise<FinancialRow[]> {
+  const cacheId = sourceConfig.catalogId || '';
+
   if (!refresh) {
     try {
-      const cached = await getCachedPL(clientId, catalogId);
+      const cached = await getCachedPL(clientId, cacheId);
       if (cached) return cached.rows;
     } catch (err) {
-      console.error(`Cache read failed for ${catalogId}, falling back to CData:`, err);
+      console.error(`Cache read failed for ${cacheId}, falling back to CData:`, err);
     }
   }
 
   // Resolve adapter type + credentials from the entity's data source (or env var defaults)
   let adapterType = 'quickbooks';
-  let credentials = {
+  let credentials: Record<string, string> = {
     user: process.env.CDATA_USER ?? '',
     pat: process.env.CDATA_PAT ?? '',
   };
@@ -32,19 +34,16 @@ async function fetchSingleEntity(
     const ds = await getDataSource(dataSourceId);
     if (ds && ds.status === 'active') {
       adapterType = ds.type === 'cdata' ? 'quickbooks' : ds.type;
-      credentials = {
-        user: ds.config.user ?? '',
-        pat: ds.config.pat ?? '',
-      };
+      credentials = ds.config;
     }
   }
 
   const adapter = getAdapter(adapterType);
-  const freshRows = await adapter.fetchFinancialData(catalogId, credentials);
+  const freshRows = await adapter.fetchFinancialData(sourceConfig, credentials);
 
   if (freshRows.length > 0) {
-    setCachedPL(clientId, catalogId, displayName, freshRows).catch((err) =>
-      console.error(`Cache write failed for ${catalogId}:`, err)
+    setCachedPL(clientId, cacheId, displayName, freshRows).catch((err) =>
+      console.error(`Cache write failed for ${cacheId}:`, err)
     );
   }
 
@@ -65,17 +64,21 @@ export async function fetchPLForEntities(
   if (entityIds.length === 1) {
     const entity = entities.find(e => e.id === entityIds[0]);
     if (!entity) return { rows: [], entityName: 'Unknown' };
-    const rows = await fetchSingleEntity(clientId, entity.catalogId, entity.displayName, refresh, entity.dataSourceId);
+    const sc = entity.sourceConfig || { catalogId: entity.catalogId };
+    const rows = await fetchSingleEntity(clientId, sc, entity.displayName, refresh, entity.dataSourceId);
     return { rows, entityName: entity.displayName };
   }
 
-  // Multiple entities: resolve UUIDs to catalogIds and fetch in parallel
+  // Multiple entities: resolve and fetch in parallel
   const resolvedEntities = entityIds
     .map(id => entities.find(e => e.id === id))
     .filter((e): e is EntityConfig => !!e);
 
   const results = await Promise.all(
-    resolvedEntities.map(e => fetchSingleEntity(clientId, e.catalogId, e.displayName, refresh, e.dataSourceId))
+    resolvedEntities.map(e => {
+      const sc = e.sourceConfig || { catalogId: e.catalogId };
+      return fetchSingleEntity(clientId, sc, e.displayName, refresh, e.dataSourceId);
+    })
   );
 
   const nonEmpty = results.filter(r => r.length > 0);

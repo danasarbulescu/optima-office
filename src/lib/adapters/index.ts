@@ -10,4 +10,4 @@ export function getAdapter(provider: string): DataAdapter {
   }
 }
 
-export type { DataAdapter, DataSourceCredentials } from './base';
+export type { DataAdapter } from './base';

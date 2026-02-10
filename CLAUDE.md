@@ -99,10 +99,10 @@ components/
     types.ts                        — Shared interfaces (EntityConfig, Client, ClientUser, DataSource, AuthContext, Package, Dashboard, DashboardWidget, WidgetTypeMeta, KPIs, PnLByMonth, PLCacheEntry)
     models/financial.ts             — Source-agnostic financial types (FinancialRow, FinancialDataSet)
     adapters/
-      base.ts                       — DataAdapter interface + DataSourceCredentials
+      base.ts                       — DataAdapter interface (generic sourceConfig + credentials)
       quickbooks.ts                 — QuickBooksAdapter: normalizes CData rows to FinancialRow
       index.ts                      — Adapter registry (getAdapter)
-    data-source-types.ts            — Data source type registry (credential field definitions per type, e.g. CData)
+    data-source-types.ts            — Data source type registry (connection fields + entity fields per type, e.g. CData)
     data-sources.ts                 — DynamoDB CRUD for DataSources table (getDataSources, getDataSource, addDataSource, updateDataSource, deleteDataSource)
     entities.ts                     — DynamoDB CRUD for Entities table
     clients.ts                      — DynamoDB CRUD for Clients table
@@ -238,13 +238,14 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 - **Clients list page**: `/clients` — sortable table (displayName, slug), click through to client detail. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
 - **Client detail page**: `/clients/:id` — full management for a single client:
   - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
-  - **Entities section**: table with displayName, catalogId, data source. Add/Edit/Delete entity CRUD with optional data source binding.
+  - **Entities section**: table with displayName, data source, catalog ID. Add/Edit/Delete entity CRUD with optional data source binding. Entity-level fields (e.g. catalogId) rendered dynamically from `DATA_SOURCE_TYPES[type].entityFields`.
   - **Client Users section**: table with name, email, status badge, # packages. Add (creates Cognito + sends invite) / Edit (name, status, packages) / Delete (cascades Cognito + membership). Package authorization via checkboxes in modals.
   - **Packages section**: nested accordion tables. Package → Dashboards → Widgets. Full CRUD at each level with modal forms. Auto-slug generation from display names.
-- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, dataSourceId?, createdAt)
+- **Entities table**: DynamoDB `Entities` table stores entity registry (id, catalogId, displayName, clientId, dataSourceId?, sourceConfig?, createdAt)
 - **GSI**: `byClient` index on `clientId` — used to query entities belonging to a specific client
-- **ID model**: Internal UUID (`id`) is auto-generated; `catalogId` is the CData catalog name (e.g. `BrooklynRestaurants`)
-- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { catalogId, displayName, dataSourceId? })`, `updateEntity()`, `deleteEntity()`
+- **ID model**: Internal UUID (`id`) is auto-generated; `catalogId` is kept as a top-level field for backward compat
+- **sourceConfig**: `Record<string, string>` storing entity-level fields per data source type (e.g. `{ catalogId: "BrooklynRestaurants" }` for CData). Legacy entities without `sourceConfig` fall back to top-level `catalogId`.
+- **CRUD**: `src/lib/entities.ts` provides `getEntities(clientId?)`, `addEntity(clientId, { displayName, dataSourceId?, sourceConfig? })`, `updateEntity()`, `deleteEntity()`
 - **API routes**: `GET/POST /api/entities`, `PUT/DELETE /api/entities/:id`; `GET/POST /api/clients`, `PUT/DELETE /api/clients/:id`
 - **Env var**: `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE` — DynamoDB table names
 
@@ -272,7 +273,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 ## Data sources
 
 - **Admin page**: `/data-sources` — internal admin only. Table listing all data sources with name, type, status. CRUD via modals.
-- **Type registry**: `src/lib/data-source-types.ts` — defines known types (currently `cdata` = CData Connect Cloud) with credential field definitions (key, label, sensitive flag, placeholder). Used by admin page for dynamic form rendering and API for validation.
+- **Type registry**: `src/lib/data-source-types.ts` — defines known types (currently `cdata` = CData Connect Cloud) with connection-level `fields` (key, label, sensitive flag, placeholder) and entity-level `entityFields`. Connection fields are rendered in the data source admin modal; entity fields are rendered in the entity add/edit modal based on the selected data source's type.
 - **DynamoDB**: `DataSources` table (id, type, displayName, config, status, createdAt). No GSI — global scan (few records).
 - **CRUD**: `src/lib/data-sources.ts` — `getDataSources()`, `getDataSource(id)`, `addDataSource()`, `updateDataSource()`, `deleteDataSource()`
 - **Entity binding**: Entities optionally reference a data source via `dataSourceId`. Entity modals show a dropdown with active data sources + "(Use default)" option.
@@ -282,7 +283,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 ## Data abstraction layer
 
 - **Financial model**: `FinancialRow { category, periods: Record<"2024-01", number> }` in `src/lib/models/financial.ts` — source-agnostic representation
-- **Adapter pattern**: `DataAdapter` interface in `src/lib/adapters/base.ts` — each data source implements `fetchFinancialData(catalogId, credentials) → FinancialRow[]`
+- **Adapter pattern**: `DataAdapter` interface in `src/lib/adapters/base.ts` — each data source implements `fetchFinancialData(sourceConfig, credentials) → FinancialRow[]` (both params are generic `Record<string, string>`)
 - **QuickBooksAdapter**: `src/lib/adapters/quickbooks.ts` — wraps CData, normalizes `Jan_2024` columns to `2024-01` period keys
 - **Adapter registry**: `getAdapter(type)` in `src/lib/adapters/index.ts` — type resolved from entity's data source record (e.g. `cdata` → `quickbooks`)
 - **Downstream code** (cache, compute, merge) works exclusively with `FinancialRow` — no source-specific types
@@ -312,7 +313,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 - **Data sources**: `GET /api/data-sources` — list all data sources; `POST /api/data-sources` — add `{ type, displayName, config }`; `GET /api/data-sources/:id` — get single; `PUT /api/data-sources/:id` — update `{ displayName, config, status }`; `DELETE /api/data-sources/:id` — delete (409 if entities bound)
 
 ### Entity & client management
-- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ catalogId, displayName, dataSourceId? }`; `PUT /api/entities/:id` — edit entity (accepts `dataSourceId`); `DELETE /api/entities/:id` — remove entity
+- **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ displayName, dataSourceId?, sourceConfig? }`; `PUT /api/entities/:id` — edit entity (accepts `sourceConfig`, `dataSourceId`); `DELETE /api/entities/:id` — remove entity
 - **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds)
 - **Client users**: `GET /api/client-users?clientId=` — list client users (internal admin only); `POST /api/client-users` — create client user + Cognito account + invite email `{ clientId, email, firstName, lastName, authorizedPackageIds }`; `GET /api/client-users/:id` — get single; `PUT /api/client-users/:id` — update (Cognito disable/enable on status change) `{ firstName, lastName, status, authorizedPackageIds }`; `DELETE /api/client-users/:id` — cascade delete (Cognito user + membership + record)

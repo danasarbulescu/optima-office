@@ -31,17 +31,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { catalogId, displayName, dataSourceId } = body;
+    const { displayName, dataSourceId, sourceConfig } = body;
 
-    if (!catalogId || !displayName) {
-      return NextResponse.json({ error: "catalogId and displayName are required" }, { status: 400 });
+    if (!displayName) {
+      return NextResponse.json({ error: "displayName is required" }, { status: 400 });
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(catalogId)) {
-      return NextResponse.json({ error: "catalogId must contain only letters, numbers, and underscores" }, { status: 400 });
+    // Support sourceConfig.catalogId or legacy top-level catalogId
+    const catalogId = sourceConfig?.catalogId || body.catalogId;
+    if (catalogId && !/^[a-zA-Z0-9_]+$/.test(catalogId)) {
+      return NextResponse.json({ error: "Catalog ID must contain only letters, numbers, and underscores" }, { status: 400 });
     }
 
-    await addEntity(auth.clientId, { catalogId, displayName, dataSourceId });
+    await addEntity(auth.clientId, { catalogId, displayName, dataSourceId, sourceConfig });
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err: any) {
     console.error("Entities POST error:", err);
