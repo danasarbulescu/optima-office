@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Client } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
+import { useClient } from "@/context/ClientContext";
 import "./clients.css";
 
 type ClientSortColumn = "displayName" | "slug";
@@ -12,6 +13,7 @@ type SortDirection = "asc" | "desc";
 export default function ClientsPage() {
   const router = useRouter();
   const { refreshEntities } = useEntity();
+  const { clients: bootstrapClients, clientLoading } = useClient();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,9 +36,13 @@ export default function ClientsPage() {
     }
   }, []);
 
+  // Initialize from bootstrap data (no /api/clients call on mount)
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!clientLoading) {
+      setClients(bootstrapClients);
+      setLoading(false);
+    }
+  }, [clientLoading, bootstrapClients]);
 
   const activeClients = useMemo(
     () => clients.filter((c) => (c.status || "active") === "active"),

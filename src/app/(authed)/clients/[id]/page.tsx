@@ -121,22 +121,27 @@ export default function ClientDetailPage() {
     } catch { /* non-fatal */ }
   }, [clientId]);
 
-  const fetchDataSources = useCallback(async () => {
-    try {
-      const res = await fetch("/api/data-sources");
-      if (res.ok) {
-        const data = await res.json();
-        setDataSources(data.dataSources);
-      }
-    } catch { /* non-fatal */ }
-  }, []);
-
+  // Initial load: single bootstrap call (one auth resolution instead of 5+)
   useEffect(() => {
     (async () => {
-      await Promise.all([fetchClient(), fetchEntities(), fetchPackagesData(), fetchClientUsers(), fetchDataSources()]);
-      setLoading(false);
+      try {
+        const res = await fetch(`/api/clients/${clientId}/bootstrap`);
+        if (!res.ok) throw new Error("Client not found");
+        const data = await res.json();
+        setClient(data.client);
+        setEntities(data.entities);
+        setPackages(data.packages);
+        setDashboards(data.dashboards);
+        setAllWidgets(data.widgetsByDashboard);
+        setClientUsers(data.clientUsers);
+        setDataSources(data.dataSources);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, [fetchClient, fetchEntities, fetchPackagesData]);
+  }, [clientId]);
 
   const dashboardsByPackage = useMemo(() => {
     const map: Record<string, Dashboard[]> = {};

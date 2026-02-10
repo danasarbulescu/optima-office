@@ -7,6 +7,7 @@ import Link from "next/link";
 import { EntityProvider, useEntity } from "@/context/EntityContext";
 import { ClientProvider, useClient } from "@/context/ClientContext";
 import { PackageProvider, usePackages } from "@/context/PackageContext";
+import { BootstrapProvider } from "@/context/BootstrapContext";
 
 function MultiSelectDropdown() {
   const { entities, entitiesLoading, selectedEntities, setSelectedEntities } = useEntity();
@@ -239,13 +240,15 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   return (
     <Authenticator.Provider>
-      <ClientProvider>
-        <PackageProvider>
-          <EntityProvider>
-            <AuthedLayoutContent>{children}</AuthedLayoutContent>
-          </EntityProvider>
-        </PackageProvider>
-      </ClientProvider>
+      <BootstrapProvider>
+        <ClientProvider>
+          <PackageProvider>
+            <EntityProvider>
+              <AuthedLayoutContent>{children}</AuthedLayoutContent>
+            </EntityProvider>
+          </PackageProvider>
+        </ClientProvider>
+      </BootstrapProvider>
     </Authenticator.Provider>
   );
 }

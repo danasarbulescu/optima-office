@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useClient } from './ClientContext';
+import { useBootstrap } from './BootstrapContext';
 import type { Package, Dashboard } from '@/lib/types';
 
 interface PackageContextValue {
@@ -13,74 +14,64 @@ interface PackageContextValue {
 
 const PackageContext = createContext<PackageContextValue | undefined>(undefined);
 
+function filterPackagesAndDashboards(
+  rawPackages: Package[],
+  rawDashboards: Dashboard[],
+  authorizedPackageIds: string[] | null,
+  authorizedDashboardIds: string[] | null,
+): { packages: Package[]; dashboardsByPackage: Record<string, Dashboard[]> } {
+  // Process dashboards first so we can determine which packages have visible dashboards
+  const grouped: Record<string, Dashboard[]> = {};
+  for (const d of rawDashboards) {
+    if (authorizedPackageIds) {
+      const hasPackageAccess = authorizedPackageIds.includes(d.packageId);
+      const hasDashboardAccess = (authorizedDashboardIds || []).includes(d.id);
+      if (!hasPackageAccess && !hasDashboardAccess) continue;
+    }
+    if (!grouped[d.packageId]) grouped[d.packageId] = [];
+    grouped[d.packageId].push(d);
+  }
+  for (const key of Object.keys(grouped)) {
+    grouped[key].sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  // Filter packages: visible if authorized at package level OR has any visible dashboards
+  const filtered = authorizedPackageIds
+    ? rawPackages.filter(p =>
+        authorizedPackageIds.includes(p.id) || (grouped[p.id]?.length > 0)
+      )
+    : rawPackages;
+
+  return { packages: filtered, dashboardsByPackage: grouped };
+}
+
 export function PackageProvider({ children }: { children: ReactNode }) {
-  const { currentClientId, clientLoading, authorizedPackageIds, authorizedDashboardIds } = useClient();
+  const { authorizedPackageIds, authorizedDashboardIds } = useClient();
+  const bootstrap = useBootstrap();
   const [packages, setPackages] = useState<Package[]>([]);
   const [dashboardsByPackage, setDashboardsByPackage] = useState<Record<string, Dashboard[]>>({});
-  const [packagesLoading, setPackagesLoading] = useState(true);
 
-  const fetchPackages = async () => {
-    if (!currentClientId || clientLoading) return;
-    setPackagesLoading(true);
-    try {
-      const headers: Record<string, string> = { 'x-client-id': currentClientId };
-      const [pkgRes, dashRes] = await Promise.all([
-        fetch(`/api/packages?clientId=${currentClientId}`, { headers }),
-        fetch(`/api/dashboards?clientId=${currentClientId}`, { headers }),
-      ]);
-
-      // Process dashboards first so we can determine which packages have visible dashboards
-      const grouped: Record<string, Dashboard[]> = {};
-      if (dashRes.ok) {
-        const { dashboards } = await dashRes.json();
-        for (const d of dashboards) {
-          if (authorizedPackageIds) {
-            const hasPackageAccess = authorizedPackageIds.includes(d.packageId);
-            const hasDashboardAccess = (authorizedDashboardIds || []).includes(d.id);
-            if (!hasPackageAccess && !hasDashboardAccess) continue;
-          }
-          if (!grouped[d.packageId]) grouped[d.packageId] = [];
-          grouped[d.packageId].push(d);
-        }
-        for (const key of Object.keys(grouped)) {
-          grouped[key].sort((a, b) => a.sortOrder - b.sortOrder);
-        }
-        setDashboardsByPackage(grouped);
-      } else {
-        setDashboardsByPackage({});
-      }
-
-      // Filter packages: visible if authorized at package level OR has any visible dashboards
-      if (pkgRes.ok) {
-        const { packages: pkgs } = await pkgRes.json();
-        const filtered = authorizedPackageIds
-          ? pkgs.filter((p: Package) =>
-              authorizedPackageIds.includes(p.id) || (grouped[p.id]?.length > 0)
-            )
-          : pkgs;
-        setPackages(filtered);
-      } else {
-        setPackages([]);
-      }
-    } catch {
-      setPackages([]);
-      setDashboardsByPackage({});
-    } finally {
-      setPackagesLoading(false);
-    }
-  };
-
+  // Process bootstrap data with authorization filtering
   useEffect(() => {
-    fetchPackages();
-  }, [currentClientId, clientLoading, authorizedPackageIds, authorizedDashboardIds]);
+    if (bootstrap.loading) return;
+
+    const result = filterPackagesAndDashboards(
+      bootstrap.packages,
+      bootstrap.dashboards,
+      authorizedPackageIds,
+      authorizedDashboardIds,
+    );
+    setPackages(result.packages);
+    setDashboardsByPackage(result.dashboardsByPackage);
+  }, [bootstrap.loading, bootstrap.packages, bootstrap.dashboards, authorizedPackageIds, authorizedDashboardIds]);
 
   return (
     <PackageContext.Provider
       value={{
         packages,
         dashboardsByPackage,
-        packagesLoading,
-        refreshPackages: fetchPackages,
+        packagesLoading: bootstrap.loading,
+        refreshPackages: () => bootstrap.refetch(),
       }}
     >
       {children}

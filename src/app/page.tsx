@@ -12,37 +12,24 @@ function HomeContent() {
   useEffect(() => {
     if (authStatus === "authenticated" && !resolving) {
       setResolving(true);
-      // Fetch auth context to get clientId, then find the first package/dashboard
+      // Single bootstrap call for auth + packages + dashboards
       (async () => {
         try {
-          const authRes = await fetch("/api/auth/context");
-          if (!authRes.ok) {
+          const res = await fetch("/api/bootstrap");
+          if (!res.ok) {
             router.replace("/clients");
             return;
           }
-          const authData = await authRes.json();
-          const clientId = authData.isInternal ? "*" : authData.clientId;
+          const data = await res.json();
 
-          const pkgRes = await fetch(`/api/packages?clientId=${clientId}`, {
-            headers: { "x-client-id": clientId },
-          });
-          if (pkgRes.ok) {
-            const { packages } = await pkgRes.json();
-            if (packages.length > 0) {
-              const dashRes = await fetch(`/api/dashboards?clientId=${clientId}`, {
-                headers: { "x-client-id": clientId },
-              });
-              if (dashRes.ok) {
-                const { dashboards } = await dashRes.json();
-                const firstPkg = packages[0];
-                const firstDash = dashboards
-                  .filter((d: any) => d.packageId === firstPkg.id)
-                  .sort((a: any, b: any) => a.sortOrder - b.sortOrder)[0];
-                if (firstDash) {
-                  router.replace(`/${firstPkg.slug}/${firstDash.slug}`);
-                  return;
-                }
-              }
+          if (data.packages?.length > 0 && data.dashboards?.length > 0) {
+            const firstPkg = data.packages[0];
+            const firstDash = data.dashboards
+              .filter((d: any) => d.packageId === firstPkg.id)
+              .sort((a: any, b: any) => a.sortOrder - b.sortOrder)[0];
+            if (firstDash) {
+              router.replace(`/${firstPkg.slug}/${firstDash.slug}`);
+              return;
             }
           }
           // Fallback: no packages configured yet

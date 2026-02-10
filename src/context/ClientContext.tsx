@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Client } from '@/lib/types';
+import { useBootstrap } from './BootstrapContext';
 
 interface ClientContextValue {
   currentClientId: string | null;  // null = loading, "*" = all clients (internal default)
@@ -20,10 +21,11 @@ interface ClientContextValue {
 const ClientContext = createContext<ClientContextValue | undefined>(undefined);
 
 export function ClientProvider({ children }: { children: ReactNode }) {
+  const bootstrap = useBootstrap();
+
   const [currentClientId, setCurrentClientIdRaw] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [isInternal, setIsInternal] = useState(false);
-  const [clientLoading, setClientLoading] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [authorizedPackageIds, setAuthorizedPackageIds] = useState<string[] | null>(null);
   const [authorizedDashboardIds, setAuthorizedDashboardIds] = useState<string[] | null>(null);
@@ -32,6 +34,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const setCurrentClientId = (id: string) => {
     setIsImpersonating(false);
     setCurrentClientIdRaw(id);
+    // Refetch bootstrap data for the new client
+    bootstrap.refetch(id);
   };
 
   const startImpersonating = () => {
@@ -44,39 +48,28 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     setIsImpersonating(false);
   };
 
+  // Sync state from bootstrap data
   useEffect(() => {
-    async function loadAuthContext() {
-      try {
-        const res = await fetch('/api/auth/context');
-        if (!res.ok) {
-          setClientLoading(false);
-          return;
-        }
-        const data = await res.json();
-        setIsInternal(data.isInternal);
+    if (bootstrap.loading || !bootstrap.auth) return;
 
-        if (data.isInternal) {
-          setClients(data.clients || []);
-          setAuthorizedPackageIds(null); // Internal users have full access
-          setAuthorizedDashboardIds(null);
-          // Default to "*" (all clients) for internal users
-          setCurrentClientIdRaw('*');
-        } else {
-          setCurrentClientIdRaw(data.clientId);
-          setAuthorizedPackageIds(data.authorizedPackageIds ?? null);
-          setAuthorizedDashboardIds(data.authorizedDashboardIds ?? null);
-          if (data.client) {
-            setClients([data.client]);
-          }
-        }
-      } catch {
-        // Auth context not available — will show as loading
-      } finally {
-        setClientLoading(false);
+    const auth = bootstrap.auth;
+    setIsInternal(auth.isInternal);
+
+    if (auth.isInternal) {
+      setClients(bootstrap.clients);
+      setAuthorizedPackageIds(null);
+      setAuthorizedDashboardIds(null);
+      // Only set default clientId on initial load (not on client switch refetch)
+      setCurrentClientIdRaw(prev => prev === null ? '*' : prev);
+    } else {
+      setCurrentClientIdRaw(auth.clientId);
+      setAuthorizedPackageIds(auth.authorizedPackageIds ?? null);
+      setAuthorizedDashboardIds(auth.authorizedDashboardIds ?? null);
+      if (bootstrap.client) {
+        setClients([bootstrap.client]);
       }
     }
-    loadAuthContext();
-  }, []);
+  }, [bootstrap.loading, bootstrap.auth, bootstrap.clients, bootstrap.client]);
 
   const currentClient = clients.find(c => c.id === currentClientId) || null;
 
@@ -87,7 +80,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         currentClient,
         clients,
         isInternal,
-        clientLoading,
+        clientLoading: bootstrap.loading,
         isImpersonating,
         authorizedPackageIds,
         authorizedDashboardIds,

@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { EntityConfig } from '@/lib/types';
 import { useClient } from './ClientContext';
+import { useBootstrap } from './BootstrapContext';
 
 interface EntityContextValue {
   entities: EntityConfig[];
@@ -16,50 +17,38 @@ const EntityContext = createContext<EntityContextValue | undefined>(undefined);
 
 export function EntityProvider({ children }: { children: ReactNode }) {
   const { currentClientId, clientLoading } = useClient();
+  const bootstrap = useBootstrap();
   const [entities, setEntities] = useState<EntityConfig[]>([]);
-  const [entitiesLoading, setEntitiesLoading] = useState(true);
   const [selectedEntities, setSelectedEntities] = useState<string[]>([]);
+  const prevClientId = useRef<string | null>(null);
 
-  const fetchEntities = useCallback(async () => {
-    if (!currentClientId) return;
-    setEntitiesLoading(true);
-    try {
-      const headers: Record<string, string> = {};
-      if (currentClientId !== '*') {
-        headers['x-client-id'] = currentClientId;
-      }
-      const res = await fetch('/api/entities', { headers });
-      if (!res.ok) return;
-      const data = await res.json();
-      const fetched: EntityConfig[] = data.entities;
-      setEntities(fetched);
-      // Default: select all entities on first load
-      setSelectedEntities((prev) =>
-        prev.length === 0 ? fetched.map((e) => e.id) : prev
-      );
-    } catch {
-      // silently fail — entities page will show error
-    } finally {
-      setEntitiesLoading(false);
-    }
-  }, [currentClientId]);
-
-  // Re-fetch entities when client changes
+  // Sync entities from bootstrap data
   useEffect(() => {
-    if (!clientLoading && currentClientId) {
-      setSelectedEntities([]);
-      fetchEntities();
+    if (bootstrap.loading || clientLoading) return;
+
+    const fetched = bootstrap.entities;
+    setEntities(fetched);
+
+    // Reset selection when client changes, default to all on first load
+    if (currentClientId !== prevClientId.current) {
+      prevClientId.current = currentClientId;
+      setSelectedEntities(fetched.map(e => e.id));
+    } else {
+      // Keep current selection but default to all if empty
+      setSelectedEntities(prev =>
+        prev.length === 0 ? fetched.map(e => e.id) : prev
+      );
     }
-  }, [currentClientId, clientLoading, fetchEntities]);
+  }, [bootstrap.loading, bootstrap.entities, clientLoading, currentClientId]);
 
   return (
     <EntityContext.Provider
       value={{
         entities,
-        entitiesLoading: entitiesLoading || clientLoading,
+        entitiesLoading: bootstrap.loading || clientLoading,
         selectedEntities,
         setSelectedEntities,
-        refreshEntities: fetchEntities,
+        refreshEntities: () => bootstrap.refetch(),
       }}
     >
       {children}
