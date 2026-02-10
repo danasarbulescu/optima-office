@@ -16,7 +16,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 
 ## Workflows
 
-- ***Web app***: `npm run dev` — local Next.js dev server (requires `npx ampx sandbox` running for backend)
+- ***Web app***: `npm run dev` — local Next.js dev server with Turbopack (requires `npx ampx sandbox` running for backend)
 - **Build**: `npm run build` — Next.js production build to `.next/`
 
 ## Project structure
@@ -143,8 +143,8 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 ## Environment
 
 - **Runtime**: Node.js + Next.js (frontend + API routes)
-- **Language**: TypeScript (strict mode, ES2020 target)
-- **Frontend**: React 18 + Next.js 15 (App Router) + @aws-amplify/ui-react
+- **Language**: TypeScript (strict mode, ES2020 target), ESM (`"type": "module"` in package.json)
+- **Frontend**: React 18 + Next.js 15 (App Router, Turbopack dev) + @aws-amplify/ui-react
 - **Backend**: AWS Amplify Gen 2 (Cognito auth + DynamoDB + SSR compute role)
 - **Key dependencies**: axios, aws-amplify, @aws-amplify/adapter-nextjs, @aws-amplify/ui-react, @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, @aws-sdk/client-cognito-identity-provider, recharts, next, react
 - **Web app config**: CData credentials set as Amplify hosting environment variables (or `.env.local` for local dev)
