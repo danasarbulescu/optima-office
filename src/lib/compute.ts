@@ -179,15 +179,19 @@ export function buildExpensesTrend(
   const [startY, startM] = extractionStart.split('-').map(Number);
   const [endY, endM] = endMonth.split('-').map(Number);
 
-  // Find the Expenses row and read periods directly
-  const expensesRow = rows.find(r => r.category === 'Expenses');
+  // Use buildGroupValues per year (same dedup as P&L table) to resolve Expenses
+  const yearGroups = new Map<number, GroupValues>();
+  for (let yr = startY; yr <= endY; yr++) {
+    yearGroups.set(yr, buildGroupValues(rows, yr));
+  }
 
   const allMonths: { month: string; value: number }[] = [];
   let y = startY;
   let m = startM;
   while (y < endY || (y === endY && m <= endM)) {
     const key = `${y}-${String(m).padStart(2, '0')}`;
-    const value = expensesRow?.periods[key] || 0;
+    const expenses = yearGroups.get(y)?.get('Expenses');
+    const value = expenses ? (expenses[m - 1] || 0) : 0;
     allMonths.push({ month: key, value });
     m++;
     if (m > 12) { m = 1; y++; }
