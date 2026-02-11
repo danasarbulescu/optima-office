@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { DataSource } from "@/lib/types";
 import { DATA_SOURCE_TYPES } from "@/lib/data-source-types";
+import { TrashIcon } from "@/components/TrashIcon";
+import { PencilIcon } from "@/components/PencilIcon";
 import "./data-sources.css";
 import "../clients/clients.css";
 
@@ -73,14 +75,12 @@ export default function DataSourcesPage() {
                 <tr key={ds.id}>
                   <td>{ds.displayName}</td>
                   <td>
-                    <span className={`status-badge ${ds.status === "active" ? "status-active" : "status-archived"}`}>
-                      {ds.status.charAt(0).toUpperCase() + ds.status.slice(1)}
-                    </span>
+{ds.status.charAt(0).toUpperCase() + ds.status.slice(1)}
                   </td>
                   <td>
                     <div className="action-buttons">
-                      <button className="edit-btn" onClick={() => setEditing(ds)}>Edit</button>
-                      <button className="delete-btn" onClick={() => handleDelete(ds)}>Delete</button>
+                      <button className="icon-btn-muted icon-btn-view" title="Edit data source" onClick={() => setEditing(ds)}><PencilIcon /></button>
+                      <button className="icon-btn-muted" title="Delete data source" onClick={() => handleDelete(ds)}><TrashIcon /></button>
                     </div>
                   </td>
                 </tr>

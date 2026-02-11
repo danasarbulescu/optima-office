@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { Client } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
 import { useClient } from "@/context/ClientContext";
+import { PencilIcon } from "@/components/PencilIcon";
+import { TrashIcon } from "@/components/TrashIcon";
 import "./clients.css";
 
-type ClientSortColumn = "displayName" | "slug";
+type ClientSortColumn = "displayName" | "contact" | "status";
 type SortDirection = "asc" | "desc";
+const PAGE_SIZE = 20;
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -20,6 +23,7 @@ export default function ClientsPage() {
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [sortColumn, setSortColumn] = useState<ClientSortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [currentPage, setCurrentPage] = useState(1);
   const [showArchivedModal, setShowArchivedModal] = useState(false);
   const [removing, setRemoving] = useState(false);
 
@@ -60,6 +64,7 @@ export default function ClientsPage() {
       setSortColumn(column);
       setSortDirection("asc");
     }
+    setCurrentPage(1);
   };
 
   const handleRemoveClient = async (c: Client) => {
@@ -93,15 +98,33 @@ export default function ClientsPage() {
     }
   };
 
+  const getContactName = (c: Client) =>
+    [c.firstName, c.lastName].filter(Boolean).join(" ");
+
   const sortedClients = useMemo(() => {
     if (!sortColumn) return activeClients;
     const sorted = [...activeClients].sort((a, b) => {
-      const aVal = (a[sortColumn] ?? "").toString().toLowerCase();
-      const bVal = (b[sortColumn] ?? "").toString().toLowerCase();
+      let aVal: string, bVal: string;
+      if (sortColumn === "contact") {
+        aVal = getContactName(a).toLowerCase();
+        bVal = getContactName(b).toLowerCase();
+      } else if (sortColumn === "status") {
+        aVal = (a.status || "active").toLowerCase();
+        bVal = (b.status || "active").toLowerCase();
+      } else {
+        aVal = (a[sortColumn] ?? "").toString().toLowerCase();
+        bVal = (b[sortColumn] ?? "").toString().toLowerCase();
+      }
       return aVal.localeCompare(bVal);
     });
     return sortDirection === "desc" ? sorted.reverse() : sorted;
   }, [activeClients, sortColumn, sortDirection]);
+
+  const totalPages = Math.ceil(sortedClients.length / PAGE_SIZE);
+  const pagedClients = sortedClients.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   const sortIndicator = (column: ClientSortColumn) => {
     if (sortColumn !== column)
@@ -148,36 +171,54 @@ export default function ClientsPage() {
                 <th className="sortable-th" onClick={() => handleSort("displayName")}>
                   Name {sortIndicator("displayName")}
                 </th>
-                <th className="sortable-th" onClick={() => handleSort("slug")}>
-                  Slug {sortIndicator("slug")}
+                <th className="sortable-th" onClick={() => handleSort("contact")}>
+                  Contact {sortIndicator("contact")}
                 </th>
-                <th>Contact</th>
-                <th>Status</th>
+                <th className="sortable-th" onClick={() => handleSort("status")}>
+                  Status {sortIndicator("status")}
+                </th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {sortedClients.map((c) => {
-                const contactName = [c.firstName, c.lastName].filter(Boolean).join(" ");
+              {pagedClients.map((c) => {
+                const contactName = getContactName(c);
                 return (
-                  <tr
-                    key={c.id}
-                    className="client-row"
-                    onClick={() => router.push(`/clients/${c.id}`)}
-                  >
+                  <tr key={c.id}>
                     <td><code className="slug-badge">{c.id.slice(0, 6)}</code></td>
                     <td>{c.displayName}</td>
-                    <td><code className="slug-badge">{c.slug}</code></td>
                     <td>{contactName || <span className="text-muted">—</span>}</td>
-                    <td><span className="status-badge status-active">Active</span></td>
+                    <td>Active</td>
                     <td>
-                      <button className="delete-btn" onClick={(e) => { e.stopPropagation(); handleRemoveClient(c); }}>Remove</button>
+                      <button className="icon-btn-muted icon-btn-view" title="Edit client" onClick={() => router.push(`/clients/${c.id}`)}><PencilIcon /></button>
+                      <button className="icon-btn-muted" title="Remove client" onClick={() => handleRemoveClient(c)}><TrashIcon /></button>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="pagination-controls">
+              <button
+                className="pagination-btn"
+                onClick={() => setCurrentPage((p) => p - 1)}
+                disabled={currentPage <= 1}
+              >
+                Prev
+              </button>
+              <span className="pagination-info">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="pagination-btn"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={currentPage >= totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 

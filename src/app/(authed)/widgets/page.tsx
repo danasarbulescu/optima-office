@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { PencilIcon } from "@/components/PencilIcon";
 import "./widgets.css";
 
 interface WidgetTypeView {
@@ -18,6 +19,7 @@ type SortDirection = "asc" | "desc";
 const PAGE_SIZE = 20;
 
 export default function WidgetsPage() {
+  const router = useRouter();
   const [widgetTypes, setWidgetTypes] = useState<WidgetTypeView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -84,7 +86,7 @@ export default function WidgetsPage() {
   return (
     <div className="widgets-page">
       <div className="widgets-header">
-        <h1>Widget Types</h1>
+        <h1>Widgets</h1>
       </div>
 
       <div className="widgets-table-wrapper">
@@ -100,18 +102,18 @@ export default function WidgetsPage() {
               <th className="sortable-th" onClick={() => handleSort("component")}>
                 Component {sortIndicator("component")}
               </th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {pagedTypes.map((wt) => (
               <tr key={wt.id}>
-                <td>
-                  <Link href={`/widgets/${wt.id}`} className="widget-name-link">
-                    {wt.name}
-                  </Link>
-                </td>
+                <td>{wt.name}</td>
                 <td>{wt.category}</td>
                 <td><code className="slug-badge">{wt.component}</code></td>
+                <td>
+                  <button className="icon-btn-muted icon-btn-view" title="Edit widget type" onClick={() => router.push(`/widgets/${wt.id}`)}><PencilIcon /></button>
+                </td>
               </tr>
             ))}
           </tbody>

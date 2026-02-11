@@ -20,6 +20,10 @@ import {
   EditClientUserModal,
   ManageAccessModal,
 } from "./modals";
+import { TrashIcon } from "@/components/TrashIcon";
+import { PencilIcon } from "@/components/PencilIcon";
+import { SyncIcon } from "@/components/SyncIcon";
+import { ListIcon } from "@/components/ListIcon";
 import "../clients.css";
 
 function EyeIcon() {
@@ -403,9 +407,7 @@ export default function ClientDetailPage() {
           <div className="info-item">
             <span className="info-label">Status</span>
             <span className="info-value">
-              <span className={`status-badge ${(client.status || "active") === "active" ? "status-active" : "status-archived"}`}>
-                {(client.status || "active").charAt(0).toUpperCase() + (client.status || "active").slice(1)}
-              </span>
+{(client.status || "active").charAt(0).toUpperCase() + (client.status || "active").slice(1)}
             </span>
           </div>
           <div className="info-item">
@@ -461,18 +463,22 @@ export default function ClientDetailPage() {
                     <td>
                       <div className="action-buttons">
                         <button
-                          className="sync-btn"
+                          className={`icon-btn-muted icon-btn-sync${syncingEntityId === e.id ? " icon-btn-syncing" : ""}`}
+                          title="Sync entity"
                           disabled={syncingEntityId === e.id}
                           onClick={() => handleSyncEntity(e)}
                         >
-                          {syncingEntityId === e.id ? 'Syncing...' : 'Sync'}
+                          <SyncIcon />
                         </button>
-                        {syncResult?.entityId === e.id && (
-                          <span className={`sync-result ${syncResult.status}`}>{syncResult.message}</span>
-                        )}
-                        <button className="edit-btn" onClick={() => setEditingEntity(e)}>Edit</button>
-                        <button className="delete-btn" onClick={() => handleDeleteEntity(e)}>Delete</button>
+                        <button className="icon-btn-muted icon-btn-view" title="Edit entity" onClick={() => setEditingEntity(e)}><PencilIcon /></button>
+                        <button className="icon-btn-muted" title="Delete entity" onClick={() => handleDeleteEntity(e)}><TrashIcon /></button>
                       </div>
+                      {syncingEntityId === e.id && (
+                        <div className="sync-status syncing">Syncing...</div>
+                      )}
+                      {syncResult?.entityId === e.id && (
+                        <div className={`sync-status ${syncResult.status}`}>{syncResult.message}</div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -507,9 +513,7 @@ export default function ClientDetailPage() {
                   <td>{cu.firstName} {cu.lastName}</td>
                   <td>{cu.email}</td>
                   <td>
-                    <span className={`status-badge ${cu.status === "active" ? "status-active" : "status-archived"}`}>
-                      {cu.status.charAt(0).toUpperCase() + cu.status.slice(1)}
-                    </span>
+{cu.status.charAt(0).toUpperCase() + cu.status.slice(1)}
                   </td>
                   <td>{(cu.authorizedPackageIds?.length || 0) + (cu.authorizedDashboardIds?.length || 0) || "None"}</td>
                   <td>
@@ -517,9 +521,9 @@ export default function ClientDetailPage() {
                       <button className="icon-btn-muted icon-btn-view" title="View as this user" disabled={cu.status === "archived"} onClick={() => handleImpersonateUser(cu)}>
                         <EyeIcon />
                       </button>
-                      <button className="edit-btn" onClick={() => setManagingAccessUser(cu)}>Access</button>
-                      <button className="edit-btn" onClick={() => setEditingClientUser(cu)}>Edit</button>
-                      <button className="delete-btn" onClick={() => handleDeleteClientUser(cu)}>Delete</button>
+                      <button className="icon-btn-muted icon-btn-view" title="Manage reporting access" onClick={() => setManagingAccessUser(cu)}><ListIcon /></button>
+                      <button className="icon-btn-muted icon-btn-view" title="Edit user" onClick={() => setEditingClientUser(cu)}><PencilIcon /></button>
+                      <button className="icon-btn-muted" title="Delete user" onClick={() => handleDeleteClientUser(cu)}><TrashIcon /></button>
                     </div>
                   </td>
                 </tr>

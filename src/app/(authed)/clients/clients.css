@@ -184,43 +184,34 @@
   color: #fff;
 }
 
-.sync-btn {
-  padding: 4px 12px;
-  border: 1px solid #2ecc71;
-  border-radius: 4px;
-  background: transparent;
-  color: #2ecc71;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.sync-btn:hover {
-  background: #2ecc71;
-  color: #fff;
-}
-
-.sync-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.sync-btn:disabled:hover {
-  background: transparent;
+.icon-btn-muted.icon-btn-sync:hover {
   color: #2ecc71;
 }
 
-.sync-result {
-  font-size: 12px;
-  margin-left: 4px;
+.icon-btn-syncing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sync-status {
+  font-size: 11px;
+  margin-top: 2px;
   white-space: nowrap;
 }
 
-.sync-result.success {
+.sync-status.syncing {
+  color: #6a6b78;
+}
+
+.sync-status.success {
   color: #2ecc71;
 }
 
-.sync-result.error {
+.sync-status.error {
   color: #e74c3c;
 }
 

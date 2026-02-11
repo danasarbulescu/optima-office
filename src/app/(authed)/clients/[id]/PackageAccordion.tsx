@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Package, Dashboard, DashboardWidget } from "@/lib/types";
 import { getWidgetType, defaultWidgetName } from "@/widgets/registry";
 import { usePackages } from "@/context/PackageContext";
+import { TrashIcon } from "@/components/TrashIcon";
+import { PencilIcon } from "@/components/PencilIcon";
 
 /* ─── Package Row (nested accordion) ─── */
 
@@ -40,8 +42,8 @@ export function PackageRow({
         <td>{pkg.sortOrder}</td>
         <td>
           <div className="action-buttons">
-            <button className="edit-btn" onClick={(e) => { e.stopPropagation(); onEdit(); }}>Edit</button>
-            <button className="delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }}>Delete</button>
+            <button className="icon-btn-muted icon-btn-view" title="Edit package" onClick={(e) => { e.stopPropagation(); onEdit(); }}><PencilIcon /></button>
+            <button className="icon-btn-muted" title="Delete package" onClick={(e) => { e.stopPropagation(); onDelete(); }}><TrashIcon /></button>
           </div>
         </td>
       </tr>
@@ -96,17 +98,6 @@ export function PackageRow({
         </tr>
       )}
     </>
-  );
-}
-
-/* ─── Trash icon (Feather trash-2) ─── */
-
-function TrashIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
   );
 }
 
@@ -197,8 +188,8 @@ function DashboardRow({
         <td>{dashboard.sortOrder}</td>
         <td>
           <div className="action-buttons">
-            <button className="edit-btn" onClick={(e) => { e.stopPropagation(); onEdit(); }}>Edit</button>
-            <button className="delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }}>Delete</button>
+            <button className="icon-btn-muted icon-btn-view" title="Edit dashboard" onClick={(e) => { e.stopPropagation(); onEdit(); }}><PencilIcon /></button>
+            <button className="icon-btn-muted" title="Delete dashboard" onClick={(e) => { e.stopPropagation(); onDelete(); }}><TrashIcon /></button>
           </div>
         </td>
       </tr>
