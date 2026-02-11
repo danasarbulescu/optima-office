@@ -62,38 +62,7 @@
   margin-left: 8px;
 }
 
-.original-name-hint {
-  font-size: 12px;
-  color: #6a6b78;
-  margin-top: 2px;
-}
-
-.reset-link {
-  background: none;
-  border: none;
-  color: #6b8cff;
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-  margin-left: 6px;
-  text-decoration: underline;
-}
-
-.reset-link:hover {
-  color: #8fa6ff;
-}
-
 /* ─── Inline Name Edit (Detail Page) ─── */
-
-.inline-name-edit {
-  flex: 1;
-}
-
-.inline-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .inline-name-input {
   padding: 5px 10px;
@@ -170,10 +139,6 @@
   align-items: flex-start;
 }
 
-.inline-description-edit {
-  flex: 1;
-}
-
 .inline-description-input {
   width: 100%;
   max-width: 500px;
@@ -205,6 +170,13 @@
   display: flex;
   gap: 8px;
   margin-top: 6px;
+}
+
+.widget-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 4px;
 }
 
 /* Widget name link in list */

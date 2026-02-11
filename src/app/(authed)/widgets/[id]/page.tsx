@@ -54,15 +54,11 @@ export default function WidgetTypeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Inline name editing
+  // Inline name + description editing
   const [editName, setEditName] = useState("");
-  const [nameSaving, setNameSaving] = useState(false);
-  const [nameError, setNameError] = useState("");
-
-  // Description editing
   const [editDescription, setEditDescription] = useState("");
-  const [descSaving, setDescSaving] = useState(false);
-  const [descError, setDescError] = useState("");
+  const [detailsSaving, setDetailsSaving] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
 
   // Preview state
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
@@ -162,64 +158,25 @@ export default function WidgetTypeDetailPage() {
     finally { setSaving(false); }
   };
 
-  const handleSaveName = async () => {
-    if (!editName.trim() || editName === widgetType?.name) return;
-    setNameSaving(true);
-    setNameError("");
+  const handleSaveDetails = async () => {
+    if (!editName.trim()) return;
+    setDetailsSaving(true);
+    setDetailsError("");
     try {
       const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: editName.trim() }),
+        body: JSON.stringify({ displayName: editName.trim(), description: editDescription }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to update name");
+        throw new Error(data.error || "Failed to save");
       }
       await fetchWidgetType();
     } catch (err: any) {
-      setNameError(err.message);
+      setDetailsError(err.message);
     } finally {
-      setNameSaving(false);
-    }
-  };
-
-  const handleResetName = async () => {
-    setNameSaving(true);
-    setNameError("");
-    try {
-      const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: "" }),
-      });
-      if (!res.ok) throw new Error("Failed to reset name");
-      await fetchWidgetType();
-    } catch (err: any) {
-      setNameError(err.message);
-    } finally {
-      setNameSaving(false);
-    }
-  };
-
-  const handleSaveDescription = async () => {
-    setDescSaving(true);
-    setDescError("");
-    try {
-      const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: editDescription }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to update description");
-      }
-      await fetchWidgetType();
-    } catch (err: any) {
-      setDescError(err.message);
-    } finally {
-      setDescSaving(false);
+      setDetailsSaving(false);
     }
   };
 
@@ -228,8 +185,7 @@ export default function WidgetTypeDetailPage() {
 
   const kpiConfig = KPI_CONFIGS[id];
   const hasUnsavedChange = previewEntityId !== savedEntityId;
-  const nameChanged = editName.trim() !== widgetType.name;
-  const descChanged = editDescription !== (widgetType.description || "");
+  const detailsChanged = editName.trim() !== widgetType.name || editDescription !== (widgetType.description || "");
 
   return (
     <div className="widget-detail-page">
@@ -239,82 +195,55 @@ export default function WidgetTypeDetailPage() {
         <h1>{widgetType.name}</h1>
       </div>
 
-      {/* Info Section */}
+      {/* Editable Section */}
       <div className="widget-detail-info">
         <div className="widget-detail-field">
           <span className="widget-detail-label">Display Name</span>
-          <div className="inline-name-edit">
-            <div className="inline-name-row">
-              <input
-                type="text"
-                className="inline-name-input"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); }}
-                disabled={nameSaving}
-              />
-              {nameChanged && (
-                <button
-                  className="inline-name-save"
-                  onClick={handleSaveName}
-                  disabled={nameSaving || !editName.trim()}
-                >
-                  {nameSaving ? "Saving..." : "Save"}
-                </button>
-              )}
-              {nameChanged && (
-                <button
-                  className="inline-name-cancel"
-                  onClick={() => setEditName(widgetType.name)}
-                  disabled={nameSaving}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-            {widgetType.hasOverride && !nameChanged && (
-              <div className="original-name-hint">
-                Original: {widgetType.originalName}
-                <button className="reset-link" onClick={handleResetName} disabled={nameSaving}>
-                  Reset to original
-                </button>
-              </div>
-            )}
-            {nameError && <div className="inline-name-error">{nameError}</div>}
-          </div>
+          <input
+            type="text"
+            className="inline-name-input"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            disabled={detailsSaving}
+          />
         </div>
         <div className="widget-detail-field widget-detail-field-top">
           <span className="widget-detail-label">Description</span>
-          <div className="inline-description-edit">
-            <textarea
-              className="inline-description-input"
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              disabled={descSaving}
-              placeholder="Add a description..."
-              rows={3}
-            />
-            {descChanged && (
-              <div className="inline-description-actions">
-                <button
-                  className="inline-name-save"
-                  onClick={handleSaveDescription}
-                  disabled={descSaving}
-                >
-                  {descSaving ? "Saving..." : "Save"}
-                </button>
-                <button
-                  className="inline-name-cancel"
-                  onClick={() => setEditDescription(widgetType.description || "")}
-                  disabled={descSaving}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            {descError && <div className="inline-name-error">{descError}</div>}
-          </div>
+          <textarea
+            className="inline-description-input"
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            disabled={detailsSaving}
+            placeholder="Add a description..."
+            rows={3}
+          />
         </div>
+        <div className="widget-detail-actions">
+          <button
+            className="inline-name-save"
+            onClick={handleSaveDetails}
+            disabled={detailsSaving || !editName.trim() || !detailsChanged}
+          >
+            {detailsSaving ? "Saving..." : "Save"}
+          </button>
+          {detailsChanged && (
+            <button
+              className="inline-name-cancel"
+              onClick={() => {
+                setEditName(widgetType.name);
+                setEditDescription(widgetType.description || "");
+              }}
+              disabled={detailsSaving}
+            >
+              Cancel
+            </button>
+          )}
+          {detailsError && <div className="inline-name-error">{detailsError}</div>}
+        </div>
+      </div>
+
+      {/* Static Info Section */}
+      <div className="widget-detail-info">
         <div className="widget-detail-field">
           <span className="widget-detail-label">Category</span>
           <span>{widgetType.category}</span>
