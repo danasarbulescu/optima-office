@@ -22,6 +22,7 @@ interface WidgetTypeView {
   originalName: string;
   category: string;
   component: string;
+  description: string;
   hasOverride: boolean;
 }
 
@@ -58,6 +59,11 @@ export default function WidgetTypeDetailPage() {
   const [nameSaving, setNameSaving] = useState(false);
   const [nameError, setNameError] = useState("");
 
+  // Description editing
+  const [editDescription, setEditDescription] = useState("");
+  const [descSaving, setDescSaving] = useState(false);
+  const [descError, setDescError] = useState("");
+
   // Preview state
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(true);
@@ -76,6 +82,7 @@ export default function WidgetTypeDetailPage() {
       const data = await res.json();
       setWidgetType(data.widgetType);
       setEditName(data.widgetType.name);
+      setEditDescription(data.widgetType.description || "");
     } catch (err: any) {
       setError(err.message);
     }
@@ -195,12 +202,34 @@ export default function WidgetTypeDetailPage() {
     }
   };
 
+  const handleSaveDescription = async () => {
+    setDescSaving(true);
+    setDescError("");
+    try {
+      const res = await fetch(`/api/widget-types/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: editDescription }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update description");
+      }
+      await fetchWidgetType();
+    } catch (err: any) {
+      setDescError(err.message);
+    } finally {
+      setDescSaving(false);
+    }
+  };
+
   if (loading) return <div className="app-loading">Loading widget type...</div>;
   if (error || !widgetType) return <div className="app-error">{error || "Widget type not found"}</div>;
 
   const kpiConfig = KPI_CONFIGS[id];
   const hasUnsavedChange = previewEntityId !== savedEntityId;
   const nameChanged = editName.trim() !== widgetType.name;
+  const descChanged = editDescription !== (widgetType.description || "");
 
   return (
     <div className="widget-detail-page">
@@ -252,6 +281,38 @@ export default function WidgetTypeDetailPage() {
               </div>
             )}
             {nameError && <div className="inline-name-error">{nameError}</div>}
+          </div>
+        </div>
+        <div className="widget-detail-field widget-detail-field-top">
+          <span className="widget-detail-label">Description</span>
+          <div className="inline-description-edit">
+            <textarea
+              className="inline-description-input"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              disabled={descSaving}
+              placeholder="Add a description..."
+              rows={3}
+            />
+            {descChanged && (
+              <div className="inline-description-actions">
+                <button
+                  className="inline-name-save"
+                  onClick={handleSaveDescription}
+                  disabled={descSaving}
+                >
+                  {descSaving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  className="inline-name-cancel"
+                  onClick={() => setEditDescription(widgetType.description || "")}
+                  disabled={descSaving}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {descError && <div className="inline-name-error">{descError}</div>}
           </div>
         </div>
         <div className="widget-detail-field">

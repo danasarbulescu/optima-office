@@ -164,6 +164,49 @@
   margin-top: 4px;
 }
 
+/* ─── Inline Description Edit ─── */
+
+.widget-detail-field-top {
+  align-items: flex-start;
+}
+
+.inline-description-edit {
+  flex: 1;
+}
+
+.inline-description-input {
+  width: 100%;
+  max-width: 500px;
+  padding: 6px 10px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  background: #252636;
+  color: #e1e2e8;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.inline-description-input:focus {
+  outline: none;
+  border-color: #6b8cff;
+}
+
+.inline-description-input:disabled {
+  opacity: 0.6;
+}
+
+.inline-description-input::placeholder {
+  color: #6a6b78;
+}
+
+.inline-description-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 /* Widget name link in list */
 .widget-name-link {
   color: #6b8cff;

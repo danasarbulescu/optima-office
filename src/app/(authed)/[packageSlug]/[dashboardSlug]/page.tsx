@@ -50,8 +50,6 @@ export default function DashboardPage() {
   const [entityName, setEntityName] = useState("");
 
   // Expense trend state
-  const [startMonth, setStartMonth] = useState("2024-01");
-  const [endMonth, setEndMonth] = useState(getCurrentMonth());
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
   const [trendEntityName, setTrendEntityName] = useState("");
 
@@ -118,13 +116,18 @@ export default function DashboardPage() {
     }
   }, [selectedEntities, currentClientId]);
 
-  // Fetch expense trend data
-  const fetchExpenseTrend = useCallback(async (refresh = false, signal?: AbortSignal) => {
+  // Fetch expense trend data (13-month trailing from selected month)
+  const fetchExpenseTrend = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
     const setActive = refresh ? setSyncing : setLoading;
     setActive(true);
     setError("");
     try {
-      const url = `/api/widget-data/expense-trend?startMonth=${startMonth}&endMonth=${endMonth}&entities=${selectedEntities.join(",")}${refresh ? "&refresh=true" : ""}`;
+      // Derive 13-month trailing range from selected month
+      const end = selectedMonth;
+      const [y, m] = selectedMonth.split("-").map(Number);
+      const startDate = new Date(y, m - 13, 1); // 12 months before = 13 total
+      const start = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`;
+      const url = `/api/widget-data/expense-trend?startMonth=${start}&endMonth=${end}&entities=${selectedEntities.join(",")}${refresh ? "&refresh=true" : ""}`;
       const res = await fetch(url, {
         headers: { "x-client-id": currentClientId || "" },
         signal,
@@ -142,7 +145,7 @@ export default function DashboardPage() {
     } finally {
       if (!signal?.aborted) setActive(false);
     }
-  }, [startMonth, endMonth, selectedEntities, currentClientId]);
+  }, [selectedEntities, currentClientId]);
 
   // Stable refs for fetch callbacks — prevents effect re-fires when callback identity changes
   const fetchFinancialRef = useRef(fetchFinancialSnapshot);
@@ -164,7 +167,7 @@ export default function DashboardPage() {
       fetchFinancialRef.current(month, false, controller.signal);
     }
     if (hasTrendWidgets) {
-      fetchTrendRef.current(false, controller.signal);
+      fetchTrendRef.current(month, false, controller.signal);
     }
 
     return () => { controller.abort(); };
@@ -200,8 +203,8 @@ export default function DashboardPage() {
         <h1 className="dashboard-title">{dashboard.displayName}</h1>
       </div>
 
-      {/* Financial snapshot controls */}
-      {hasFinancialWidgets && (
+      {/* Dashboard controls — single month picker */}
+      {(hasFinancialWidgets || hasTrendWidgets) && (
         <div className="dashboard-controls">
           <input
             type="month"
@@ -210,46 +213,21 @@ export default function DashboardPage() {
             className="month-picker"
           />
           <button
-            onClick={() => fetchFinancialSnapshot(month)}
+            onClick={() => {
+              if (hasFinancialWidgets) fetchFinancialSnapshot(month);
+              if (hasTrendWidgets) fetchExpenseTrend(month);
+            }}
             disabled={busy || selectedEntities.length === 0}
             className="refresh-btn"
           >
             {loading ? "Loading..." : "Load"}
           </button>
           <button
-            onClick={() => fetchFinancialSnapshot(month, true)}
+            onClick={() => {
+              if (hasFinancialWidgets) fetchFinancialSnapshot(month, true);
+              if (hasTrendWidgets) fetchExpenseTrend(month, true);
+            }}
             disabled={busy || selectedEntities.length === 0}
-            className="refresh-btn"
-          >
-            {syncing ? "Syncing..." : "Sync"}
-          </button>
-        </div>
-      )}
-
-      {/* Expense trend controls */}
-      {hasTrendWidgets && (
-        <div className="dashboard-controls">
-          <label>
-            From:
-            <input
-              type="month"
-              value={startMonth}
-              onChange={(e) => setStartMonth(e.target.value)}
-              className="month-picker"
-            />
-          </label>
-          <label>
-            To:
-            <input
-              type="month"
-              value={endMonth}
-              onChange={(e) => setEndMonth(e.target.value)}
-              className="month-picker"
-            />
-          </label>
-          <button
-            onClick={() => fetchExpenseTrend(true)}
-            disabled={busy}
             className="refresh-btn"
           >
             {syncing ? "Syncing..." : "Sync"}

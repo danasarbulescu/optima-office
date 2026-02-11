@@ -26,6 +26,7 @@ export async function GET(
     ...wt,
     originalName: wt.name,
     name: override?.displayName || wt.name,
+    description: override?.description || "",
     hasOverride: !!override,
   };
 
@@ -52,15 +53,23 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const { displayName } = body;
+    const { displayName, description } = body;
 
-    if (!displayName || !displayName.trim()) {
-      // Reset to original — remove override
+    // If only resetting name (no description provided) and name is empty, delete the record
+    if ((!displayName || !displayName.trim()) && description === undefined) {
       await deleteWidgetTypeMeta(id);
       return NextResponse.json({ success: true, reset: true });
     }
 
-    await upsertWidgetTypeMeta(id, displayName.trim());
+    const fields: { displayName?: string; description?: string } = {};
+    if (displayName !== undefined) {
+      fields.displayName = displayName.trim() || undefined;
+    }
+    if (description !== undefined) {
+      fields.description = description;
+    }
+
+    await upsertWidgetTypeMeta(id, fields);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("WidgetTypeMeta PUT error:", err);

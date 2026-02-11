@@ -1,100 +1,171 @@
-# ToDo
-
-
-
 # Project Description
 
-We are a fractional accounting firm with 500 clients and we want to offer customized reporting to our clients. We want to create an application where we can manage the clients, their data sources, and create custom reports.
+We are a fractional accounting firm with 500 clients and we want to offer customized financial reporting to our clients. The application lets us manage clients, their data sources, and build custom dashboards with configurable widgets.
 
-We will normalize the data from all the data sources into an internal warehouse, which will be the single source of truth for all our reporting. The clients will have multiple roles and each role can be authorized to see different reports.
+Financial data from external sources (QuickBooks via CData Connect Cloud, TurboTax, etc.) is normalized into an internal data warehouse, which serves as the single source of truth for all reporting. Each client can have multiple sub-accounts (client users) with granular access control over which reports they can see.
 
-The reports are based widgets (UI units). Widgets are organized in Dashboards, which in turn are organized in Packages. A client can have multiple packages, that can have multiple dashboards, that can have multiple widgets.
+Reports are built from widgets — reusable UI components defined in code. Widgets are placed on Dashboards, which are grouped into Packages. A client can have multiple packages, each containing multiple dashboards, each containing multiple widgets. This hierarchy (Package → Dashboard → Widget) provides flexible organization of financial reports.
 
-The application will have an admin area and a client area. The admin should be able to impersonate the client so they can see what the client sees, for debugging and support.
+The application has an admin area (for internal staff) and a client area (for client users). Admins can impersonate any client to see exactly what they see, for debugging and support.
 
 ## Admin Area
 
-### Data Sources Section
+### Data Sources
 
-/data-sources
-Date sources table, listing all data sources:
-    id
-    Created at
-    Name
-    Description
-Clicking on a data sources row loads the data source details page.
+`/data-sources` — Internal admin only.
 
-/data-sources/id
+Table listing all configured data source integrations (name, type, status). Each data source defines an external system we pull financial data from.
+
 A data source has:
-- Name
-- (Optional) Data source connection (URL/API). Data sources can have one ULR is being used all clients, or one URL per client which is defined.
-- (Optional) token. Data sources can have one token is being used all clients, or one token per client.
-Data sources can be deleted.
+- **Display name**
+- **Type** — selected from a registry of supported integrations (e.g., CData Connect Cloud, TurboTax). Each type defines its own connection-level fields (username, API token, etc.) and entity-level fields (catalog ID, source ID, etc.).
+- **Connection fields** — global credentials for the integration (e.g., username, personal access token). Sensitive fields are masked.
+- **Status** — active or archived.
 
-### Widgets Section
+Data sources can be added, edited, and deleted. Deletion is blocked if any entity references the data source (returns a conflict error).
 
-/widgets
-Widgets table, listing all widgets:
-    Id
-    Created at
-    Name
-    Description
-    Delete icon for each widget
-    Column sorting
-Clicking on a widget row loads the widget details page.
+### Widget Types
 
-/widgets/id
-Widgets are created via code, based on a formula, input, expected output and the data fields (from the data warehouse) that are being used. The only settings editable via UI is the name and description.
-The widgets will use specific client data from the warehouse, when they are associated with a client via Dashboard & Packages. Until then, the widget will use sample data, during creation and testing.
-Widgets can be deleted.
+`/widgets` — Internal admin only.
 
-### Clients Section
+Table listing all widget types from the static code registry, with category, component type, and display name. Widget types are defined in code — the only setting editable via UI is the display name (stored as a DynamoDB override; original name shown if customized).
 
-/clients
-Clients table, where all clients are listed:
-    Id
-    Created at
-    Name
-    Email
-    Delete and Archive icons for each client
-    Column sorting
-Client can be deleted, which will delete all client dependencies: entities and their creds for the data sources, roles, packages, dashboards, client data from the warehouse.
-Clients can be archived, which will hide the client from the clients list, and will exclude the client's data from any kind of aggregation across clients, like count.
-Clicking on a client row loads the client details page.
+Clicking a widget type opens its detail page.
 
-/clients/id
-Clients have first and last name, email, and status (Active, Archived).
+`/widgets/:id` — Widget type detail page showing:
+- **Info section**: display name (inline editable), category, component, KPI configuration details. Name can be reset to the code-defined default.
+- **Live preview**: renders the actual widget component using real warehouse data from a configurable entity. Includes a month picker that defaults to the latest month with data.
+- **Usage table**: lists all dashboards across all clients that use this widget type, with links to the client detail page.
 
-#### Roles
+### Clients
 
-After creating a client, user can create Roles, which act like clients sub-accounts, that are authorized to see certain Packages and Dashboards.
-Roles are being managed in a dedicated section in the clients page, after creating a client.
-The role has first and last name, email, and status (Active, Archived).
-The role can be deleted.
+`/clients` — Internal admin only.
+
+Sortable table of all clients (display name, slug). Clients can be added, archived, or deleted. Archived clients are hidden from the main list and accessible via an "Archived" toggle. Deletion cascades to all client dependencies: client users (including Cognito accounts), entities (including warehouse data), packages, dashboards, and widgets.
+
+Clicking a client opens the client detail page.
+
+`/clients/:id` — Full management hub for a single client, with sections for:
+
+#### Client Info
+
+Display name, slug, contact fields (first name, last name, email), and status (active/archived). Editable via modal.
+
+#### Client Users
+
+Sub-accounts within a client, each with their own Cognito login and restricted access to specific packages and dashboards.
+
+A client user has:
+- **First name, last name, email** (email is the Cognito login — editable, which recreates the Cognito account)
+- **Status** — active or archived (synced with Cognito enable/disable)
+- **Authorized packages** — grants access to all dashboards within selected packages
+- **Authorized dashboards** — grants access to individual dashboards (independent of package-level access)
+- **Default dashboard** — optional landing page on login
+
+Client users are created with an optional email invite (sends Cognito temporary password). Access is managed via a dedicated "Manage Access" modal with a package → dashboard tree and a default dashboard picker. Deletion cascades to the Cognito user, client membership, and client user record.
+
+A dashboard is accessible to a client user if its parent package is in their authorized packages OR its ID is in their authorized dashboards. Archived client users are denied access entirely.
 
 #### Entities
 
-After creating a client, user can create multiple Entities, which are the businesses they own and are managed by our company.
-Entities are being managed in a dedicated section in the clients page (below Roles), after creating a client.
-The entity has a display name.
-The entity is being used to tell the application which data sources to use in order to pull the data specific to a client's business.
-An entity can have attached multiple data sources, selected from the data sources created in /data-sources. Each entity data sources will have its own URL and token that will take precedence over the original data defined when we created the data source /data-sources.
-The entity is also being used to segment the data of the client, by business.
-Entities can be deleted, which will delete their data from the warehouse.
-Entities can be arhived, which will hide the entity, and will exclude its data from any kind of aggregation.
+The businesses owned by the client and managed by our firm. Each entity represents a QuickBooks company (or other financial data source) and is used to segment the client's data by business.
 
-#### Packages & Dashboards
+An entity has:
+- **Display name**
+- **Data source bindings** — one or more data sources (selected from the global data sources list), each with its own entity-level credentials (e.g., catalog ID). These override the data source's global connection settings.
 
-Packages & Dashboards are being managed in a dedicated section in the clients page (below Entities), after creating a client.
-Packages and Dashboards are nested labels that help organize widgets, like folders -> subfolders -> files. First create a package, then in that package create a dashboard. In the dashboard, select one or more widgets that were previously created in the widget section.
-When the widget is mapped to a Dashboard, the widget will start using the specific client data from the warehouse.
-Dashboards can be deleted.
-Packages can be deleted, which will delete the nested Dashboards too.
+Each entity has a **Sync** button that pulls fresh financial data from the external source into the warehouse. Deletion cascades to all warehouse data for that entity.
 
-### Data Warehouse
+#### Packages, Dashboards & Widgets
 
-We will create a data warehouse to store the normalized data from all the data sources we will use. The normalization will be done at data ingestion, when the data source API is being called and data received. I don't have the data shape yet, so let's ignore for now.
+Managed via a nested accordion UI on the client detail page.
 
-### Data Transformation
+- **Packages** group dashboards (e.g., "Financial Reports"). Have a display name, URL slug, and sort order. Deletion cascades to all contained dashboards and their widgets.
+- **Dashboards** are pages within a package (e.g., "Monthly Dashboard"). Have a display name, URL slug, and sort order. Deletion cascades to all contained widgets.
+- **Widgets** are instances of widget types placed on a dashboard. Each references a widget type by ID and has a sort order. When a widget is placed on a client's dashboard, it uses that client's entity data from the warehouse.
 
-We need to normalize the data from each data source via a simple interface where we map the data source structure to the warehouse structure. The design and exact funtionality is TBD. Let's abstract it for now.
+Slugs are auto-generated from display names and used in URLs (`/{packageSlug}/{dashboardSlug}`).
+
+### Tools
+
+`/tools` — Internal admin only.
+
+**Sandbox Data Sync**: copies the Entities DynamoDB table between developer environments (Win Desktop sandbox, Win XPS sandbox, Production). Shows a preview of source/destination item counts before executing.
+
+## Client Area
+
+### Dashboard Experience
+
+`/{packageSlug}/{dashboardSlug}` — The main client-facing view.
+
+Each dashboard page:
+1. Displays the package name and dashboard title
+2. Renders configured widgets based on their type and sort order
+3. Auto-loads data from the warehouse when navigating to the page
+4. Shows appropriate controls based on which widget types are present
+
+**Financial snapshot controls** (shown if dashboard has KPI cards or P&L table):
+- Month picker to select the reporting period
+- Load button (reads from warehouse/cache)
+- Sync button (bypasses cache, fetches fresh from the external data source)
+
+**Expense trend controls** (shown if dashboard has a trend chart):
+- From/To month range pickers
+- Sync button
+
+**Widget types currently available:**
+- **KPI Cards** (9 types): Revenue, Gross Margin, and Net Income metrics — current month, 3-month average, YTD, and prior year, with year-over-year variance where applicable
+- **P&L Table**: 13-month trailing profit & loss statement with Revenue, COGS, Gross Profit, Expenses, Net Operating Income, and percentages
+- **Expense Trend Chart**: line chart showing monthly operating expenses with a 13-month rolling average
+
+When no warehouse data exists for the selected entities, the dashboard shows a message prompting the user to perform a sync first.
+
+### Multi-Entity Support
+
+Users can select one, multiple, or all entities via a multi-select dropdown in the header. When multiple entities are selected, data is fetched for each in parallel and merged by category (values summed across entities). The merged output is structurally identical to single-entity data, so all widgets render without special handling.
+
+### Navigation
+
+Packages and dashboards appear as navigation items:
+- Packages with a single dashboard render as a direct link
+- Packages with multiple dashboards render as a dropdown menu
+- Internal admins also see admin links (Clients, Data Sources, Widgets, Tools) — hidden during impersonation
+
+### Client Impersonation
+
+Internal admins can click "View as Client" to see exactly what a specific client sees:
+- Admin navigation links are hidden
+- Client switcher is hidden
+- Only the client's authorized packages/dashboards are visible
+- An amber banner shows "Viewing as {Client Name}" with an Exit button
+- Auto-clears when switching to a different client
+
+### Default Dashboard
+
+Client users can have a configured default dashboard. On login, they are redirected directly to that dashboard instead of the first available one.
+
+## Data Warehouse
+
+Financial data from external sources is normalized into a DynamoDB-based warehouse (the FinancialData table). Data is stored at the granularity of one item per entity + category + period (e.g., entity "Brooklyn Restaurants", category "Income", period "2024-01" → $50,000).
+
+The data fetch pipeline has three tiers:
+1. **P&L Cache** (hot blob cache, 24-hour TTL) — fast reads for dashboard rendering
+2. **Warehouse** (persistent per-period storage) — the source of truth, no expiration
+3. **External API** (CData, etc.) — fetched on sync or cache miss
+
+On cache miss, warehouse data repopulates the cache. On warehouse miss (or manual sync), data is fetched from the external source and written to both warehouse and cache.
+
+## Data Adapters
+
+Each data source type has a corresponding adapter that normalizes the source's data format into a common `FinancialRow` model (`{ category, periods: Record<string, number> }`). Downstream code (cache, compute, merge, widgets) works exclusively with this normalized format — no source-specific types leak through.
+
+Currently implemented:
+- **QuickBooks adapter** (via CData Connect Cloud): normalizes CData's column format (`Jan_2024`, `Feb_2024`, etc.) into period keys (`2024-01`, `2024-02`, etc.)
+
+## Authentication & Authorization
+
+- **Cognito** handles user authentication (email-based, no self-signup)
+- **Internal admins**: see all clients, can switch between them via a dropdown, see all packages/dashboards plus admin pages
+- **Client admins**: locked to their assigned client, see all of that client's packages and dashboards
+- **Client viewers**: locked to their client, restricted to authorized packages and dashboards only
+- **Client users**: sub-accounts with fine-grained access — authorized at both package level (all dashboards in the package) and individual dashboard level

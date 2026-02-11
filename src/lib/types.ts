@@ -160,6 +160,7 @@ export interface DashboardWidget {
 export interface WidgetTypeMeta {
   id: string;           // Same as widget type ID from registry
   displayName: string;  // Admin-overridden display name
+  description?: string; // Admin-entered description
 }
 
 export interface KPIs {
