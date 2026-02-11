@@ -146,7 +146,7 @@ export default function ClientsPage() {
               <tr>
                 <th>ID</th>
                 <th className="sortable-th" onClick={() => handleSort("displayName")}>
-                  Display Name {sortIndicator("displayName")}
+                  Name {sortIndicator("displayName")}
                 </th>
                 <th className="sortable-th" onClick={() => handleSort("slug")}>
                   Slug {sortIndicator("slug")}
@@ -256,7 +256,7 @@ function AddClientModal({
       <div className="modal-content">
         <h2>New Client</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input
             type="text"
             value={displayName}

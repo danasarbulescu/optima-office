@@ -2,7 +2,7 @@ import { KPIs } from '@/lib/types';
 import { formatAbbrev, formatPct, formatVariance } from '@/lib/format';
 import { KpiWidgetConfig } from '../kpi-config';
 
-export default function KpiCard({ config, kpis }: { config: KpiWidgetConfig; kpis: KPIs }) {
+export default function KpiCard({ config, kpis, title }: { config: KpiWidgetConfig; kpis: KPIs; title?: string }) {
   const rawValue = kpis[config.field];
   const isNull = rawValue === null || rawValue === undefined;
   const na = 'N/A';
@@ -42,7 +42,7 @@ export default function KpiCard({ config, kpis }: { config: KpiWidgetConfig; kpi
   return (
     <div className="card">
       <div className="card-header">
-        {config.headerLine1}<br />{config.headerLine2}
+        {title || <>{config.headerLine1}<br />{config.headerLine2}</>}
       </div>
       <div className="card-body">
         <div className="kpi-value">{displayValue}</div>

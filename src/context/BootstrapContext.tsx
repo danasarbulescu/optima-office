@@ -19,6 +19,7 @@ interface BootstrapContextValue {
   packages: Package[];
   dashboards: Dashboard[];
   widgetsByDashboard: Record<string, DashboardWidget[]>;
+  widgetTypeNames: Record<string, string>;
   entities: EntityConfig[];
   loading: boolean;
   refetch: (clientId?: string) => Promise<void>;
@@ -33,6 +34,7 @@ export function BootstrapProvider({ children }: { children: ReactNode }) {
   const [packages, setPackages] = useState<Package[]>([]);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [widgetsByDashboard, setWidgetsByDashboard] = useState<Record<string, DashboardWidget[]>>({});
+  const [widgetTypeNames, setWidgetTypeNames] = useState<Record<string, string>>({});
   const [entities, setEntities] = useState<EntityConfig[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +56,7 @@ export function BootstrapProvider({ children }: { children: ReactNode }) {
       setPackages(data.packages || []);
       setDashboards(data.dashboards || []);
       setWidgetsByDashboard(data.widgetsByDashboard || {});
+      setWidgetTypeNames(data.widgetTypeNames || {});
       setEntities(data.entities || []);
     } catch {
       // Bootstrap failed — auth state stays null
@@ -76,6 +79,7 @@ export function BootstrapProvider({ children }: { children: ReactNode }) {
         packages,
         dashboards,
         widgetsByDashboard,
+        widgetTypeNames,
         entities,
         loading,
         refetch: fetchBootstrap,

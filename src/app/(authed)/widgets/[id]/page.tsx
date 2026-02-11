@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { KPI_CONFIGS } from "@/widgets/kpi-config";
+import { WIDGET_FORMULAS } from "@/widgets/formulas";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
 import type { KPIs, PnLByMonth, TrendDataPoint, EntityConfig } from "@/lib/types";
@@ -184,6 +185,7 @@ export default function WidgetTypeDetailPage() {
   if (error || !widgetType) return <div className="app-error">{error || "Widget type not found"}</div>;
 
   const kpiConfig = KPI_CONFIGS[id];
+  const formulaInfo = WIDGET_FORMULAS[id];
   const hasUnsavedChange = previewEntityId !== savedEntityId;
   const detailsChanged = editName.trim() !== widgetType.name || editDescription !== (widgetType.description || "");
 
@@ -198,7 +200,7 @@ export default function WidgetTypeDetailPage() {
       {/* Editable Section */}
       <div className="widget-detail-info">
         <div className="widget-detail-field">
-          <span className="widget-detail-label">Display Name</span>
+          <span className="widget-detail-label">Name</span>
           <input
             type="text"
             className="inline-name-input"
@@ -286,6 +288,26 @@ export default function WidgetTypeDetailPage() {
             )}
           </>
         )}
+
+        {formulaInfo && (
+          <>
+            <div className="widget-detail-separator" />
+            <div className="widget-detail-field">
+              <span className="widget-detail-label">Formula</span>
+              <code className="formula-code">{formulaInfo.formula}</code>
+            </div>
+            {formulaInfo.variance && (
+              <div className="widget-detail-field">
+                <span className="widget-detail-label">Variance</span>
+                <code className="formula-code">{formulaInfo.variance}</code>
+              </div>
+            )}
+            <div className="widget-detail-field">
+              <span className="widget-detail-label">Sources</span>
+              <span>{formulaInfo.sources.join(', ')}</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Preview Section */}
@@ -350,7 +372,7 @@ export default function WidgetTypeDetailPage() {
           <div className="widget-preview-frame">
             {widgetType.component === 'KpiCard' && kpiConfig && previewData.kpis && (
               <div className="preview-kpi-wrapper">
-                <KpiCard config={kpiConfig} kpis={previewData.kpis} />
+                <KpiCard config={kpiConfig} kpis={previewData.kpis} title={widgetType.name} />
               </div>
             )}
             {widgetType.component === 'PnlTable' && previewData.pnl && (

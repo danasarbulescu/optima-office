@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const { packageSlug, dashboardSlug } = useParams<{ packageSlug: string; dashboardSlug: string }>();
   const { currentClientId } = useClient();
   const { selectedEntities } = useEntity();
-  const { packages, dashboardsByPackage, widgetsByDashboard, packagesLoading } = usePackages();
+  const { packages, dashboardsByPackage, widgetsByDashboard, widgetTypeNames, packagesLoading } = usePackages();
 
   // Resolve dashboard + widgets from context (no API calls)
   const dashboard = useMemo(() => {
@@ -255,7 +255,7 @@ export default function DashboardPage() {
             {kpiWidgets.map(w => {
               const config = KPI_CONFIGS[w.widgetTypeId];
               if (!config) return null;
-              return <KpiCard key={w.id} config={config} kpis={kpis} />;
+              return <KpiCard key={w.id} config={config} kpis={kpis} title={widgetTypeNames[w.widgetTypeId]} />;
             })}
           </div>
           {tableWidgets.map(w => (

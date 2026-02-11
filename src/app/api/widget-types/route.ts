@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
-import { WIDGET_TYPES } from "@/widgets/registry";
+import { WIDGET_TYPES, defaultWidgetName } from "@/widgets/registry";
 import { getAllWidgetTypeMeta } from "@/lib/widget-type-meta";
 
 export async function GET(request: NextRequest) {
@@ -13,12 +13,15 @@ export async function GET(request: NextRequest) {
   const overrides = await getAllWidgetTypeMeta();
   const overrideMap = new Map(overrides.map(o => [o.id, o.displayName]));
 
-  const widgetTypes = WIDGET_TYPES.map(wt => ({
-    ...wt,
-    originalName: wt.name,
-    name: overrideMap.get(wt.id) || wt.name,
-    hasOverride: overrideMap.has(wt.id),
-  }));
+  const widgetTypes = WIDGET_TYPES.map(wt => {
+    const fallback = defaultWidgetName(wt.id);
+    return {
+      ...wt,
+      originalName: fallback,
+      name: overrideMap.get(wt.id) || fallback,
+      hasOverride: overrideMap.has(wt.id),
+    };
+  });
 
   return NextResponse.json({ widgetTypes });
 }

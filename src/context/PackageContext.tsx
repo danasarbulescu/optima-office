@@ -9,6 +9,7 @@ interface PackageContextValue {
   packages: Package[];
   dashboardsByPackage: Record<string, Dashboard[]>;
   widgetsByDashboard: Record<string, DashboardWidget[]>;
+  widgetTypeNames: Record<string, string>;
   packagesLoading: boolean;
   refreshPackages: () => void;
 }
@@ -85,6 +86,7 @@ export function PackageProvider({ children }: { children: ReactNode }) {
         packages,
         dashboardsByPackage,
         widgetsByDashboard,
+        widgetTypeNames: bootstrap.widgetTypeNames,
         packagesLoading: bootstrap.loading,
         refreshPackages: () => bootstrap.refetch(),
       }}

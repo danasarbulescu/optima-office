@@ -248,6 +248,20 @@
   text-decoration: underline;
 }
 
+/* ─── Formula Display ─── */
+
+.formula-code {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #1e1f2a;
+  border: 1px solid #2a2b35;
+  color: #8fa6ff;
+  font-size: 13px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  letter-spacing: 0.3px;
+}
+
 /* ─── Widget Type Detail Page ─── */
 
 .widget-detail-page {

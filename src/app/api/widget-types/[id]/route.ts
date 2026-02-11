@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
-import { getWidgetType } from "@/widgets/registry";
+import { getWidgetType, defaultWidgetName } from "@/widgets/registry";
 import { getWidgetTypeMeta, upsertWidgetTypeMeta, deleteWidgetTypeMeta } from "@/lib/widget-type-meta";
 
 export async function GET(
@@ -22,10 +22,11 @@ export async function GET(
   }
 
   const override = await getWidgetTypeMeta(id);
+  const fallback = defaultWidgetName(id);
   const widgetType = {
     ...wt,
-    originalName: wt.name,
-    name: override?.displayName || wt.name,
+    originalName: fallback,
+    name: override?.displayName || fallback,
     description: override?.description || "",
     hasOverride: !!override,
   };

@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Package, Dashboard, DashboardWidget } from "@/lib/types";
-import { getWidgetType } from "@/widgets/registry";
+import { getWidgetType, defaultWidgetName } from "@/widgets/registry";
+import { usePackages } from "@/context/PackageContext";
 
 /* ─── Package Row (nested accordion) ─── */
 
@@ -131,6 +132,7 @@ function DashboardRow({
   onDeleteAllWidgets: () => void;
   onSwapWidgetOrder: (widgetId1: string, order1: number, widgetId2: string, order2: number) => void;
 }) {
+  const { widgetTypeNames } = usePackages();
   const [sortColumn, setSortColumn] = useState<WidgetSortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -161,8 +163,8 @@ function DashboardRow({
     if (!sortColumn) return [...widgets];
     const sorted = [...widgets].sort((a, b) => {
       if (sortColumn === "name") {
-        const aName = (getWidgetType(a.widgetTypeId)?.name || a.widgetTypeId).toLowerCase();
-        const bName = (getWidgetType(b.widgetTypeId)?.name || b.widgetTypeId).toLowerCase();
+        const aName = (widgetTypeNames[a.widgetTypeId] || defaultWidgetName(a.widgetTypeId)).toLowerCase();
+        const bName = (widgetTypeNames[b.widgetTypeId] || defaultWidgetName(b.widgetTypeId)).toLowerCase();
         return aName.localeCompare(bName);
       }
       if (sortColumn === "category") {
@@ -241,7 +243,7 @@ function DashboardRow({
                           const isLast = naturalIndex === widgets.length - 1;
                           return (
                             <tr key={w.id}>
-                              <td>{wt?.name || w.widgetTypeId}</td>
+                              <td>{widgetTypeNames[w.widgetTypeId] || defaultWidgetName(w.widgetTypeId)}</td>
                               <td>{wt?.category || "—"}</td>
                               <td>
                                 {showReorderArrows ? (

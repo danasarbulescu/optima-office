@@ -64,7 +64,7 @@ export function EditClientModal({
       <div className="modal-content">
         <h2>Edit Client</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
         <div className="modal-field">
@@ -529,7 +529,7 @@ export function AddPackageModal({
       <div className="modal-content">
         <h2>New Package</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input type="text" value={displayName} onChange={(e) => handleNameChange(e.target.value)} placeholder="e.g. Financial Reports" autoFocus />
         </div>
         <div className="modal-field">
@@ -598,7 +598,7 @@ export function EditPackageModal({
       <div className="modal-content">
         <h2>Edit Package</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
         <div className="modal-field">
@@ -680,7 +680,7 @@ export function AddDashboardModal({
       <div className="modal-content">
         <h2>New Dashboard</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input type="text" value={displayName} onChange={(e) => handleNameChange(e.target.value)} placeholder="e.g. Monthly Dashboard" autoFocus />
         </div>
         <div className="modal-field">
@@ -749,7 +749,7 @@ export function EditDashboardModal({
       <div className="modal-content">
         <h2>Edit Dashboard</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
         <div className="modal-field">

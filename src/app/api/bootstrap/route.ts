@@ -5,6 +5,8 @@ import { getPackages } from "@/lib/packages";
 import { getDashboardsByClient } from "@/lib/dashboards";
 import { getWidgets } from "@/lib/dashboard-widgets";
 import { getEntities } from "@/lib/entities";
+import { getAllWidgetTypeMeta } from "@/lib/widget-type-meta";
+import { WIDGET_TYPES, defaultWidgetName } from "@/widgets/registry";
 import type { DashboardWidget } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
@@ -20,13 +22,21 @@ export async function GET(request: NextRequest) {
     const dataClientId = clientId === '*' ? undefined : clientId;
 
     // Fetch all layout data in parallel (single auth resolution)
-    const [clients, client, packages, dashboards, entities] = await Promise.all([
+    const [clients, client, packages, dashboards, entities, widgetTypeMeta] = await Promise.all([
       auth.isInternal ? getClients() : Promise.resolve([]),
       !auth.isInternal ? getClient(clientId) : Promise.resolve(null),
       dataClientId ? getPackages(dataClientId) : Promise.resolve([]),
       dataClientId ? getDashboardsByClient(dataClientId) : Promise.resolve([]),
       getEntities(dataClientId),
+      getAllWidgetTypeMeta(),
     ]);
+
+    // Build widget type display name map (static defaults + DynamoDB overrides)
+    const overrideMap = new Map(widgetTypeMeta.map(o => [o.id, o.displayName]));
+    const widgetTypeNames: Record<string, string> = {};
+    for (const wt of WIDGET_TYPES) {
+      widgetTypeNames[wt.id] = overrideMap.get(wt.id) || defaultWidgetName(wt.id);
+    }
 
     // Phase 2: fetch widgets for all dashboards in parallel
     const widgetsByDashboard: Record<string, DashboardWidget[]> = {};
@@ -57,6 +67,7 @@ export async function GET(request: NextRequest) {
       dashboards,
       entities,
       widgetsByDashboard,
+      widgetTypeNames,
     });
   } catch (err: any) {
     console.error("Bootstrap error:", err);

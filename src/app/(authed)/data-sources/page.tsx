@@ -171,7 +171,7 @@ function AddDataSourceModal({
       <div className="modal-content">
         <h2>New Data Source</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input
             type="text"
             value={displayName}
@@ -310,7 +310,7 @@ function EditDataSourceModal({
       <div className="modal-content">
         <h2>Edit Data Source</h2>
         <div className="modal-field">
-          <label>Display Name</label>
+          <label>Name</label>
           <input
             type="text"
             value={displayName}
