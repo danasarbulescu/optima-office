@@ -4,6 +4,9 @@ dist/
 .env.local
 .tokens.json
 
+# TypeScript
+*.tsbuildinfo
+
 # Next.js
 /.next/
 /.next-build/

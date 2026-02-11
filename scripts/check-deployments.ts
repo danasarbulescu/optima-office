@@ -8,7 +8,7 @@
 
 import { execSync } from "child_process";
 
-const APP_ID = "d149ycglubuqvd";
+const APP_ID = "d15bx1surdnd12";
 const BRANCHES = ["main"];
 
 interface JobSummary {
@@ -78,7 +78,7 @@ function printReport() {
 
     const icon = statusIcon(job.status);
     const duration = formatDuration(job.startTime, job.endTime);
-    const url = "d149ycglubuqvd.amplifyapp.com";
+    const url = "d15bx1surdnd12.amplifyapp.com";
 
     console.log(
       `  ${icon} ${branch.padEnd(6)} ${job.status.padEnd(8)} ${job.commitId}  ${duration.padStart(8)}  ${url}`

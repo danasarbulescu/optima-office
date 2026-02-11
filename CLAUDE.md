@@ -391,7 +391,7 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 
 ## Deployment
 
-- Push to `main` branch deploys to `d149ycglubuqvd.amplifyapp.com` (production)
+- Push to `main` branch deploys to `d15bx1surdnd12.amplifyapp.com` (production)
 - Amplify Hosting handles CI/CD automatically
 - **Check deployment status**: `npx tsx scripts/check-deployments.ts` (add `--watch` to poll until complete)
 - **Automatic monitoring**: A `PostToolUse` hook in `.claude/settings.local.json` detects `git push` and instructs Claude to run the watch script in the background. Claude must NOT block on the result -- instead, note the task ID and check non-blockingly (`TaskOutput block=false`) at the start of subsequent responses. Only report when the deployment has completed (SUCCEED or FAILED) -- do not mention it while still running
@@ -411,9 +411,9 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 - User admin email: `dana.sarbulescu@gmail.com`
 
 **Production**
-- AWS resource prefix: `amplify-d149ycglubuqvd-main-branch-d0cdc27b71`
-- User Pool Id: `us-east-2_IqqSQubzw`
-- User id: `b1eb05d0-2021-70ed-627a-9a99b4f566e3`
+- AWS resource prefix: `amplify-d15bx1surdnd12-main-branch-593bd34ebb`
+- User Pool Id: `us-east-2_IiF9PpFOB`
+- User id: `11cbc5e0-d051-70b2-640c-56ee3371c6da`
 - User admin email: `dana.sarbulescu@gmail.com`
 
-<!-- Last deployment test: 2026-02-07 -->
+<!-- Last deployment test: 2026-02-11 -->

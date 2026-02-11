@@ -18,7 +18,7 @@ export const SANDBOXES: SandboxConfig[] = [
   {
     id: 'production',
     label: 'Production',
-    tablePrefix: 'amplify-d149ycglubuqvd-main-branch-d0cdc27b71',
+    tablePrefix: 'amplify-d15bx1surdnd12-main-branch-593bd34ebb',
   },
 ];
 

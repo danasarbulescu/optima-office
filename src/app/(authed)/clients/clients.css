@@ -104,6 +104,10 @@
   background: #1f2030;
 }
 
+.clients-table tbody tr:nth-child(even) {
+  background: #1e1f28;
+}
+
 .client-row:not(:last-child) td {
   border-bottom: 1px solid #2a2b35;
 }
@@ -352,6 +356,10 @@
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.5px;
+}
+
+.entities-sub-table tbody tr:nth-child(even) {
+  background: #1e1f28;
 }
 
 .entities-sub-table tr:not(:last-child) td {

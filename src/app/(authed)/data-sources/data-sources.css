@@ -47,6 +47,10 @@
   letter-spacing: 0.5px;
 }
 
+.data-sources-table tbody tr:nth-child(even) {
+  background: #1e1f28;
+}
+
 .data-sources-table tr:not(:last-child) td {
   border-bottom: 1px solid #2a2b35;
 }
