@@ -271,6 +271,52 @@ export default function ClientDetailPage() {
     }
   };
 
+  const handleDeleteAllWidgets = async (dashboardId: string) => {
+    if (!confirm("Remove all widgets from this dashboard?")) return;
+    try {
+      const res = await fetch(`/api/dashboards/${dashboardId}/widgets`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to remove widgets");
+      afterPackageMutation();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleSwapWidgetOrder = async (
+    dashboardId: string,
+    widgetId1: string, order1: number,
+    widgetId2: string, order2: number,
+  ) => {
+    // Optimistic update
+    setAllWidgets(prev => {
+      const dashWidgets = (prev[dashboardId] || []).map(w => {
+        if (w.id === widgetId1) return { ...w, sortOrder: order2 };
+        if (w.id === widgetId2) return { ...w, sortOrder: order1 };
+        return w;
+      });
+      dashWidgets.sort((a, b) => a.sortOrder - b.sortOrder);
+      return { ...prev, [dashboardId]: dashWidgets };
+    });
+
+    try {
+      await Promise.all([
+        fetch(`/api/dashboards/${dashboardId}/widgets/${widgetId1}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sortOrder: order2 }),
+        }),
+        fetch(`/api/dashboards/${dashboardId}/widgets/${widgetId2}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sortOrder: order1 }),
+        }),
+      ]);
+    } catch (err: any) {
+      afterPackageMutation();
+      setError(err.message);
+    }
+  };
+
   if (loading) return <div className="app-loading">Loading client...</div>;
   if (error) return <div className="app-error">{error}</div>;
   if (!client) return <div className="app-error">Client not found</div>;
@@ -462,6 +508,8 @@ export default function ClientDetailPage() {
                     onToggleDash={(id) => setExpandedDashId(expandedDashId === id ? null : id)}
                     onAddWidget={(d) => setAddWidgetForDashboard(d)}
                     onDeleteWidget={handleDeleteWidget}
+                    onDeleteAllWidgets={handleDeleteAllWidgets}
+                    onSwapWidgetOrder={handleSwapWidgetOrder}
                   />
                 );
               })}

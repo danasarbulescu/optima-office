@@ -70,7 +70,7 @@ src/
       dashboards/route.ts           — API: list dashboards (GET), add dashboard (POST)
       dashboards/resolve/route.ts   — API: resolve dashboard by packageSlug + dashboardSlug (GET)
       dashboards/[id]/route.ts      — API: edit dashboard (PUT), delete dashboard + cascade (DELETE)
-      dashboards/[id]/widgets/route.ts       — API: list widgets (GET), add widget (POST)
+      dashboards/[id]/widgets/route.ts       — API: list widgets (GET), add widget (POST), delete all widgets (DELETE)
       dashboards/[id]/widgets/[widgetId]/route.ts — API: edit widget (PUT), delete widget (DELETE)
       widget-types/route.ts         — API: list all widget types with DynamoDB name overrides (GET)
       widget-types/[id]/route.ts    — API: get widget type detail (GET), rename or reset to default (PUT)
@@ -346,7 +346,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 - **Packages**: `GET /api/packages?clientId=` — list packages; `POST /api/packages` — add package `{ clientId, slug, displayName, sortOrder }`; `PUT /api/packages/:id` — edit; `DELETE /api/packages/:id` — cascade delete (dashboards + widgets)
 - **Dashboards**: `GET /api/dashboards?packageId=|clientId=` — list dashboards; `POST /api/dashboards` — add `{ packageId, clientId, slug, displayName, sortOrder }`; `PUT /api/dashboards/:id` — edit; `DELETE /api/dashboards/:id` — cascade delete (widgets)
 - **Dashboard resolve**: `GET /api/dashboards/resolve?packageSlug=&dashboardSlug=&clientId=` — resolve dashboard from URL slugs (enforces package/dashboard authorization for client users)
-- **Dashboard widgets**: `GET /api/dashboards/:id/widgets` — list widgets; `POST /api/dashboards/:id/widgets` — add `{ widgetTypeId, sortOrder, config? }`; `PUT /api/dashboards/:id/widgets/:widgetId` — edit; `DELETE /api/dashboards/:id/widgets/:widgetId` — remove
+- **Dashboard widgets**: `GET /api/dashboards/:id/widgets` — list widgets; `POST /api/dashboards/:id/widgets` — add `{ widgetTypeId, sortOrder, config? }`; `DELETE /api/dashboards/:id/widgets` — remove all widgets (internal admin only); `PUT /api/dashboards/:id/widgets/:widgetId` — edit; `DELETE /api/dashboards/:id/widgets/:widgetId` — remove single
 - **Widget types**: `GET /api/widget-types` — list all types with name overrides; `GET /api/widget-types/:id` — get single type detail; `PUT /api/widget-types/:id` — rename (empty displayName resets to default); `GET /api/widget-types/:id/usage` — list dashboards using this type (with client/package context); `GET /api/widget-types/:id/preview?month=YYYY-MM` — preview data (KPIs/PnL/trend) computed from configured entity's warehouse data (month optional, defaults to latest with non-zero data); `GET /api/widget-types/preview-config` — get saved preview entity ID; `PUT /api/widget-types/preview-config` — save preview entity `{ entityId }`
 
 ### Widget data (financial data endpoints)

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo, useEffect } from "react";
 import { Package, Dashboard, DashboardWidget } from "@/lib/types";
 import { getWidgetType } from "@/widgets/registry";
 
@@ -8,7 +9,7 @@ import { getWidgetType } from "@/widgets/registry";
 export function PackageRow({
   pkg, isExpanded, dashboards, allWidgets, expandedDashId,
   onToggle, onEdit, onDelete, onAddDashboard, onEditDashboard, onDeleteDashboard,
-  onToggleDash, onAddWidget, onDeleteWidget,
+  onToggleDash, onAddWidget, onDeleteWidget, onDeleteAllWidgets, onSwapWidgetOrder,
 }: {
   pkg: Package;
   isExpanded: boolean;
@@ -24,6 +25,8 @@ export function PackageRow({
   onToggleDash: (id: string) => void;
   onAddWidget: (d: Dashboard) => void;
   onDeleteWidget: (dashboardId: string, widgetId: string) => void;
+  onDeleteAllWidgets: (dashboardId: string) => void;
+  onSwapWidgetOrder: (dashboardId: string, widgetId1: string, order1: number, widgetId2: string, order2: number) => void;
 }) {
   return (
     <>
@@ -78,6 +81,8 @@ export function PackageRow({
                             onDelete={() => onDeleteDashboard(d)}
                             onAddWidget={() => onAddWidget(d)}
                             onDeleteWidget={(wId) => onDeleteWidget(d.id, wId)}
+                            onDeleteAllWidgets={() => onDeleteAllWidgets(d.id)}
+                            onSwapWidgetOrder={(wId1, o1, wId2, o2) => onSwapWidgetOrder(d.id, wId1, o1, wId2, o2)}
                           />
                         );
                       })}
@@ -93,11 +98,27 @@ export function PackageRow({
   );
 }
 
+/* ─── Trash icon (Feather trash-2) ─── */
+
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
 /* ─── Dashboard Row (nested accordion) ─── */
+
+type WidgetSortColumn = "name" | "category" | "sortOrder";
+type SortDirection = "asc" | "desc";
+const PAGE_SIZE = 20;
 
 function DashboardRow({
   dashboard, isExpanded, widgets,
   onToggle, onEdit, onDelete, onAddWidget, onDeleteWidget,
+  onDeleteAllWidgets, onSwapWidgetOrder,
 }: {
   dashboard: Dashboard;
   isExpanded: boolean;
@@ -107,7 +128,62 @@ function DashboardRow({
   onDelete: () => void;
   onAddWidget: () => void;
   onDeleteWidget: (widgetId: string) => void;
+  onDeleteAllWidgets: () => void;
+  onSwapWidgetOrder: (widgetId1: string, order1: number, widgetId2: string, order2: number) => void;
 }) {
+  const [sortColumn, setSortColumn] = useState<WidgetSortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when widget count changes
+  useEffect(() => { setCurrentPage(1); }, [widgets.length]);
+
+  const handleSort = (column: WidgetSortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortIndicator = (column: WidgetSortColumn) => {
+    if (sortColumn !== column)
+      return <span className="sort-arrow sort-arrow-inactive">{"\u25B2"}</span>;
+    return (
+      <span className="sort-arrow">
+        {sortDirection === "asc" ? "\u25B2" : "\u25BC"}
+      </span>
+    );
+  };
+
+  const sortedWidgets = useMemo(() => {
+    if (!sortColumn) return [...widgets];
+    const sorted = [...widgets].sort((a, b) => {
+      if (sortColumn === "name") {
+        const aName = (getWidgetType(a.widgetTypeId)?.name || a.widgetTypeId).toLowerCase();
+        const bName = (getWidgetType(b.widgetTypeId)?.name || b.widgetTypeId).toLowerCase();
+        return aName.localeCompare(bName);
+      }
+      if (sortColumn === "category") {
+        const aCat = (getWidgetType(a.widgetTypeId)?.category || "").toLowerCase();
+        const bCat = (getWidgetType(b.widgetTypeId)?.category || "").toLowerCase();
+        return aCat.localeCompare(bCat);
+      }
+      return a.sortOrder - b.sortOrder;
+    });
+    return sortDirection === "desc" ? sorted.reverse() : sorted;
+  }, [widgets, sortColumn, sortDirection]);
+
+  const totalPages = Math.ceil(sortedWidgets.length / PAGE_SIZE);
+  const paginatedWidgets = sortedWidgets.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  // Show reorder arrows only when in natural order (no custom sort or sorting by order)
+  const showReorderArrows = sortColumn === null || sortColumn === "sortOrder";
+
   return (
     <>
       <tr className={`client-row ${isExpanded ? "client-row-expanded" : ""}`} onClick={onToggle}>
@@ -131,38 +207,103 @@ function DashboardRow({
               <div className="entities-section">
                 <div className="entities-section-header">
                   <h3>Widgets</h3>
-                  <button className="add-entity-btn" onClick={onAddWidget}>Add Widget</button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {widgets.length > 0 && (
+                      <button className="delete-btn" onClick={onDeleteAllWidgets}>Remove All</button>
+                    )}
+                    <button className="add-entity-btn" onClick={onAddWidget}>Add Widget</button>
+                  </div>
                 </div>
                 {widgets.length === 0 ? (
                   <div className="entities-empty-sub">No widgets yet.</div>
                 ) : (
-                  <table className="entities-sub-table">
-                    <thead>
-                      <tr>
-                        <th>Widget Type</th>
-                        <th>Category</th>
-                        <th>Order</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {widgets.map((w) => {
-                        const wt = getWidgetType(w.widgetTypeId);
-                        return (
-                          <tr key={w.id}>
-                            <td>{wt?.name || w.widgetTypeId}</td>
-                            <td>{wt?.category || "—"}</td>
-                            <td>{w.sortOrder}</td>
-                            <td>
-                              <div className="action-buttons">
-                                <button className="delete-btn" onClick={() => onDeleteWidget(w.id)}>Remove</button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <>
+                    <table className="entities-sub-table">
+                      <thead>
+                        <tr>
+                          <th className="sortable-th" onClick={() => handleSort("name")}>
+                            Widget Type {sortIndicator("name")}
+                          </th>
+                          <th className="sortable-th" onClick={() => handleSort("category")}>
+                            Category {sortIndicator("category")}
+                          </th>
+                          <th className="sortable-th" onClick={() => handleSort("sortOrder")}>
+                            Order {sortIndicator("sortOrder")}
+                          </th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedWidgets.map((w) => {
+                          const wt = getWidgetType(w.widgetTypeId);
+                          const naturalIndex = widgets.findIndex(nw => nw.id === w.id);
+                          const isFirst = naturalIndex === 0;
+                          const isLast = naturalIndex === widgets.length - 1;
+                          return (
+                            <tr key={w.id}>
+                              <td>{wt?.name || w.widgetTypeId}</td>
+                              <td>{wt?.category || "—"}</td>
+                              <td>
+                                {showReorderArrows ? (
+                                  <div className="reorder-controls">
+                                    <span>{w.sortOrder}</span>
+                                    <div className="reorder-arrows">
+                                      {!isFirst && (
+                                        <button
+                                          className="reorder-btn"
+                                          title="Move up"
+                                          onClick={() => {
+                                            const prev = widgets[naturalIndex - 1];
+                                            onSwapWidgetOrder(w.id, w.sortOrder, prev.id, prev.sortOrder);
+                                          }}
+                                        >{"\u25B2"}</button>
+                                      )}
+                                      {!isLast && (
+                                        <button
+                                          className="reorder-btn"
+                                          title="Move down"
+                                          onClick={() => {
+                                            const next = widgets[naturalIndex + 1];
+                                            onSwapWidgetOrder(w.id, w.sortOrder, next.id, next.sortOrder);
+                                          }}
+                                        >{"\u25BC"}</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  w.sortOrder
+                                )}
+                              </td>
+                              <td>
+                                <div className="action-buttons">
+                                  <button className="icon-btn-muted" title="Remove widget" onClick={() => onDeleteWidget(w.id)}>
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {totalPages > 1 && (
+                      <div className="pagination-controls">
+                        <button
+                          className="pagination-btn"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage(p => p - 1)}
+                        >Previous</button>
+                        <span className="pagination-info">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                          className="pagination-btn"
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage(p => p + 1)}
+                        >Next</button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

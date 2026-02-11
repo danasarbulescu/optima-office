@@ -914,3 +914,85 @@
 .access-tree-dashboard-label input[type="checkbox"]:disabled {
   opacity: 0.5;
 }
+
+/* Muted icon button (trash, etc.) */
+.icon-btn-muted {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: none;
+  border: none;
+  color: #6a6b78;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.2s;
+}
+
+.icon-btn-muted:hover {
+  color: #e74c3c;
+}
+
+/* Widget reorder controls */
+.reorder-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reorder-arrows {
+  display: flex;
+  gap: 2px;
+}
+
+.reorder-btn {
+  background: none;
+  border: 1px solid #3a3b48;
+  border-radius: 3px;
+  color: #9a9caa;
+  font-size: 9px;
+  padding: 1px 5px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s;
+}
+
+.reorder-btn:hover {
+  background: #252636;
+  color: #e1e2e8;
+}
+
+/* Pagination */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 4px;
+}
+
+.pagination-btn {
+  padding: 4px 12px;
+  border: 1px solid #3a3b48;
+  border-radius: 4px;
+  background: transparent;
+  color: #9a9caa;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #252636;
+  color: #e1e2e8;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: #6a6b78;
+}

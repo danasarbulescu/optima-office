@@ -60,7 +60,6 @@ export default function WidgetsPage() {
                   <Link href={`/widgets/${wt.id}`} className="widget-name-link">
                     {wt.name}
                   </Link>
-                  {wt.hasOverride && <span className="override-badge">customized</span>}
                 </td>
                 <td>{wt.category}</td>
                 <td><code className="slug-badge">{wt.component}</code></td>
