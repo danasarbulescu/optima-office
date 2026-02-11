@@ -933,6 +933,19 @@
   color: #e74c3c;
 }
 
+.icon-btn-view:hover {
+  color: #3b82f6;
+}
+
+.icon-btn-view:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.icon-btn-view:disabled:hover {
+  color: #6a6b78;
+}
+
 /* Widget reorder controls */
 .reorder-controls {
   display: flex;

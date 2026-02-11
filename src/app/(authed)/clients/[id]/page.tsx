@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser, DataSource, getEntityBindings } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
+import { useClient } from "@/context/ClientContext";
 import { PackageRow } from "./PackageAccordion";
 import {
   EditClientModal,
@@ -21,11 +22,21 @@ import {
 } from "./modals";
 import "../clients.css";
 
+function EyeIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 export default function ClientDetailPage() {
   const router = useRouter();
   const params = useParams();
   const clientId = params.id as string;
   const { refreshEntities } = useEntity();
+  const { currentClientId, setCurrentClientId, startImpersonatingUser } = useClient();
 
   const [client, setClient] = useState<Client | null>(null);
   const [entities, setEntities] = useState<EntityConfig[]>([]);
@@ -260,6 +271,53 @@ export default function ClientDetailPage() {
     }
   };
 
+  const handleImpersonateUser = (cu: ClientUser) => {
+    if (!confirm("You are about to switch to this client user view of the application.")) return;
+
+    // Compute target URL from this page's local data
+    let targetUrl: string | null = null;
+
+    // 1. Try the client user's default dashboard
+    if (cu.defaultDashboardId) {
+      const dash = dashboards.find(d => d.id === cu.defaultDashboardId);
+      if (dash) {
+        const pkg = packages.find(p => p.id === dash.packageId);
+        if (pkg) targetUrl = `/${pkg.slug}/${dash.slug}`;
+      }
+    }
+
+    // 2. Fallback: first authorized dashboard
+    if (!targetUrl) {
+      const authPkgIds = cu.authorizedPackageIds || [];
+      const authDashIds = cu.authorizedDashboardIds || [];
+      const sortedPkgs = [...packages].sort((a, b) => a.sortOrder - b.sortOrder);
+
+      for (const pkg of sortedPkgs) {
+        const pkgDashes = (dashboardsByPackage[pkg.id] || []);
+        for (const dash of pkgDashes) {
+          if (authPkgIds.includes(pkg.id) || authDashIds.includes(dash.id)) {
+            targetUrl = `/${pkg.slug}/${dash.slug}`;
+            break;
+          }
+        }
+        if (targetUrl) break;
+      }
+    }
+
+    if (!targetUrl) {
+      alert("This client user has no authorized dashboards.");
+      return;
+    }
+
+    // Ensure layout bootstrap has the right client's data
+    if (currentClientId !== clientId) {
+      setCurrentClientId(clientId);
+    }
+
+    startImpersonatingUser(cu);
+    router.push(targetUrl);
+  };
+
   const handleDeleteWidget = async (dashboardId: string, widgetId: string) => {
     if (!confirm("Remove this widget?")) return;
     try {
@@ -456,6 +514,9 @@ export default function ClientDetailPage() {
                   <td>{(cu.authorizedPackageIds?.length || 0) + (cu.authorizedDashboardIds?.length || 0) || "None"}</td>
                   <td>
                     <div className="action-buttons">
+                      <button className="icon-btn-muted icon-btn-view" title="View as this user" disabled={cu.status === "archived"} onClick={() => handleImpersonateUser(cu)}>
+                        <EyeIcon />
+                      </button>
                       <button className="edit-btn" onClick={() => setManagingAccessUser(cu)}>Access</button>
                       <button className="edit-btn" onClick={() => setEditingClientUser(cu)}>Edit</button>
                       <button className="delete-btn" onClick={() => handleDeleteClientUser(cu)}>Delete</button>

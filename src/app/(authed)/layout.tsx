@@ -71,38 +71,19 @@ function PackageNav() {
   );
 }
 
-function ViewAsClientButton() {
-  const { isInternal, currentClientId, isImpersonating, startImpersonating } = useClient();
-
-  if (!isInternal || currentClientId === '*' || isImpersonating) return null;
-
-  return (
-    <button onClick={startImpersonating} className="view-as-client-btn">
-      View as Client
-    </button>
-  );
-}
-
-function ImpersonationBanner() {
-  const { isImpersonating, currentClient, stopImpersonating } = useClient();
-
-  if (!isImpersonating) return null;
-
-  return (
-    <div className="impersonation-banner">
-      <span>Viewing as <strong>{currentClient?.displayName || 'Client'}</strong></span>
-      <button onClick={stopImpersonating}>Exit</button>
-    </div>
-  );
-}
-
 function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
   const { authStatus, signOut, user } = useAuthenticator((context) => [
     context.authStatus,
     context.user,
   ]);
   const router = useRouter();
-  const { isInternal, isImpersonating } = useClient();
+  const { isInternal, isImpersonating, impersonatingClientUser, stopImpersonatingUser } = useClient();
+
+  const handleStopUserImpersonation = () => {
+    if (!confirm("You are about to switch back to your Admin view.")) return;
+    stopImpersonatingUser();
+    router.push("/clients");
+  };
 
   useEffect(() => {
     if (authStatus === "unauthenticated") {
@@ -124,8 +105,11 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <span className="app-user">{user?.signInDetails?.loginId}</span>
+      <header className={`app-header${impersonatingClientUser ? ' app-header-impersonating-user' : ''}`}>
+        <span className="app-user">
+          {user?.signInDetails?.loginId}
+          {impersonatingClientUser && <> as <strong>{impersonatingClientUser.firstName} {impersonatingClientUser.lastName}</strong></>}
+        </span>
         <nav className="app-nav">
           <PackageNav />
           {isInternal && !isImpersonating && (
@@ -138,13 +122,17 @@ function AuthedLayoutContent({ children }: { children: React.ReactNode }) {
           )}
         </nav>
         <div className="app-controls">
-          <ViewAsClientButton />
-          <button onClick={signOut} className="sign-out-btn">
-            Sign Out
-          </button>
+          {impersonatingClientUser ? (
+            <button onClick={handleStopUserImpersonation} className="admin-view-btn">
+              Admin View
+            </button>
+          ) : (
+            <button onClick={signOut} className="sign-out-btn">
+              Sign Out
+            </button>
+          )}
         </div>
       </header>
-      <ImpersonationBanner />
       <main>{children}</main>
     </div>
   );

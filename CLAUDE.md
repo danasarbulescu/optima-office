@@ -95,7 +95,7 @@ components/
     ConfigureAmplify.tsx            — Client component for Amplify SSR config
   context/
     BootstrapContext.tsx             — React context: single /api/bootstrap call on mount, provides auth + clients + packages + dashboards + widgetsByDashboard + entities to child contexts
-    ClientContext.tsx                — React context: reads auth/clients from BootstrapContext, client switcher (triggers bootstrap.refetch), impersonation, authorizedPackageIds, authorizedDashboardIds
+    ClientContext.tsx                — React context: reads auth/clients from BootstrapContext, client switcher (triggers bootstrap.refetch), client-user impersonation, authorizedPackageIds, authorizedDashboardIds
     EntityContext.tsx                — React context: reads entities from BootstrapContext, multi-select entity state
     PackageContext.tsx               — React context: reads packages + dashboards + widgetsByDashboard from BootstrapContext, applies authorization filtering locally
   utils/
@@ -159,8 +159,8 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 - **Internal users**: See a client switcher dropdown in the header. Can switch between clients. See all packages/dashboards + admin pages (Clients, Widgets, Tools).
 - **External users**: Locked to their assigned client. No switcher visible. See only their client's packages and dashboards.
 - **Routing**: Auth-based. Dashboard URLs use `/{packageSlug}/{dashboardSlug}` pattern. Client selection via `x-client-id` header or stored in context.
-- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `clientLoading`, `isImpersonating`, `startImpersonating()`, `stopImpersonating()`, `authorizedPackageIds`, `authorizedDashboardIds`. Reads auth + clients from `BootstrapContext` (no direct API calls). Client switch triggers `bootstrap.refetch(newClientId)` to refresh all layout data.
-- **Client impersonation**: Internal admins can click "View as Client" (when a specific client is selected) to see exactly what that client sees — only their packages/dashboards, no admin nav (Clients/Widgets/Tools), no client switcher. An amber banner shows "Viewing as {clientName}" with an Exit button. Purely client-side; auto-clears when switching clients.
+- **React context**: `ClientProvider` / `useClient()` in `src/context/ClientContext.tsx` provides `currentClientId`, `isInternal`, `setCurrentClientId`, `clients`, `clientLoading`, `isImpersonating`, `impersonatingClientUser`, `startImpersonatingUser()`, `stopImpersonatingUser()`, `authorizedPackageIds`, `authorizedDashboardIds`. Reads auth + clients from `BootstrapContext` (no direct API calls). Client switch triggers `bootstrap.refetch(newClientId)` to refresh all layout data.
+- **Client user impersonation**: Internal admins can click the eye icon on any client user row (in the client detail page) to impersonate that user. During impersonation: the user's `authorizedPackageIds`/`authorizedDashboardIds` are applied (restricting visible packages/dashboards), the header turns poppy red, admin nav links are hidden, Sign Out is replaced with "Admin View" button, and the header shows "email as FirstName LastName". Navigates to the user's default dashboard (or first authorized). Clicking "Admin View" confirms and returns to `/clients` with full admin access restored. Purely client-side; auto-clears when switching clients.
 
 ## Package / Dashboard / Widget system
 

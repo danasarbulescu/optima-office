@@ -6,7 +6,7 @@ Financial data from external sources (QuickBooks via CData Connect Cloud, TurboT
 
 Reports are built from widgets — reusable UI components defined in code. Widgets are placed on Dashboards, which are grouped into Packages. A client can have multiple packages, each containing multiple dashboards, each containing multiple widgets. This hierarchy (Package → Dashboard → Widget) provides flexible organization of financial reports.
 
-The application has an admin area (for internal staff) and a client area (for client users). Admins can impersonate any client to see exactly what they see, for debugging and support.
+The application has an admin area (for internal staff) and a client area (for client users). Admins can impersonate specific client users to see exactly what they see (restricted packages/dashboards, default landing page), for debugging and support.
 
 ## Admin Area
 
@@ -131,13 +131,16 @@ Packages and dashboards appear as navigation items:
 - Packages with multiple dashboards render as a dropdown menu
 - Internal admins also see admin links (Clients, Data Sources, Widgets, Tools) — hidden during impersonation
 
-### Client Impersonation
+### Client User Impersonation
 
-Internal admins can click "View as Client" to see exactly what a specific client sees:
+Internal admins can click the eye icon on any client user row (in the client detail page) to impersonate that user:
+- Header turns poppy red to indicate impersonation mode
+- Header shows "admin@email.com as FirstName LastName"
 - Admin navigation links are hidden
-- Client switcher is hidden
-- Only the client's authorized packages/dashboards are visible
-- An amber banner shows "Viewing as {Client Name}" with an Exit button
+- Only the client user's authorized packages/dashboards are visible
+- Sign Out button is replaced with "Admin View" button
+- Navigates to the user's default dashboard (or first authorized dashboard)
+- Clicking "Admin View" confirms and returns to the Clients admin page
 - Auto-clears when switching to a different client
 
 ### Default Dashboard

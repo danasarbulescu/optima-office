@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Client } from '@/lib/types';
+import { Client, ClientUser } from '@/lib/types';
 import { useBootstrap } from './BootstrapContext';
 
 interface ClientContextValue {
@@ -11,11 +11,12 @@ interface ClientContextValue {
   isInternal: boolean;
   clientLoading: boolean;
   isImpersonating: boolean;
+  impersonatingClientUser: ClientUser | null;
   authorizedPackageIds: string[] | null; // null = full access; string[] = restricted
   authorizedDashboardIds: string[] | null; // null = full access; string[] = restricted
   setCurrentClientId: (id: string) => void;
-  startImpersonating: () => void;
-  stopImpersonating: () => void;
+  startImpersonatingUser: (user: ClientUser) => void;
+  stopImpersonatingUser: () => void;
 }
 
 const ClientContext = createContext<ClientContextValue | undefined>(undefined);
@@ -26,26 +27,29 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [currentClientId, setCurrentClientIdRaw] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [isInternal, setIsInternal] = useState(false);
-  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatingClientUser, setImpersonatingClientUser] = useState<ClientUser | null>(null);
   const [authorizedPackageIds, setAuthorizedPackageIds] = useState<string[] | null>(null);
   const [authorizedDashboardIds, setAuthorizedDashboardIds] = useState<string[] | null>(null);
 
+  const isImpersonating = impersonatingClientUser !== null;
+
   // Auto-clear impersonation when client changes
   const setCurrentClientId = (id: string) => {
-    setIsImpersonating(false);
+    setImpersonatingClientUser(null);
     setCurrentClientIdRaw(id);
     // Refetch bootstrap data for the new client
     bootstrap.refetch(id);
   };
 
-  const startImpersonating = () => {
-    if (currentClientId && currentClientId !== '*') {
-      setIsImpersonating(true);
-    }
+  const startImpersonatingUser = (user: ClientUser) => {
+    setImpersonatingClientUser(user);
   };
 
-  const stopImpersonating = () => {
-    setIsImpersonating(false);
+  const stopImpersonatingUser = () => {
+    setImpersonatingClientUser(null);
+    // Reset to all-clients view so client-specific packages clear from nav
+    setCurrentClientIdRaw('*');
+    bootstrap.refetch();
   };
 
   // Sync state from bootstrap data
@@ -57,8 +61,14 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
     if (auth.isInternal) {
       setClients(bootstrap.clients);
-      setAuthorizedPackageIds(null);
-      setAuthorizedDashboardIds(null);
+      // During client-user impersonation, apply the client user's restrictions
+      if (impersonatingClientUser) {
+        setAuthorizedPackageIds(impersonatingClientUser.authorizedPackageIds);
+        setAuthorizedDashboardIds(impersonatingClientUser.authorizedDashboardIds ?? []);
+      } else {
+        setAuthorizedPackageIds(null);
+        setAuthorizedDashboardIds(null);
+      }
       // Only set default clientId on initial load (not on client switch refetch)
       setCurrentClientIdRaw(prev => prev === null ? '*' : prev);
     } else {
@@ -69,7 +79,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         setClients([bootstrap.client]);
       }
     }
-  }, [bootstrap.loading, bootstrap.auth, bootstrap.clients, bootstrap.client]);
+  }, [bootstrap.loading, bootstrap.auth, bootstrap.clients, bootstrap.client, impersonatingClientUser]);
 
   const currentClient = clients.find(c => c.id === currentClientId) || null;
 
@@ -82,11 +92,12 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         isInternal,
         clientLoading: bootstrap.loading,
         isImpersonating,
+        impersonatingClientUser,
         authorizedPackageIds,
         authorizedDashboardIds,
         setCurrentClientId,
-        startImpersonating,
-        stopImpersonating,
+        startImpersonatingUser,
+        stopImpersonatingUser,
       }}
     >
       {children}
