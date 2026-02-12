@@ -398,18 +398,25 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 
 ### Environments
 
+## AWS account: `358832296391`
+
 **Win Desktop sandbox**
-- AWS account: `358832296391` (CLI profile: `danasarbulescu`, IAM user: `admin-cli`)
+- CLI profile: `danasarbulescu`, IAM user: `admin-cli`
 - AWS resource prefix: `amplify-quickbooksexport-marin-sandbox-59a22a3c9b`
 - User Pool Id: `us-east-2_GD3xwOSsI`
 - User id: `f1fbd530-20c1-70c9-c668-28b08aab69bc`
 - User admin email: `dana.sarbulescu@gmail.com`
 
+**Win XPS sandbox**
+- CLI profile: `danasarbulescu`, IAM user: `dana-amplify-xp`
+- AWS resource prefix: `amplify-optimaoffice-Marin-sandbox-1e654e688f`
+- User Pool Id: `us-east-2_qyb1dO1jv`
+- User id: `b19b35e0-00d1-7072-d9e0-9a58236a5b03`
+- User admin email: `dana.sarbulescu@gmail.com`
+
 **Production**
-- AWS account: `358832296391` (CLI profile: `danasarbulescu`)
+- CLI profile: `danasarbulescu`
 - AWS resource prefix: `amplify-d15bx1surdnd12-main-branch-593bd34ebb`
 - User Pool Id: `us-east-2_IiF9PpFOB`
 - User id: `11cbc5e0-d051-70b2-640c-56ee3371c6da`
 - User admin email: `dana.sarbulescu@gmail.com`
-
-<!-- Last deployment test: 2026-02-11 -->
