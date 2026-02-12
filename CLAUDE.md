@@ -1,4 +1,4 @@
-# QuickBooks Export
+# Optima Office
 
 Web dashboard that fetches P&L data from CData Connect Cloud and renders financial dashboards for multiple QuickBooks entities. Supports per-entity and combined views. Deployed on AWS Amplify with Cognito authentication and DynamoDB caching. Dashboards are fully data-driven: admins configure packages, dashboards, and widgets per client via the UI.
 
@@ -16,7 +16,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 
 ## Workflows
 
-- ***Web app***: `npm run dev` — local Next.js dev server with Turbopack (requires `npx ampx sandbox` running for backend)
+- ***Web app***: `npm run dev` — local Next.js dev server with Turbopack (requires `npx ampx sandbox --profile danasarbulescu` running for backend)
 - **Build**: `npm run build` — Next.js production build to `.next/`
 
 ## Project structure
@@ -381,7 +381,7 @@ CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB tab
 
 ```bash
 # Terminal 1: Deploy sandbox backend
-npx ampx sandbox
+npx ampx sandbox --profile danasarbulescu
 
 # Terminal 2: Start frontend
 npm run dev
@@ -399,12 +399,14 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 ### Environments
 
 **Win Desktop sandbox**
+- AWS account: `358832296391` (CLI profile: `danasarbulescu`, IAM user: `admin-cli`)
 - AWS resource prefix: `amplify-quickbooksexport-marin-sandbox-59a22a3c9b`
 - User Pool Id: `us-east-2_GD3xwOSsI`
 - User id: `f1fbd530-20c1-70c9-c668-28b08aab69bc`
 - User admin email: `dana.sarbulescu@gmail.com`
 
 **Production**
+- AWS account: `358832296391` (CLI profile: `danasarbulescu`)
 - AWS resource prefix: `amplify-d15bx1surdnd12-main-branch-593bd34ebb`
 - User Pool Id: `us-east-2_IiF9PpFOB`
 - User id: `11cbc5e0-d051-70b2-640c-56ee3371c6da`
