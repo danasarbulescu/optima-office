@@ -322,7 +322,7 @@ On PLCache miss, warehouse data is read and used to repopulate PLCache. On wareh
 ## Tools — Sandbox Data Sync
 
 Admin tool at `/tools` for copying the Entities DynamoDB table between environments:
-- **Sandboxes**: Defined in `src/lib/sandboxes.ts` — Win Desktop, Win XPS, Production (each with a table prefix)
+- **Sandboxes**: Defined in `src/lib/sandboxes.ts` — Win Desktop, Production (each with a table prefix)
 - **Discovery**: `discoverEntitiesTable(prefix)` in `src/lib/sync-sandbox.ts` uses `ListTablesCommand` to find Entities tables by prefix
 - **Preview**: Shows source/destination item counts and source items before sync
 - **Execute**: Clears destination table, batch-writes all source items
@@ -402,12 +402,6 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 - AWS resource prefix: `amplify-quickbooksexport-marin-sandbox-59a22a3c9b`
 - User Pool Id: `us-east-2_GD3xwOSsI`
 - User id: `f1fbd530-20c1-70c9-c668-28b08aab69bc`
-- User admin email: `dana.sarbulescu@gmail.com`
-
-**Win XPS sandbox**
-- AWS resource prefix: `amplify-quickbooksexport-Marin-sandbox-a3c0c362ac`
-- User Pool Id: `us-east-2_TAqqsNbL6`
-- User id: `d1bbc5d0-3001-7080-d439-513d0557a5e0`
 - User admin email: `dana.sarbulescu@gmail.com`
 
 **Production**

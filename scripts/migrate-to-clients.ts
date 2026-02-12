@@ -24,9 +24,8 @@ import { randomUUID } from "crypto";
 
 // Known admin users (from CLAUDE.md environments)
 const KNOWN_USERS = [
-  { id: "517bd500-b001-7058-f41c-f72bb5fc7040", label: "Win Desktop sandbox" },
-  { id: "d1bbc5d0-3001-7080-d439-513d0557a5e0", label: "Win XPS sandbox" },
-  { id: "b1eb05d0-2021-70ed-627a-9a99b4f566e3", label: "Production" },
+  { id: "f1fbd530-20c1-70c9-c668-28b08aab69bc", label: "Win Desktop sandbox" },
+  { id: "11cbc5e0-d051-70b2-640c-56ee3371c6da", label: "Production" },
 ];
 
 function parseArgs() {
