@@ -257,20 +257,17 @@ function AddClientModal({
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState("");
-  const [slug, setSlug] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const slugValid = /^[a-z0-9-]*$/.test(slug);
-
   const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
-      const body: Record<string, unknown> = { slug, displayName };
+      const body: Record<string, unknown> = { displayName };
       if (firstName.trim()) body.firstName = firstName.trim();
       if (lastName.trim()) body.lastName = lastName.trim();
       if (email.trim()) body.email = email.trim();
@@ -306,18 +303,6 @@ function AddClientModal({
             autoFocus
           />
         </div>
-        <div className="modal-field">
-          <label>Slug</label>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase())}
-            placeholder="e.g. acme-corp"
-          />
-          {slug && !slugValid && (
-            <div className="slug-hint">Only lowercase letters, numbers, and hyphens</div>
-          )}
-        </div>
         <div className="modal-separator" />
         <div className="modal-field">
           <label>First Name</label>
@@ -352,7 +337,7 @@ function AddClientModal({
           <button
             className="modal-save-btn"
             onClick={handleSave}
-            disabled={saving || !displayName.trim() || !slug.trim() || !slugValid}
+            disabled={saving || !displayName.trim()}
           >
             {saving ? "Saving..." : "Save"}
           </button>

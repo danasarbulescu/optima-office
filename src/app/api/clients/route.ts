@@ -33,17 +33,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { slug, displayName, firstName, lastName, email } = body;
+    const { displayName, firstName, lastName, email } = body;
 
-    if (!slug || !displayName) {
-      return NextResponse.json({ error: "slug and displayName are required" }, { status: 400 });
+    if (!displayName) {
+      return NextResponse.json({ error: "displayName is required" }, { status: 400 });
     }
 
-    if (!/^[a-z0-9-]+$/.test(slug)) {
-      return NextResponse.json({ error: "slug must contain only lowercase letters, numbers, and hyphens" }, { status: 400 });
-    }
-
-    const id = await addClient({ slug, displayName, firstName, lastName, email });
+    const id = await addClient({ displayName, firstName, lastName, email });
     return NextResponse.json({ success: true, id }, { status: 201 });
   } catch (err: any) {
     console.error("Clients POST error:", err);

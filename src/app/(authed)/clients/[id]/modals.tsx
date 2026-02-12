@@ -21,15 +21,12 @@ export function EditClientModal({
   onSaved: () => void;
 }) {
   const [displayName, setDisplayName] = useState(client.displayName);
-  const [slug, setSlug] = useState(client.slug || "");
   const [firstName, setFirstName] = useState(client.firstName || "");
   const [lastName, setLastName] = useState(client.lastName || "");
   const [email, setEmail] = useState(client.email || "");
   const [status, setStatus] = useState(client.status || "active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  const slugValid = /^[a-z0-9-]*$/.test(slug);
 
   const handleSave = async () => {
     setSaving(true);
@@ -39,7 +36,6 @@ export function EditClientModal({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slug,
           displayName,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
@@ -68,11 +64,6 @@ export function EditClientModal({
           <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
         <div className="modal-field">
-          <label>Slug</label>
-          <input type="text" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
-          {slug && !slugValid && <div className="slug-hint">Only lowercase letters, numbers, and hyphens</div>}
-        </div>
-        <div className="modal-field">
           <label>Status</label>
           <select className="status-select" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="active">Active</option>
@@ -95,7 +86,7 @@ export function EditClientModal({
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>
-          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim() || !slug.trim() || !slugValid}>
+          <button className="modal-save-btn" onClick={handleSave} disabled={saving || !displayName.trim()}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>

@@ -401,10 +401,6 @@ export default function ClientDetailPage() {
       <div className="client-info-panel">
         <div className="info-grid">
           <div className="info-item">
-            <span className="info-label">Slug</span>
-            <span className="info-value"><code>{client.slug}</code></span>
-          </div>
-          <div className="info-item">
             <span className="info-label">Status</span>
             <span className="info-value">
 {(client.status || "active").charAt(0).toUpperCase() + (client.status || "active").slice(1)}

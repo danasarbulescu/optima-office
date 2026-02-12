@@ -3,7 +3,7 @@
  *
  * Usage:
  *   # Create a client
- *   npx tsx scripts/add-client.ts create --slug acme --name "ACME Corp"
+ *   npx tsx scripts/add-client.ts create --name "ACME Corp"
  *
  *   # List clients
  *   npx tsx scripts/add-client.ts list
@@ -52,14 +52,9 @@ async function main() {
         console.error("Error: CLIENTS_TABLE env var or --clients-table required");
         process.exit(1);
       }
-      const slug = flags.slug;
       const displayName = flags.name;
-      if (!slug || !displayName) {
-        console.error("Usage: create --slug <slug> --name <display-name>");
-        process.exit(1);
-      }
-      if (!/^[a-z0-9-]+$/.test(slug)) {
-        console.error("Error: slug must be lowercase letters, numbers, and hyphens only");
+      if (!displayName) {
+        console.error("Usage: create --name <display-name>");
         process.exit(1);
       }
 
@@ -68,12 +63,11 @@ async function main() {
         TableName: clientsTable,
         Item: {
           id,
-          slug,
           displayName,
           createdAt: new Date().toISOString(),
         },
       }));
-      console.log(`Created client: ${displayName} (${slug})`);
+      console.log(`Created client: ${displayName}`);
       console.log(`  id: ${id}`);
       break;
     }
@@ -90,7 +84,7 @@ async function main() {
       } else {
         console.log(`Found ${clients.length} client(s):\n`);
         for (const c of clients) {
-          console.log(`  ${c.displayName} (${c.slug})`);
+          console.log(`  ${c.displayName}`);
           console.log(`    id: ${c.id}`);
           console.log(`    created: ${c.createdAt}`);
           console.log();
@@ -136,7 +130,7 @@ async function main() {
       console.error("Usage: add-client.ts <create|list|assign> [options]");
       console.error();
       console.error("Commands:");
-      console.error("  create  --slug <slug> --name <name>     Create a client");
+      console.error("  create  --name <name>                    Create a client");
       console.error("  list                                     List all clients");
       console.error("  assign  --user-id <id> --role <role>     Assign a user membership");
       console.error("          [--client-id <id>]               (required for non-internal roles)");

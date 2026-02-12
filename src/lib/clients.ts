@@ -23,7 +23,6 @@ export async function getClient(id: string): Promise<Client | null> {
 }
 
 export async function addClient(data: {
-  slug: string;
   displayName: string;
   firstName?: string;
   lastName?: string;
@@ -32,7 +31,6 @@ export async function addClient(data: {
   const id = randomUUID();
   const item: Record<string, unknown> = {
     id,
-    slug: data.slug,
     displayName: data.displayName,
     createdAt: new Date().toISOString(),
     status: 'active',

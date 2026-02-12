@@ -44,7 +44,6 @@ export interface DataSource {
 
 export interface Client {
   id: string;
-  slug: string;
   displayName: string;
   firstName?: string;
   lastName?: string;

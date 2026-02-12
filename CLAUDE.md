@@ -151,7 +151,7 @@ amplify.yml                         — Amplify CI/CD pipeline (backend deploy +
 
 ## Multi-tenant architecture
 
-- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, slug, displayName, firstName?, lastName?, email?, createdAt, status?).
+- **Client**: An accounting firm's client. Stored in the `Clients` DynamoDB table (id, displayName, firstName?, lastName?, email?, createdAt, status?).
 - **Client membership**: Maps Cognito users to clients. Stored in `ClientMemberships` table (userId → clientId, role, clientUserId?).
 - **Roles**: `internal-admin` (sees all clients, can switch between them), `client-admin`, `client-viewer` (locked to their client).
 - **Client users**: Sub-accounts within a client with restricted package/dashboard access. Stored in `ClientUsers` table (id, clientId, email, firstName, lastName, status, authorizedPackageIds, authorizedDashboardIds, defaultDashboardId, cognitoUserId). Created by internal admins; auto-creates Cognito user (optionally sends invite). Access managed via dedicated "Manage Access" modal after creation (includes default dashboard picker). Linked to `ClientMemberships` via `clientUserId`.
@@ -244,9 +244,9 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 
 ## Client & entity management
 
-- **Clients list page**: `/clients` — sortable table (displayName, slug), click through to client detail. Initial load uses bootstrap clients from `useClient()` (no separate API call); `fetchData()` callback used for CRUD refresh. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
+- **Clients list page**: `/clients` — sortable table (displayName), click through to client detail. Initial load uses bootstrap clients from `useClient()` (no separate API call); `fetchData()` callback used for CRUD refresh. Client CRUD with contact fields (firstName, lastName, email) and status (active/archived). Archived clients hidden from main list; "Archived (N)" button opens modal to reactivate. "Remove All" button for bulk delete.
 - **Client detail page**: `/clients/:id` — full management for a single client. Initial load uses single `/api/clients/:id/bootstrap` call; individual fetch callbacks used for CRUD refresh:
-  - **Client info panel**: display name, slug, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
+  - **Client info panel**: display name, status, contact fields (firstName, lastName, email). Edit/Delete buttons.
   - **Entities section**: table with displayName, data source(s). Add/Edit/Delete entity CRUD. Entities support multiple data source bindings — each binding has a data source dropdown + dynamic entity-level fields. Entity modals render stacked binding sections with Add/Remove buttons. Table shows first DS name + "(+N more)" for additional bindings.
   - **Client Users section**: table with name, email, status badge, access count. Add (creates Cognito, optionally sends invite) / Edit (name, status) / Manage Access (dedicated modal with package→dashboard tree) / Delete (cascades Cognito + membership). Access configured via ManageAccessModal: package-level checkboxes (all dashboards) + individual dashboard checkboxes.
   - **Packages section**: nested accordion tables. Package → Dashboards → Widgets. Full CRUD at each level with modal forms. Auto-slug generation from display names.
@@ -336,7 +336,7 @@ Admin tool at `/tools` for copying the Entities DynamoDB table between environme
 
 ### Entity & client management
 - **Entities**: `GET /api/entities` — list entities for current client; `POST /api/entities` — add entity `{ displayName, dataSourceBindings? }`; `PUT /api/entities/:id` — edit entity (accepts `dataSourceBindings`); `DELETE /api/entities/:id` — remove entity
-- **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ slug, displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
+- **Clients**: `GET /api/clients` — list all clients (internal admin only); `POST /api/clients` — add client `{ displayName, firstName?, lastName?, email? }`; `PUT /api/clients/:id` — edit client; `DELETE /api/clients/:id` — remove client
 - **Bootstrap**: `GET /api/bootstrap` — single layout-level call returning auth context + clients + packages + dashboards + widgetsByDashboard + entities. Accepts optional `?clientId=` for client switches. Dashboard pages resolve from this data client-side (no separate resolve/widgets API calls)
 - **Client detail bootstrap**: `GET /api/clients/:id/bootstrap` — single call for client detail page returning client + entities + packages + dashboards + widgetsByDashboard + clientUsers + dataSources (internal admin only)
 - **Auth context**: `GET /api/auth/context` — returns current user's auth context (clientId, role, isInternal, clients list, authorizedPackageIds, authorizedDashboardIds). Superseded by `/api/bootstrap` for layout init but still available for direct use
@@ -400,8 +400,8 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 
 **Win Desktop sandbox**
 - AWS resource prefix: `amplify-quickbooksexport-marin-sandbox-59a22a3c9b`
-- User Pool Id: `us-east-2_erjhdlOkq`
-- User id: `517bd500-b001-7058-f41c-f72bb5fc7040`
+- User Pool Id: `us-east-2_GD3xwOSsI`
+- User id: `f1fbd530-20c1-70c9-c668-28b08aab69bc`
 - User admin email: `dana.sarbulescu@gmail.com`
 
 **Win XPS sandbox**

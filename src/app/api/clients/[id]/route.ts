@@ -43,15 +43,9 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { slug, displayName, firstName, lastName, email, status } = body;
+    const { displayName, firstName, lastName, email, status } = body;
 
     const updates: Record<string, unknown> = {};
-    if (slug !== undefined) {
-      if (!/^[a-z0-9-]+$/.test(slug)) {
-        return NextResponse.json({ error: "slug must contain only lowercase letters, numbers, and hyphens" }, { status: 400 });
-      }
-      updates.slug = slug;
-    }
     if (displayName !== undefined) updates.displayName = displayName;
     if (firstName !== undefined) updates.firstName = firstName;
     if (lastName !== undefined) updates.lastName = lastName;
