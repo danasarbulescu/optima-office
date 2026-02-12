@@ -69,6 +69,7 @@ export default function ClientDetailPage() {
   const [syncingEntityId, setSyncingEntityId] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ entityId: string; status: 'success' | 'error'; message: string } | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [entitySyncMap, setEntitySyncMap] = useState<Record<string, string | undefined>>({});
 
   // Accordion state
   const [expandedPkgId, setExpandedPkgId] = useState<string | null>(null);
@@ -155,6 +156,7 @@ export default function ClientDetailPage() {
         setAllWidgets(data.widgetsByDashboard);
         setClientUsers(data.clientUsers);
         setDataSources(data.dataSources);
+        if (data.entitySyncMap) setEntitySyncMap(data.entitySyncMap);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -222,6 +224,9 @@ export default function ClientDetailPage() {
       const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}/sync`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Sync failed");
+      if (data.syncedAt) {
+        setEntitySyncMap(prev => ({ ...prev, [entity.id]: data.syncedAt }));
+      }
       setSyncResult({ entityId: entity.id, status: 'success', message: `Synced ${data.rowCount} rows` });
       syncTimerRef.current = setTimeout(() => setSyncResult(null), 3000);
     } catch (err: any) {
@@ -435,6 +440,7 @@ export default function ClientDetailPage() {
               <tr>
                 <th>Entity Name</th>
                 <th>Data Source</th>
+                <th>Last Sync</th>
                 <th></th>
               </tr>
             </thead>
@@ -443,6 +449,8 @@ export default function ClientDetailPage() {
                 const eBindings = getEntityBindings(e);
                 const firstDs = eBindings.length > 0 ? dataSources.find(d => d.id === eBindings[0].dataSourceId) : null;
                 const extraCount = eBindings.length > 1 ? eBindings.length - 1 : 0;
+                const lastSync = entitySyncMap[e.id];
+                const neverSynced = !lastSync;
                 return (
                   <tr key={e.id}>
                     <td>{e.displayName}</td>
@@ -457,9 +465,16 @@ export default function ClientDetailPage() {
                       )}
                     </td>
                     <td>
+                      {lastSync ? (
+                        <span className="last-sync-date">{new Date(lastSync).toLocaleString()}</span>
+                      ) : (
+                        <span className="text-muted">Never</span>
+                      )}
+                    </td>
+                    <td>
                       <div className="action-buttons">
                         <button
-                          className={`icon-btn-muted icon-btn-sync${syncingEntityId === e.id ? " icon-btn-syncing" : ""}`}
+                          className={`icon-btn-muted icon-btn-sync${syncingEntityId === e.id ? " icon-btn-syncing" : ""}${neverSynced ? " icon-btn-sync-never" : ""}`}
                           title="Sync entity"
                           disabled={syncingEntityId === e.id}
                           onClick={() => handleSyncEntity(e)}

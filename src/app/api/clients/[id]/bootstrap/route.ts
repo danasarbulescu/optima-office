@@ -7,6 +7,7 @@ import { getDashboardsByClient } from "@/lib/dashboards";
 import { getWidgets } from "@/lib/dashboard-widgets";
 import { getClientUsers } from "@/lib/client-users";
 import { getDataSources } from "@/lib/data-sources";
+import { getWarehouseMetadataBatch } from "@/lib/warehouse";
 
 export async function GET(
   request: NextRequest,
@@ -37,6 +38,9 @@ export async function GET(
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
+    // Fetch warehouse metadata (lastSyncedAt) for all entities
+    const entitySyncMap = await getWarehouseMetadataBatch(entities.map(e => e.id));
+
     // Fetch widgets for all dashboards in parallel
     const widgetEntries = await Promise.all(
       dashboards.map(async (d) => {
@@ -57,6 +61,7 @@ export async function GET(
       widgetsByDashboard,
       clientUsers,
       dataSources,
+      entitySyncMap,
     });
   } catch (err: any) {
     console.error("Client detail bootstrap error:", err);

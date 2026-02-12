@@ -31,7 +31,7 @@ export async function POST(
       entity.dataSourceId,
     );
 
-    return NextResponse.json({ success: true, rowCount: rows.length });
+    return NextResponse.json({ success: true, rowCount: rows.length, syncedAt: new Date().toISOString() });
   } catch (err: any) {
     console.error("Entity sync error:", err);
     return NextResponse.json(

@@ -75,7 +75,6 @@ async function main() {
       TableName: clientsTable,
       Item: {
         id: defaultClientId,
-        slug: "default",
         displayName: "Default",
         createdAt: new Date().toISOString(),
       },

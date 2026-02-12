@@ -192,6 +192,19 @@
   color: #2ecc71;
 }
 
+.icon-btn-muted.icon-btn-sync-never {
+  color: #e74c3c;
+}
+
+.icon-btn-muted.icon-btn-sync-never:hover {
+  color: #ff6b5a;
+}
+
+.last-sync-date {
+  font-size: 13px;
+  color: #9a9caa;
+}
+
 .icon-btn-syncing {
   animation: spin 1s linear infinite;
 }

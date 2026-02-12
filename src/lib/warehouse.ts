@@ -1,4 +1,4 @@
-import { BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { BatchGetCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, queryAllItems } from './dynamo';
 import { FinancialRow } from './models/financial';
 import { FinancialDataItem } from './types';
@@ -120,4 +120,35 @@ export async function deleteWarehouseData(entityId: string): Promise<void> {
       },
     }));
   }
+}
+
+/**
+ * Batch-read warehouse metadata (#metadata sort key) for multiple entities.
+ * Returns a map of entityId → lastSyncedAt ISO string (or undefined if never synced).
+ */
+export async function getWarehouseMetadataBatch(
+  entityIds: string[],
+): Promise<Record<string, string | undefined>> {
+  const result: Record<string, string | undefined> = {};
+  if (!TABLE_NAME || entityIds.length === 0) return result;
+
+  // BatchGetItem supports max 100 keys per request
+  for (let i = 0; i < entityIds.length; i += 100) {
+    const chunk = entityIds.slice(i, i + 100);
+    const resp = await docClient.send(new BatchGetCommand({
+      RequestItems: {
+        [TABLE_NAME]: {
+          Keys: chunk.map(eid => ({ entityId: eid, sk: '#metadata' })),
+          ProjectionExpression: 'entityId, lastSyncedAt',
+        },
+      },
+    }));
+
+    const items = resp.Responses?.[TABLE_NAME] ?? [];
+    for (const item of items) {
+      result[item.entityId as string] = item.lastSyncedAt as string | undefined;
+    }
+  }
+
+  return result;
 }
