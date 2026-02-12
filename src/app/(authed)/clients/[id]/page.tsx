@@ -532,7 +532,7 @@ export default function ClientDetailPage() {
                       <button className="icon-btn-muted icon-btn-view" title="View as this user" disabled={cu.status === "archived"} onClick={() => handleImpersonateUser(cu)}>
                         <EyeIcon />
                       </button>
-                      <button className="icon-btn-muted icon-btn-view" title="Manage reporting access" onClick={() => setManagingAccessUser(cu)}><ListIcon /></button>
+                      <button className={`icon-btn-muted icon-btn-view${!(cu.authorizedPackageIds?.length || cu.authorizedDashboardIds?.length) ? ' icon-btn-danger' : ''}`} title="Manage reporting access" onClick={() => setManagingAccessUser(cu)}><ListIcon /></button>
                       <button className="icon-btn-muted icon-btn-view" title="Edit user" onClick={() => setEditingClientUser(cu)}><PencilIcon /></button>
                       <button className="icon-btn-muted" title="Delete user" onClick={() => handleDeleteClientUser(cu)}><TrashIcon /></button>
                     </div>

@@ -949,6 +949,14 @@
   color: #3b82f6;
 }
 
+.icon-btn-danger {
+  color: #ef4444;
+}
+
+.icon-btn-danger:hover {
+  color: #f87171;
+}
+
 .icon-btn-view:disabled {
   opacity: 0.3;
   cursor: not-allowed;
