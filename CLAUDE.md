@@ -111,7 +111,7 @@ components/
     data-sources.ts                 — DynamoDB CRUD for DataSources table (getDataSources, getDataSource, addDataSource, updateDataSource, deleteDataSource)
     entities.ts                     — DynamoDB CRUD for Entities table
     clients.ts                      — DynamoDB CRUD for Clients table
-    client-membership.ts            — DynamoDB CRUD for ClientMemberships table (getMembership, setMembership, deleteMembership)
+    client-membership.ts            — DynamoDB CRUD for ClientMemberships table (getMembership, getMembershipsByClient, setMembership, deleteMembership)
     client-users.ts                 — DynamoDB CRUD for ClientUsers table (getClientUsers, getClientUser, addClientUser, updateClientUser, deleteClientUser)
     cognito-admin.ts                — Cognito admin operations (createCognitoUser, disableCognitoUser, enableCognitoUser, deleteCognitoUser)
     packages.ts                     — DynamoDB CRUD for Packages table (getPackages, getPackageBySlug, addPackage, updatePackage, deletePackage)
@@ -234,7 +234,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 
 - Delete package → deletes all dashboards in the package → deletes all widgets in those dashboards
 - Delete dashboard → deletes all widgets in the dashboard
-- Delete client → deletes all client users (Cognito + membership + record) → deletes all entities (client detail page handles this)
+- Delete client → server-side cascade: deletes all client users (Cognito + membership + record) → sweeps remaining memberships → deletes all entities (+ warehouse data) → deletes all packages → dashboards → widgets → deletes client record
 - Delete entity → deletes all warehouse data (FinancialData table) in parallel
 - Delete client user → deletes Cognito user → deletes ClientMembership → deletes ClientUser record
 
@@ -321,11 +321,12 @@ On PLCache miss, warehouse data is read and used to repopulate PLCache. On wareh
 
 ## Tools — Sandbox Data Sync
 
-Admin tool at `/tools` for copying the Entities DynamoDB table between environments:
-- **Sandboxes**: Defined in `src/lib/sandboxes.ts` — Win Desktop, Production (each with a table prefix)
-- **Discovery**: `discoverEntitiesTable(prefix)` in `src/lib/sync-sandbox.ts` uses `ListTablesCommand` to find Entities tables by prefix
-- **Preview**: Shows source/destination item counts and source items before sync
-- **Execute**: Clears destination table, batch-writes all source items
+Admin tool at `/tools` for copying all configuration DynamoDB tables between environments:
+- **Tables synced** (9): Clients, Entities, ClientMemberships, ClientUsers, DataSources, Packages, Dashboards, DashboardWidgets, WidgetTypeMeta. Excludes data caches (PLCache, FinancialData).
+- **Sandboxes**: Defined in `src/lib/sandboxes.ts` — Win Desktop, Win XPS, Production (each with a table prefix)
+- **Discovery**: `discoverTables(prefix)` in `src/lib/sync-sandbox.ts` uses `ListTablesCommand` + CDK logical ID regex to find all 9 tables by prefix
+- **Preview**: Shows per-table source/destination item counts in a summary table
+- **Execute**: Clears each destination table, batch-writes source items. For ClientMemberships, `internal-admin` records in the destination are preserved (not overwritten by source data) so admin access is retained after sync.
 - **API**: `POST /api/tools/sync-sandbox` with `{ action, sourceId, destinationId }`
 - **IAM**: SSR compute role needs `dynamodb:ListTables` on `*` and read/write on `arn:aws:dynamodb:*:*:table/amplify-*`
 
