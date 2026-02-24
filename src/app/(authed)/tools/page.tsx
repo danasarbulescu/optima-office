@@ -2,25 +2,35 @@
 
 import { useState } from "react";
 import { SANDBOXES } from "@/lib/sandboxes";
-import { EntityConfig } from "@/lib/types";
 import "./tools.css";
 
-interface PreviewData {
-  sourceTable: string;
-  destinationTable: string;
+interface TablePreview {
+  typeKey: string;
+  displayLabel: string;
   sourceItemCount: number;
   destinationItemCount: number;
-  sourceItems: EntityConfig[];
+}
+
+interface PreviewData {
+  tables: TablePreview[];
+  totalSourceItems: number;
+  totalDestinationItems: number;
+}
+
+interface TableReport {
+  typeKey: string;
+  displayLabel: string;
+  itemsCopied: number;
+  itemsDeletedFromDestination: number;
 }
 
 interface ReportData {
   sourceLabel: string;
   destinationLabel: string;
-  sourceTable: string;
-  destinationTable: string;
-  itemsCopied: number;
-  itemsDeletedFromDestination: number;
-  copiedItems: EntityConfig[];
+  tables: TableReport[];
+  totalItemsCopied: number;
+  totalItemsDeleted: number;
+  copiedClientNames: { id: string; displayName: string }[];
 }
 
 type Status = "idle" | "previewing" | "confirming" | "syncing" | "done" | "error";
@@ -107,7 +117,7 @@ export default function ToolsPage() {
       <section className="tool-section">
         <h2>Sandbox Data Sync</h2>
         <p className="tool-description">
-          Copy client configuration between developer sandboxes.
+          Copy all configuration tables between developer sandboxes.
         </p>
 
         <div className="sync-controls">
@@ -146,13 +156,35 @@ export default function ToolsPage() {
               Are you sure you want to copy sandbox data from{" "}
               <strong>{sourceLabel}</strong> to <strong>{destinationLabel}</strong>?
             </p>
-            <ul>
-              <li>{preview.sourceItemCount} client(s) will be copied</li>
-              <li>
-                {preview.destinationItemCount} existing client(s) in destination
-                will be replaced
-              </li>
-            </ul>
+            <table className="sync-preview-table">
+              <thead>
+                <tr>
+                  <th>Table</th>
+                  <th>Source</th>
+                  <th>Destination</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.tables.map((t) => (
+                  <tr key={t.typeKey}>
+                    <td>{t.displayLabel}</td>
+                    <td>{t.sourceItemCount}</td>
+                    <td>{t.destinationItemCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Total</strong></td>
+                  <td><strong>{preview.totalSourceItems}</strong></td>
+                  <td><strong>{preview.totalDestinationItems}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+            <p className="sync-confirm-summary">
+              {preview.totalSourceItems} item(s) will be copied.{" "}
+              {preview.totalDestinationItems} existing item(s) will be replaced.
+            </p>
             <div className="sync-confirm-actions">
               <button className="sync-cancel-btn" onClick={handleCancel}>
                 Cancel
@@ -181,21 +213,41 @@ export default function ToolsPage() {
                   <td>Destination</td>
                   <td>{report.destinationLabel}</td>
                 </tr>
-                <tr>
-                  <td>Items Copied</td>
-                  <td>{report.itemsCopied}</td>
-                </tr>
-                <tr>
-                  <td>Items Removed from Dest.</td>
-                  <td>{report.itemsDeletedFromDestination}</td>
-                </tr>
               </tbody>
             </table>
-            {report.copiedItems.length > 0 && (
+
+            <h4>Per-Table Results</h4>
+            <table className="sync-detail-table">
+              <thead>
+                <tr>
+                  <th>Table</th>
+                  <th>Copied</th>
+                  <th>Removed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.tables.map((t) => (
+                  <tr key={t.typeKey}>
+                    <td>{t.displayLabel}</td>
+                    <td>{t.itemsCopied}</td>
+                    <td>{t.itemsDeletedFromDestination}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Total</strong></td>
+                  <td><strong>{report.totalItemsCopied}</strong></td>
+                  <td><strong>{report.totalItemsDeleted}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+
+            {report.copiedClientNames.length > 0 && (
               <>
                 <h4>Copied Clients</h4>
                 <ul>
-                  {report.copiedItems.map((c) => (
+                  {report.copiedClientNames.map((c) => (
                     <li key={c.id}>
                       {c.displayName} ({c.id})
                     </li>

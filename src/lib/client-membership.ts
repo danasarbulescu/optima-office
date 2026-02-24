@@ -1,5 +1,5 @@
 import { PutCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient } from './dynamo';
+import { docClient, scanAllItems } from './dynamo';
 import { ClientMembership, ClientRole } from './types';
 
 const TABLE_NAME = process.env.CLIENT_MEMBERSHIPS_TABLE || '';
@@ -29,6 +29,16 @@ export async function setMembership(
     TableName: TABLE_NAME,
     Item: item,
   }));
+}
+
+export async function getMembershipsByClient(clientId: string): Promise<ClientMembership[]> {
+  if (!TABLE_NAME) return [];
+
+  return scanAllItems<ClientMembership>({
+    TableName: TABLE_NAME,
+    FilterExpression: 'clientId = :cid',
+    ExpressionAttributeValues: { ':cid': clientId },
+  });
 }
 
 export async function deleteMembership(userId: string): Promise<void> {

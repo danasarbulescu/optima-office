@@ -196,17 +196,13 @@ export default function ClientDetailPage() {
 
   const handleDeleteClient = async () => {
     if (!client) return;
-    const msg = entities.length > 0
-      ? `Delete client "${client.displayName}" and its ${entities.length} entit${entities.length === 1 ? "y" : "ies"}?`
-      : `Delete client "${client.displayName}"?`;
-    if (!confirm(msg)) return;
+    const parts: string[] = [];
+    if (entities.length > 0) parts.push(`${entities.length} entit${entities.length === 1 ? "y" : "ies"}`);
+    if (clientUsers.length > 0) parts.push(`${clientUsers.length} user${clientUsers.length === 1 ? "" : "s"}`);
+    if (packages.length > 0) parts.push(`${packages.length} package${packages.length === 1 ? "" : "s"}`);
+    const suffix = parts.length > 0 ? ` and its ${parts.join(", ")}` : "";
+    if (!confirm(`Delete client "${client.displayName}"${suffix}?`)) return;
     try {
-      for (const cu of clientUsers) {
-        await fetch(`/api/client-users/${encodeURIComponent(cu.id)}`, { method: "DELETE" });
-      }
-      for (const e of entities) {
-        await fetch(`/api/entities/${encodeURIComponent(e.id)}`, { method: "DELETE" });
-      }
       const res = await fetch(`/api/clients/${encodeURIComponent(client.id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete client");
       refreshEntities();

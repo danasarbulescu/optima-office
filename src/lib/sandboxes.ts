@@ -11,6 +11,11 @@ export const SANDBOXES: SandboxConfig[] = [
     tablePrefix: 'amplify-quickbooksexport-marin-sandbox-59a22a3c9b',
   },
   {
+    id: 'win-xps',
+    label: 'Win XPS Sandbox',
+    tablePrefix: 'amplify-optimaoffice-Marin-sandbox-1e654e688f',
+  },
+  {
     id: 'production',
     label: 'Production',
     tablePrefix: 'amplify-d15bx1surdnd12-main-branch-593bd34ebb',
