@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser, DataSource, getEntityBindings } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, DashboardWidget, ClientUser, DataSource, DiscoveredClass, getEntityBindings } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
 import { useClient } from "@/context/ClientContext";
 import { PackageRow } from "./PackageAccordion";
@@ -70,6 +70,7 @@ export default function ClientDetailPage() {
   const [syncResult, setSyncResult] = useState<{ entityId: string; status: 'success' | 'error'; message: string } | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [entitySyncMap, setEntitySyncMap] = useState<Record<string, string | undefined>>({});
+  const [entityClassMap, setEntityClassMap] = useState<Record<string, DiscoveredClass[]>>({});
 
   // Accordion state
   const [expandedPkgId, setExpandedPkgId] = useState<string | null>(null);
@@ -157,6 +158,7 @@ export default function ClientDetailPage() {
         setClientUsers(data.clientUsers);
         setDataSources(data.dataSources);
         if (data.entitySyncMap) setEntitySyncMap(data.entitySyncMap);
+        if (data.entityClassMap) setEntityClassMap(data.entityClassMap);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -436,6 +438,7 @@ export default function ClientDetailPage() {
               <tr>
                 <th>Entity Name</th>
                 <th>Data Source</th>
+                <th>Tables</th>
                 <th>Last Sync</th>
                 <th></th>
               </tr>
@@ -447,6 +450,7 @@ export default function ClientDetailPage() {
                 const extraCount = eBindings.length > 1 ? eBindings.length - 1 : 0;
                 const lastSync = entitySyncMap[e.id];
                 const neverSynced = !lastSync;
+                const classes = entityClassMap[e.id];
                 return (
                   <tr key={e.id}>
                     <td>{e.displayName}</td>
@@ -458,6 +462,17 @@ export default function ClientDetailPage() {
                         </>
                       ) : (
                         <span className="text-muted">–</span>
+                      )}
+                    </td>
+                    <td>
+                      {classes && classes.length > 0 ? (
+                        <span className="entity-tables-list">
+                          PL{classes.length > 0 && `, +${classes.length} class`}
+                        </span>
+                      ) : neverSynced ? (
+                        <span className="text-muted">–</span>
+                      ) : (
+                        <span className="entity-tables-list">PL</span>
                       )}
                     </td>
                     <td>
