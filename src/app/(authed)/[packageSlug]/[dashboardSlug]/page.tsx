@@ -26,7 +26,9 @@ function getCurrentMonth(): string {
 export default function DashboardPage() {
   const { packageSlug, dashboardSlug } = useParams<{ packageSlug: string; dashboardSlug: string }>();
   const { currentClientId } = useClient();
-  const { selectedEntities } = useEntity();
+  const { entities, selectedEntities, setSelectedEntities } = useEntity();
+  const [entityDropdownOpen, setEntityDropdownOpen] = useState(false);
+  const entityDropdownRef = useRef<HTMLDivElement>(null);
   const { packages, dashboardsByPackage, widgetsByDashboard, widgetTypeNames, packagesLoading } = usePackages();
 
   // Resolve dashboard + widgets from context (no API calls)
@@ -82,6 +84,17 @@ export default function DashboardPage() {
     }),
     [widgets]
   );
+
+  // Close entity dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (entityDropdownRef.current && !entityDropdownRef.current.contains(e.target as Node)) {
+        setEntityDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Fetch financial snapshot data
   const fetchFinancialSnapshot = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
@@ -206,6 +219,54 @@ export default function DashboardPage() {
       {/* Dashboard controls — single month picker */}
       {(hasFinancialWidgets || hasTrendWidgets) && (
         <div className="dashboard-controls">
+          {entities.length > 1 && (
+            <div className="multi-select" ref={entityDropdownRef}>
+              <button
+                className="multi-select-trigger"
+                onClick={() => setEntityDropdownOpen(!entityDropdownOpen)}
+              >
+                {selectedEntities.length === entities.length
+                  ? "All Entities"
+                  : selectedEntities.length === 0
+                    ? "No Entities"
+                    : `${selectedEntities.length} of ${entities.length}`}
+              </button>
+              {entityDropdownOpen && (
+                <div className="multi-select-dropdown" style={{ left: 0, right: "auto" }}>
+                  <div className="multi-select-actions">
+                    <button
+                      onClick={() => setSelectedEntities(entities.map(e => e.id))}
+                      disabled={selectedEntities.length === entities.length}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setSelectedEntities([])}
+                      disabled={selectedEntities.length === 0}
+                    >
+                      None
+                    </button>
+                  </div>
+                  {entities.map(e => (
+                    <label key={e.id} className="multi-select-option">
+                      <input
+                        type="checkbox"
+                        checked={selectedEntities.includes(e.id)}
+                        onChange={() => {
+                          setSelectedEntities(
+                            selectedEntities.includes(e.id)
+                              ? selectedEntities.filter(id => id !== e.id)
+                              : [...selectedEntities, e.id]
+                          );
+                        }}
+                      />
+                      {e.displayName}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <input
             type="month"
             value={month}
@@ -246,9 +307,9 @@ export default function DashboardPage() {
       {/* Financial snapshot widgets */}
       {kpis && (
         <>
-          {entityName && (
+          {selectedEntities.length > 0 && (
             <div style={{ textAlign: "center", color: "#9a9caa", fontSize: 16, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>
-              {entityName}
+              {entities.filter(e => selectedEntities.includes(e.id)).map(e => e.displayName).join(" + ")}
             </div>
           )}
           <div className={`widget-grid${kpiWidgets.length > 4 ? " widget-grid-5" : ""}`}>
