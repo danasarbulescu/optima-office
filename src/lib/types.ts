@@ -68,6 +68,7 @@ export interface AuthContext {
   isInternal: boolean;  // true if clientId === "*"
   authorizedPackageIds?: string[] | null; // null/undefined = full access; string[] = restricted
   authorizedDashboardIds?: string[] | null; // null/undefined = full access; string[] = restricted
+  authorizedEntityIds?: string[] | null; // null/undefined = full access; string[] = restricted
   defaultDashboardId?: string;
 }
 
@@ -80,6 +81,7 @@ export interface ClientUser {
   status: 'active' | 'archived';
   authorizedPackageIds: string[];
   authorizedDashboardIds?: string[];
+  authorizedEntityIds?: string[];
   defaultDashboardId?: string;
   cognitoUserId?: string;
   createdAt: string;

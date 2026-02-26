@@ -46,9 +46,10 @@ export async function getAuthContext(selectedClientId?: string | null): Promise<
     clientId = membership.clientId;
   }
 
-  // Resolve package/dashboard authorization for client users
+  // Resolve package/dashboard/entity authorization for client users
   let authorizedPackageIds: string[] | null = null;
   let authorizedDashboardIds: string[] | null = null;
+  let authorizedEntityIds: string[] | null = null;
   let defaultDashboardId: string | undefined;
   if (membership.clientUserId) {
     const clientUser = await getClientUser(membership.clientUserId);
@@ -58,6 +59,7 @@ export async function getAuthContext(selectedClientId?: string | null): Promise<
     if (clientUser) {
       authorizedPackageIds = clientUser.authorizedPackageIds;
       authorizedDashboardIds = clientUser.authorizedDashboardIds || [];
+      authorizedEntityIds = clientUser.authorizedEntityIds || null;
       defaultDashboardId = clientUser.defaultDashboardId;
     }
   }
@@ -69,6 +71,7 @@ export async function getAuthContext(selectedClientId?: string | null): Promise<
     isInternal,
     authorizedPackageIds,
     authorizedDashboardIds,
+    authorizedEntityIds,
     defaultDashboardId,
   };
 }

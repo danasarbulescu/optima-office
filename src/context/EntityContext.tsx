@@ -16,17 +16,20 @@ interface EntityContextValue {
 const EntityContext = createContext<EntityContextValue | undefined>(undefined);
 
 export function EntityProvider({ children }: { children: ReactNode }) {
-  const { currentClientId, clientLoading } = useClient();
+  const { currentClientId, clientLoading, authorizedEntityIds } = useClient();
   const bootstrap = useBootstrap();
   const [entities, setEntities] = useState<EntityConfig[]>([]);
   const [selectedEntities, setSelectedEntities] = useState<string[]>([]);
   const prevClientId = useRef<string | null>(null);
 
-  // Sync entities from bootstrap data
+  // Sync entities from bootstrap data, filtered by authorization
   useEffect(() => {
     if (bootstrap.loading || clientLoading) return;
 
-    const fetched = bootstrap.entities;
+    // Filter entities by authorization (null = full access)
+    const fetched = authorizedEntityIds
+      ? bootstrap.entities.filter(e => authorizedEntityIds.includes(e.id))
+      : bootstrap.entities;
     setEntities(fetched);
 
     // Reset selection when client changes, default to all on first load
@@ -39,7 +42,7 @@ export function EntityProvider({ children }: { children: ReactNode }) {
         prev.length === 0 ? fetched.map(e => e.id) : prev
       );
     }
-  }, [bootstrap.loading, bootstrap.entities, clientLoading, currentClientId]);
+  }, [bootstrap.loading, bootstrap.entities, clientLoading, currentClientId, authorizedEntityIds]);
 
   return (
     <EntityContext.Provider

@@ -537,13 +537,13 @@ export default function ClientDetailPage() {
                   <td>
 {cu.status.charAt(0).toUpperCase() + cu.status.slice(1)}
                   </td>
-                  <td>{(cu.authorizedPackageIds?.length || 0) + (cu.authorizedDashboardIds?.length || 0) || "None"}</td>
+                  <td>{(cu.authorizedEntityIds?.length || 0) + (cu.authorizedPackageIds?.length || 0) + (cu.authorizedDashboardIds?.length || 0) || "None"}</td>
                   <td>
                     <div className="action-buttons">
                       <button className="icon-btn-muted icon-btn-view" title="View as this user" disabled={cu.status === "archived"} onClick={() => handleImpersonateUser(cu)}>
                         <EyeIcon />
                       </button>
-                      <button className={`icon-btn-muted icon-btn-view${!(cu.authorizedPackageIds?.length || cu.authorizedDashboardIds?.length) ? ' icon-btn-danger' : ''}`} title="Manage reporting access" onClick={() => setManagingAccessUser(cu)}><ListIcon /></button>
+                      <button className={`icon-btn-muted icon-btn-view${!(cu.authorizedEntityIds?.length && (cu.authorizedPackageIds?.length || cu.authorizedDashboardIds?.length)) ? ' icon-btn-danger' : ''}`} title="Manage reporting access" onClick={() => setManagingAccessUser(cu)}><ListIcon /></button>
                       <button className="icon-btn-muted icon-btn-view" title="Edit user" onClick={() => setEditingClientUser(cu)}><PencilIcon /></button>
                       <button className="icon-btn-muted" title="Delete user" onClick={() => handleDeleteClientUser(cu)}><TrashIcon /></button>
                     </div>
@@ -685,6 +685,7 @@ export default function ClientDetailPage() {
           clientUser={managingAccessUser}
           packages={packages}
           dashboardsByPackage={dashboardsByPackage}
+          entities={entities}
           onClose={() => setManagingAccessUser(null)}
           onSaved={() => { setManagingAccessUser(null); afterClientUserMutation(); }}
         />

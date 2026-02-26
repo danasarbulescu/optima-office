@@ -49,7 +49,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { firstName, lastName, email, sendInvite, status, authorizedPackageIds, authorizedDashboardIds, defaultDashboardId } = body;
+    const { firstName, lastName, email, sendInvite, status, authorizedPackageIds, authorizedDashboardIds, authorizedEntityIds, defaultDashboardId } = body;
 
     const emailChanged = email && email.trim().toLowerCase() !== clientUser.email.toLowerCase();
 
@@ -91,6 +91,7 @@ export async function PUT(
       if (status !== undefined) updates.status = status;
       if (authorizedPackageIds !== undefined) updates.authorizedPackageIds = authorizedPackageIds;
       if (authorizedDashboardIds !== undefined) updates.authorizedDashboardIds = authorizedDashboardIds;
+      if (authorizedEntityIds !== undefined) updates.authorizedEntityIds = authorizedEntityIds;
       if (defaultDashboardId !== undefined) updates.defaultDashboardId = defaultDashboardId;
 
       await updateClientUser(id, updates);
@@ -112,6 +113,7 @@ export async function PUT(
     if (status !== undefined) updates.status = status;
     if (authorizedPackageIds !== undefined) updates.authorizedPackageIds = authorizedPackageIds;
     if (authorizedDashboardIds !== undefined) updates.authorizedDashboardIds = authorizedDashboardIds;
+    if (authorizedEntityIds !== undefined) updates.authorizedEntityIds = authorizedEntityIds;
     if (defaultDashboardId !== undefined) updates.defaultDashboardId = defaultDashboardId;
 
     await updateClientUser(id, updates);

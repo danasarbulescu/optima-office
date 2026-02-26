@@ -49,6 +49,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Invalid entity IDs: ${invalid.join(", ")}` }, { status: 400 });
     }
 
+    // Enforce entity-level authorization for client users
+    if (auth.authorizedEntityIds) {
+      const authorizedSet = new Set(auth.authorizedEntityIds);
+      const unauthorized = entityIds.filter(id => !authorizedSet.has(id));
+      if (unauthorized.length > 0) {
+        return NextResponse.json({ error: "Access denied: unauthorized entities" }, { status: 403 });
+      }
+    }
+
     const cacheClientId = auth.clientId === '*' ? 'global' : auth.clientId;
     const { rows, entityName } = await fetchPLForEntities(cacheClientId, entityIds, entities, refresh);
 

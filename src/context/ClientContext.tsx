@@ -14,6 +14,7 @@ interface ClientContextValue {
   impersonatingClientUser: ClientUser | null;
   authorizedPackageIds: string[] | null; // null = full access; string[] = restricted
   authorizedDashboardIds: string[] | null; // null = full access; string[] = restricted
+  authorizedEntityIds: string[] | null; // null = full access; string[] = restricted
   setCurrentClientId: (id: string) => void;
   startImpersonatingUser: (user: ClientUser) => void;
   stopImpersonatingUser: () => void;
@@ -30,6 +31,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [impersonatingClientUser, setImpersonatingClientUser] = useState<ClientUser | null>(null);
   const [authorizedPackageIds, setAuthorizedPackageIds] = useState<string[] | null>(null);
   const [authorizedDashboardIds, setAuthorizedDashboardIds] = useState<string[] | null>(null);
+  const [authorizedEntityIds, setAuthorizedEntityIds] = useState<string[] | null>(null);
 
   const isImpersonating = impersonatingClientUser !== null;
 
@@ -65,9 +67,11 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       if (impersonatingClientUser) {
         setAuthorizedPackageIds(impersonatingClientUser.authorizedPackageIds);
         setAuthorizedDashboardIds(impersonatingClientUser.authorizedDashboardIds ?? []);
+        setAuthorizedEntityIds(impersonatingClientUser.authorizedEntityIds ?? null);
       } else {
         setAuthorizedPackageIds(null);
         setAuthorizedDashboardIds(null);
+        setAuthorizedEntityIds(null);
       }
       // Only set default clientId on initial load (not on client switch refetch)
       setCurrentClientIdRaw(prev => prev === null ? '*' : prev);
@@ -75,6 +79,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       setCurrentClientIdRaw(auth.clientId);
       setAuthorizedPackageIds(auth.authorizedPackageIds ?? null);
       setAuthorizedDashboardIds(auth.authorizedDashboardIds ?? null);
+      setAuthorizedEntityIds(auth.authorizedEntityIds ?? null);
       if (bootstrap.client) {
         setClients([bootstrap.client]);
       }
@@ -95,6 +100,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         impersonatingClientUser,
         authorizedPackageIds,
         authorizedDashboardIds,
+        authorizedEntityIds,
         setCurrentClientId,
         startImpersonatingUser,
         stopImpersonatingUser,

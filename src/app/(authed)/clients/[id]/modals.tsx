@@ -1060,15 +1060,20 @@ export function ManageAccessModal({
   clientUser,
   packages,
   dashboardsByPackage,
+  entities,
   onClose,
   onSaved,
 }: {
   clientUser: ClientUser;
   packages: Package[];
   dashboardsByPackage: Record<string, Dashboard[]>;
+  entities: EntityConfig[];
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>(
+    clientUser.authorizedEntityIds || []
+  );
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>(
     clientUser.authorizedPackageIds || []
   );
@@ -1087,6 +1092,14 @@ export function ManageAccessModal({
     if (selectedPackageIds.includes(pkg.id)) return pkgDashboards;
     return pkgDashboards.filter(d => selectedDashboardIds.includes(d.id));
   });
+
+  const toggleEntity = (entityId: string) => {
+    setSelectedEntityIds(prev =>
+      prev.includes(entityId)
+        ? prev.filter(id => id !== entityId)
+        : [...prev, entityId]
+    );
+  };
 
   const togglePackage = (pkgId: string) => {
     setSelectedPackageIds(prev => {
@@ -1132,6 +1145,7 @@ export function ManageAccessModal({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          authorizedEntityIds: selectedEntityIds,
           authorizedPackageIds: selectedPackageIds,
           authorizedDashboardIds: cleanedDashboardIds,
           defaultDashboardId: defaultDashboardId || "",
@@ -1153,6 +1167,24 @@ export function ManageAccessModal({
     <div className="modal-overlay">
       <div className="modal-content" style={{ width: 520 }}>
         <h2>Manage Access &mdash; {clientUser.firstName} {clientUser.lastName}</h2>
+        {entities.length > 0 && (
+          <>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#c5c7d0", marginBottom: 8 }}>Entities</h3>
+            <div className="access-tree" style={{ marginBottom: 16 }}>
+              {entities.map(e => (
+                <label key={e.id} className="access-tree-package-label">
+                  <input
+                    type="checkbox"
+                    checked={selectedEntityIds.includes(e.id)}
+                    onChange={() => toggleEntity(e.id)}
+                  />
+                  <span>{e.displayName}</span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+        <h3 style={{ fontSize: 14, fontWeight: 600, color: "#c5c7d0", marginBottom: 8 }}>Reports</h3>
         {packages.length === 0 ? (
           <div className="entities-empty-sub">No packages configured for this client.</div>
         ) : (

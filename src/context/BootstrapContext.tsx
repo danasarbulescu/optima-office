@@ -10,6 +10,7 @@ interface BootstrapAuth {
   isInternal: boolean;
   authorizedPackageIds: string[] | null;
   authorizedDashboardIds: string[] | null;
+  authorizedEntityIds: string[] | null;
 }
 
 interface BootstrapContextValue {
