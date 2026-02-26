@@ -1,6 +1,13 @@
 import { DataAdapter } from './base';
 import { FinancialRow } from '../models/financial';
-import { fetchPLSummaries, CDataPLRow } from '../cdata';
+import { fetchPLSummaries, fetchPLFromTable, fetchPLClassTables, fetchClassNames, CDataPLRow } from '../cdata';
+
+export interface ClassPLResult {
+  classId: string;
+  className: string;
+  tableName: string;
+  rows: FinancialRow[];
+}
 
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -9,7 +16,7 @@ const MONTH_NAMES = [
 
 const MONTH_PATTERN = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)_(\d{4})$/;
 
-function normalizePLRow(row: CDataPLRow): FinancialRow {
+export function normalizePLRow(row: CDataPLRow): FinancialRow {
   const periods: Record<string, number> = {};
 
   for (const key of Object.keys(row)) {
@@ -34,5 +41,36 @@ export class QuickBooksAdapter implements DataAdapter {
   async fetchFinancialData(sourceConfig: Record<string, string>, credentials: Record<string, string>): Promise<FinancialRow[]> {
     const rawRows = await fetchPLSummaries(credentials.user, credentials.pat, sourceConfig.catalogId);
     return rawRows.map(normalizePLRow);
+  }
+
+  /**
+   * Discover PL_XXX class tables, resolve class names, and fetch each class's P&L data.
+   */
+  async discoverAndFetchClasses(
+    sourceConfig: Record<string, string>,
+    credentials: Record<string, string>,
+  ): Promise<ClassPLResult[]> {
+    const catalog = sourceConfig.catalogId;
+    const { user, pat } = credentials;
+
+    // Discover PL_XXX tables
+    const classTables = await fetchPLClassTables(user, pat, catalog);
+    if (classTables.length === 0) return [];
+
+    // Fetch class names in parallel with P&L data
+    const [classNameMap, ...plResults] = await Promise.all([
+      fetchClassNames(user, pat, catalog),
+      ...classTables.map(table => fetchPLFromTable(user, pat, catalog, table)),
+    ]);
+
+    return classTables.map((tableName, i) => {
+      const classId = tableName.replace('PL_', '');
+      return {
+        classId,
+        className: classNameMap.get(classId) || classId,
+        tableName,
+        rows: plResults[i].map(normalizePLRow),
+      };
+    });
   }
 }

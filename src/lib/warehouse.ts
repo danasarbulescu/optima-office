@@ -1,7 +1,7 @@
-import { BatchGetCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { BatchGetCommand, BatchWriteCommand, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, queryAllItems } from './dynamo';
 import { FinancialRow } from './models/financial';
-import { FinancialDataItem } from './types';
+import { DiscoveredClass, FinancialDataItem } from './types';
 
 const TABLE_NAME = process.env.FINANCIAL_DATA_TABLE || '';
 const BATCH_SIZE = 25;
@@ -21,10 +21,11 @@ export async function getWarehouseData(entityId: string): Promise<FinancialRow[]
 
   if (items.length === 0) return null;
 
-  // Filter out metadata item, keep only data items with category/period/value
+  // Filter out metadata, class items, and class index — keep only consolidated data items
   const dataItems = items.filter(
     (item): item is FinancialDataItem & { category: string; period: string; value: number } =>
-      item.sk !== '#metadata' && !!item.category && !!item.period && item.value !== undefined,
+      item.sk !== '#metadata' && item.sk !== '#classes' && !item.sk.startsWith('class#') &&
+      !!item.category && !!item.period && item.value !== undefined,
   );
 
   if (dataItems.length === 0) return null;
@@ -151,4 +152,133 @@ export async function getWarehouseMetadataBatch(
   }
 
   return result;
+}
+
+// ── Class-level warehouse functions ──────────────────────────────────
+
+/**
+ * Write the class index item for an entity.
+ * Stores the list of discovered classes under SK "#classes".
+ */
+export async function setWarehouseClassIndex(
+  entityId: string,
+  classes: DiscoveredClass[],
+): Promise<void> {
+  if (!TABLE_NAME) return;
+  await docClient.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      entityId,
+      sk: '#classes',
+      classes,
+      syncedAt: new Date().toISOString(),
+    },
+  }));
+}
+
+/**
+ * Read the class index for an entity.
+ * Returns the list of discovered classes, or null if none exist.
+ */
+export async function getWarehouseClassIndex(
+  entityId: string,
+): Promise<DiscoveredClass[] | null> {
+  if (!TABLE_NAME) return null;
+  const resp = await docClient.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { entityId, sk: '#classes' },
+  }));
+  return (resp.Item?.classes as DiscoveredClass[]) || null;
+}
+
+/**
+ * Write class-level financial data to the warehouse.
+ * Uses SK format: "class#{classId}#{category}#{period}" for data items
+ * and "class#{classId}#metadata" for class metadata.
+ */
+export async function setWarehouseClassData(
+  entityId: string,
+  classId: string,
+  className: string,
+  rows: FinancialRow[],
+  sourceType: string,
+): Promise<void> {
+  if (!TABLE_NAME) return;
+
+  const now = new Date().toISOString();
+  const prefix = `class#${classId}`;
+  const items: Record<string, unknown>[] = [];
+
+  // Class metadata item
+  items.push({
+    entityId,
+    sk: `${prefix}#metadata`,
+    classId,
+    className,
+    sourceType,
+    syncedAt: now,
+  });
+
+  // Data items: one per category+period
+  for (const row of rows) {
+    for (const [period, value] of Object.entries(row.periods)) {
+      items.push({
+        entityId,
+        sk: `${prefix}#${row.category}#${period}`,
+        classId,
+        category: row.category,
+        period,
+        value,
+        sourceType,
+        syncedAt: now,
+      });
+    }
+  }
+
+  // Batch write in chunks of 25
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const chunk = items.slice(i, i + BATCH_SIZE);
+    await docClient.send(new BatchWriteCommand({
+      RequestItems: {
+        [TABLE_NAME]: chunk.map(item => ({ PutRequest: { Item: item } })),
+      },
+    }));
+  }
+}
+
+/**
+ * Read class-level financial data from the warehouse.
+ * Queries items with SK beginning with "class#{classId}#" and assembles FinancialRow[].
+ */
+export async function getWarehouseClassData(
+  entityId: string,
+  classId: string,
+): Promise<FinancialRow[] | null> {
+  if (!TABLE_NAME) return null;
+
+  const prefix = `class#${classId}#`;
+  const items = await queryAllItems<FinancialDataItem>({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'entityId = :eid AND begins_with(sk, :prefix)',
+    ExpressionAttributeValues: { ':eid': entityId, ':prefix': prefix },
+  });
+
+  const dataItems = items.filter(
+    (item): item is FinancialDataItem & { category: string; period: string; value: number } =>
+      !item.sk.endsWith('#metadata') && !!item.category && !!item.period && item.value !== undefined,
+  );
+
+  if (dataItems.length === 0) return null;
+
+  const rowMap = new Map<string, FinancialRow>();
+  for (const item of dataItems) {
+    let row = rowMap.get(item.category);
+    if (!row) {
+      row = { category: item.category, periods: {} };
+      rowMap.set(item.category, row);
+    }
+    row.periods[item.period] = item.value;
+  }
+
+  return Array.from(rowMap.values());
 }

@@ -10,7 +10,7 @@ export interface CDataPLRow {
 
 const CDATA_ENDPOINT = 'https://cloud.cdata.com/api/query';
 
-async function queryCData(
+export async function queryCData(
   cdataUser: string,
   cdataPat: string,
   sql: string,
@@ -55,4 +55,53 @@ export async function fetchPLSummaries(
   const sql = `SELECT * FROM ${cdataCatalog}.QuickBooksOnline.PL WHERE RowType = 'Summary' AND RowId IS NULL`;
   const results = await queryCData(cdataUser, cdataPat, sql);
   return results as CDataPLRow[];
+}
+
+/**
+ * Fetch P&L summary data from a specific table (e.g., PL_2100000000001402200).
+ */
+export async function fetchPLFromTable(
+  cdataUser: string,
+  cdataPat: string,
+  cdataCatalog: string,
+  tableName: string,
+): Promise<CDataPLRow[]> {
+  const sql = `SELECT * FROM ${cdataCatalog}.QuickBooksOnline.${tableName} WHERE RowType = 'Summary' AND RowId IS NULL`;
+  const results = await queryCData(cdataUser, cdataPat, sql);
+  return results as CDataPLRow[];
+}
+
+/**
+ * Discover PL_XXX class tables from the catalog's sys_tables.
+ * Returns table names like ['PL_2100000000001402200', 'PL_2100000000001402201', ...].
+ */
+export async function fetchPLClassTables(
+  cdataUser: string,
+  cdataPat: string,
+  cdataCatalog: string,
+): Promise<string[]> {
+  const sql = `SELECT TableName FROM ${cdataCatalog}.QuickBooksOnline.sys_tables`;
+  const results = await queryCData(cdataUser, cdataPat, sql);
+  return results
+    .map(r => r.TableName as string)
+    .filter(name => /^PL_\d+$/.test(name));
+}
+
+/**
+ * Fetch class ID → display name mapping from the QuickBooks Class table.
+ */
+export async function fetchClassNames(
+  cdataUser: string,
+  cdataPat: string,
+  cdataCatalog: string,
+): Promise<Map<string, string>> {
+  const sql = `SELECT Id, FullyQualifiedName FROM ${cdataCatalog}.QuickBooksOnline.Class`;
+  const results = await queryCData(cdataUser, cdataPat, sql);
+  const map = new Map<string, string>();
+  for (const row of results) {
+    if (row.Id && row.FullyQualifiedName) {
+      map.set(row.Id as string, row.FullyQualifiedName as string);
+    }
+  }
+  return map;
 }

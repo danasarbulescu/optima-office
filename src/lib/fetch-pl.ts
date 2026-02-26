@@ -1,10 +1,11 @@
 import { getAdapter } from './adapters';
+import { QuickBooksAdapter } from './adapters/quickbooks';
 import { getCachedPL, setCachedPL } from './cache';
 import { getDataSource } from './data-sources';
 import { mergeFinancialRows } from './merge';
 import { FinancialRow } from './models/financial';
 import { EntityConfig } from './types';
-import { getWarehouseData, setWarehouseData } from './warehouse';
+import { getWarehouseData, setWarehouseData, setWarehouseClassIndex, setWarehouseClassData } from './warehouse';
 
 export async function fetchSingleEntity(
   clientId: string,
@@ -68,6 +69,11 @@ export async function fetchSingleEntity(
     );
   }
 
+  // Step 5: Discover and store class-level P&L data (fire-and-forget)
+  syncClassData(entityId, sourceConfig, credentials, adapterType).catch((err) =>
+    console.error(`Class sync failed for entity ${entityId}:`, err)
+  );
+
   return freshRows;
 }
 
@@ -111,4 +117,35 @@ export async function fetchPLForEntities(
     rows: mergeFinancialRows(...nonEmpty),
     entityName: 'Combined',
   };
+}
+
+/**
+ * Discover and store class-level P&L data for a QuickBooks entity.
+ * Called fire-and-forget after a source sync.
+ */
+async function syncClassData(
+  entityId: string,
+  sourceConfig: Record<string, string>,
+  credentials: Record<string, string>,
+  adapterType: string,
+): Promise<void> {
+  if (adapterType !== 'quickbooks') return;
+
+  const adapter = getAdapter(adapterType) as QuickBooksAdapter;
+  const classResults = await adapter.discoverAndFetchClasses(sourceConfig, credentials);
+
+  if (classResults.length === 0) return;
+
+  // Write class index
+  await setWarehouseClassIndex(
+    entityId,
+    classResults.map(c => ({ id: c.classId, name: c.className, tableName: c.tableName })),
+  );
+
+  // Write each class's financial data in parallel
+  await Promise.all(
+    classResults.map(c =>
+      setWarehouseClassData(entityId, c.classId, c.className, c.rows, 'quickbooks'),
+    ),
+  );
 }

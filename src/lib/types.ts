@@ -118,14 +118,23 @@ export interface PLCacheEntry {
 
 export interface FinancialDataItem {
   entityId: string;       // Entity UUID (PK)
-  sk: string;             // "{category}#{period}" or "#metadata" (SK)
+  sk: string;             // "{category}#{period}" or "#metadata" or "class#..." (SK)
   category?: string;
   period?: string;
   value?: number;
-  sourceType: string;     // "quickbooks", etc.
-  syncedAt: string;       // ISO timestamp
+  sourceType?: string;    // "quickbooks", etc.
+  syncedAt?: string;      // ISO timestamp
   entityName?: string;    // metadata only
   lastSyncedAt?: string;  // metadata only
+  classId?: string;       // class data items only
+  className?: string;     // class metadata only
+  classes?: DiscoveredClass[]; // #classes index item only
+}
+
+export interface DiscoveredClass {
+  id: string;        // QuickBooks class ID (from PL_ table name suffix)
+  name: string;      // Human-readable name (from Class table)
+  tableName: string;  // CData table name (e.g., PL_2100000000001402200)
 }
 
 export interface Package {
