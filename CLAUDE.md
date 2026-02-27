@@ -415,6 +415,13 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 - User id: `b19b35e0-00d1-7072-d9e0-9a58236a5b03`
 - User admin email: `dana.sarbulescu@gmail.com`
 
+**Win LG Gram sandbox**
+- CLI profile: `danasarbulescu`, IAM user: `Win-LG-Gram-Admin-CLI`
+- AWS resource prefix: `amplify-optimaoffice-danas-sandbox-6465494aa0`
+- User Pool Id: `us-east-2_TTgL4TNSa`
+- User id: `a10bf510-4051-7094-a4eb-f8bfa9049384`
+- User admin email: `dana.sarbulescu@gmail.com`
+
 **Production**
 - CLI profile: `danasarbulescu`
 - AWS resource prefix: `amplify-d15bx1surdnd12-main-branch-593bd34ebb`

@@ -16,6 +16,11 @@ export const SANDBOXES: SandboxConfig[] = [
     tablePrefix: 'amplify-optimaoffice-Marin-sandbox-1e654e688f',
   },
   {
+    id: 'win-lg-gram',
+    label: 'Win LG Gram Sandbox',
+    tablePrefix: 'amplify-optimaoffice-danas-sandbox-6465494aa0',
+  },
+  {
     id: 'production',
     label: 'Production',
     tablePrefix: 'amplify-d15bx1surdnd12-main-branch-593bd34ebb',
