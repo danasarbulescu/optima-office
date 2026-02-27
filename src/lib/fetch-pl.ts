@@ -69,11 +69,6 @@ export async function fetchSingleEntity(
     );
   }
 
-  // Step 5: Discover and store class-level P&L data (fire-and-forget)
-  syncClassData(entityId, sourceConfig, credentials, adapterType).catch((err) =>
-    console.error(`Class sync failed for entity ${entityId}:`, err)
-  );
-
   return freshRows;
 }
 
@@ -121,9 +116,9 @@ export async function fetchPLForEntities(
 
 /**
  * Discover and store class-level P&L data for a QuickBooks entity.
- * Called fire-and-forget after a source sync.
+ * Called from the entity sync route (awaited) to ensure class data is written before returning.
  */
-async function syncClassData(
+export async function syncClassData(
   entityId: string,
   sourceConfig: Record<string, string>,
   credentials: Record<string, string>,

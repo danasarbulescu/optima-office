@@ -225,6 +225,9 @@ export default function ClientDetailPage() {
       if (data.syncedAt) {
         setEntitySyncMap(prev => ({ ...prev, [entity.id]: data.syncedAt }));
       }
+      if (data.discoveredClasses) {
+        setEntityClassMap(prev => ({ ...prev, [entity.id]: data.discoveredClasses }));
+      }
       setSyncResult({ entityId: entity.id, status: 'success', message: `Synced ${data.rowCount} rows` });
       syncTimerRef.current = setTimeout(() => setSyncResult(null), 3000);
     } catch (err: any) {
