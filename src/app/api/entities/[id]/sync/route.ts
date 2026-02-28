@@ -49,12 +49,14 @@ export async function POST(
 
     // Discover and store class-level P&L data (awaited so result is available in response)
     let discoveredClasses: { id: string; name: string; tableName: string }[] = [];
+    let classError: string | undefined;
     try {
       await syncClassData(entity.id, sc, credentials, adapterType);
       // Read back the class index to include in response
       const { getWarehouseClassIndex } = await import('@/lib/warehouse');
       discoveredClasses = (await getWarehouseClassIndex(entity.id)) ?? [];
-    } catch (err) {
+    } catch (err: any) {
+      classError = err.message || String(err);
       console.error(`Class sync failed for entity ${entity.id}:`, err);
     }
 
@@ -63,6 +65,7 @@ export async function POST(
       rowCount: rows.length,
       syncedAt: new Date().toISOString(),
       discoveredClasses,
+      ...(classError && { classError }),
     });
   } catch (err: any) {
     console.error("Entity sync error:", err);

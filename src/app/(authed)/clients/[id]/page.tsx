@@ -228,8 +228,11 @@ export default function ClientDetailPage() {
       if (data.discoveredClasses) {
         setEntityClassMap(prev => ({ ...prev, [entity.id]: data.discoveredClasses }));
       }
-      setSyncResult({ entityId: entity.id, status: 'success', message: `Synced ${data.rowCount} rows` });
-      syncTimerRef.current = setTimeout(() => setSyncResult(null), 3000);
+      const msg = data.classError
+        ? `Synced ${data.rowCount} rows (class discovery failed: ${data.classError})`
+        : `Synced ${data.rowCount} rows`;
+      setSyncResult({ entityId: entity.id, status: data.classError ? 'error' : 'success', message: msg });
+      syncTimerRef.current = setTimeout(() => setSyncResult(null), 5000);
     } catch (err: any) {
       setSyncResult({ entityId: entity.id, status: 'error', message: err.message });
     } finally {
