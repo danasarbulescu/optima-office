@@ -129,7 +129,7 @@ export default function BudgetVsActualTable({ data, month }: Props) {
               const classValues = classes.map(cls => {
                 const { actual, budget } = row.byClass[cls.classId] ?? { actual: 0, budget: 0 };
                 const forecast = asOfDay > 0 ? (actual / asOfDay) * effectiveDaysInMonth : 0;
-                const varAmt = budget - forecast;
+                const varAmt = actual - budget;
                 const varPct = budget !== 0 ? (varAmt / Math.abs(budget)) * 100 : null;
                 return { actual, budget, forecast, varAmt, varPct };
               });
@@ -138,7 +138,7 @@ export default function BudgetVsActualTable({ data, month }: Props) {
               const totalActual   = row.total.actual;
               const totalBudget   = row.total.budget;
               const totalForecast = asOfDay > 0 ? (totalActual / asOfDay) * effectiveDaysInMonth : 0;
-              const totalVarAmt   = totalBudget - totalForecast;
+              const totalVarAmt   = totalActual - totalBudget;
               const totalVarPct   = totalBudget !== 0 ? (totalVarAmt / Math.abs(totalBudget)) * 100 : null;
 
               return (

@@ -250,6 +250,8 @@
 
 .bva-scroll-wrapper {
   overflow-x: auto;
+  max-height: 80vh;
+  overflow-y: auto;
   background: #1a1b23;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
@@ -257,29 +259,34 @@
 
 .bva-table {
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
   width: 100%;
 }
 
 /* Column sizing */
-.bva-col-name { min-width: 200px; }
-.bva-col-num  { min-width: 80px; }
+.bva-col-name { min-width: 160px; width: 160px; }
+.bva-col-num  { min-width: 60px; }
 
-/* Header rows */
+/* Header rows — sticky */
 .bva-header-group th,
 .bva-header-sub th {
   background: #252636;
   color: #c0c4d0;
-  padding: 8px 6px;
+  padding: 6px 4px;
   font-weight: 700;
   text-align: center;
   border-bottom: 1px solid #3b3d52;
+  position: sticky;
+  z-index: 4;
 }
+
+.bva-header-group th { top: 0; }
+.bva-header-sub th   { top: 29px; }
 
 .bva-th-name {
   text-align: left !important;
-  min-width: 200px;
+  min-width: 160px;
 }
 
 .bva-th-class {
@@ -292,10 +299,10 @@
 }
 
 .bva-th-sub {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #9a9caa;
-  padding: 5px 6px !important;
+  padding: 4px 4px !important;
   border-left: 1px solid #2a2b35;
 }
 
@@ -304,19 +311,19 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #1a1b23;
+  background: #16171f;
 }
 
 .bva-header-group .bva-sticky,
 .bva-header-sub .bva-sticky {
   background: #252636;
-  z-index: 3;
+  z-index: 5;
 }
 
 /* Body rows */
 .bva-row td {
   border-bottom: 1px solid #2a2b35;
-  padding: 6px 8px;
+  padding: 5px 4px;
   color: #c0c4d0;
 }
 
@@ -324,7 +331,7 @@
   background: #1f2233;
 }
 .bva-row:hover .bva-sticky {
-  background: #1f2233;
+  background: #1b1c2a;
 }
 
 .bva-td-name {
@@ -335,7 +342,7 @@
 .bva-td-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  padding-right: 10px !important;
+  padding-right: 6px !important;
   border-left: 1px solid #2a2b35;
 }
 
@@ -356,10 +363,10 @@
   background: #222336;
 }
 .bva-row-bold .bva-sticky {
-  background: #1e1f2d;
+  background: #1a1b29;
 }
 .bva-row-bold:hover .bva-sticky {
-  background: #222336;
+  background: #1e1f30;
 }
 
 /* Section header rows */
@@ -377,8 +384,8 @@
 }
 
 /* Variance colors */
-.bva-pos { color: #4caf50; }
-.bva-neg { color: #e53935; }
+td.bva-pos { color: #4caf50; }
+td.bva-neg { color: #e53935; }
 
 /* Responsive */
 @media (max-width: 900px) {

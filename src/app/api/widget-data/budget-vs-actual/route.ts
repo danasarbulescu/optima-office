@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth-context';
 import { getEntities } from '@/lib/entities';
 import { getDataSource } from '@/lib/data-sources';
-import { getWarehouseClassIndex } from '@/lib/warehouse';
+import { getWarehouseClassIndex, getCachedClassActuals, setCachedClassActuals } from '@/lib/warehouse';
 import { getAllBudgetClassData } from '@/lib/budget-data';
 import { fetchAccountLevelPL } from '@/lib/cdata';
 import { BudgetLine, BudgetVsActualData, BudgetVsActualRow } from '@/lib/types';
@@ -80,6 +80,8 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  const refresh = params.get('refresh') === 'true';
 
   // Use first entity ID (budget-vs-actual is single-entity)
   const entityId = entitiesParam.split(',')[0];
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
     // Match budget classes to warehouse index (for tableName)
     const classTableMap = new Map(classIndex.map(c => [c.id, c.tableName]));
 
-    // ── Fetch account-level actuals from CData (parallel) ──────────────────
+    // ── Fetch account-level actuals (cache-first, CData fallback) ──────────
     const actualsByClassId = new Map<string, Map<string, number>>();
 
     await Promise.all(
@@ -158,7 +160,20 @@ export async function GET(request: NextRequest) {
         if (!tableName) return; // no warehouse entry for this class
 
         try {
-          const rows = await fetchAccountLevelPL(cdataUser, cdataPat, catalog, tableName, month);
+          // Try cache first (unless ?refresh=true)
+          let rows = refresh ? null : await getCachedClassActuals(entityId, bc.classId, month);
+          if (rows) {
+            console.log(`[BvA] cache HIT for class ${bc.classId} (${bc.className}), ${rows.length} rows`);
+          } else {
+            rows = await fetchAccountLevelPL(cdataUser, cdataPat, catalog, tableName, month);
+            console.log(`[BvA] CData fetch for class ${bc.classId} (${bc.className}), ${rows.length} rows`);
+            // Log first few rows for debugging
+            for (const r of rows.slice(0, 5)) {
+              console.log(`  [BvA] code=${r.accountCode} name="${r.accountName}" group=${r.rowGroup} amt=${r.amount}`);
+            }
+            // Cache the result (fire-and-forget)
+            setCachedClassActuals(entityId, bc.classId, month, rows).catch(() => {});
+          }
           const map = new Map<string, number>();
           for (const row of rows) {
             if (row.accountCode) {
@@ -190,6 +205,20 @@ export async function GET(request: NextRequest) {
 
     for (const bc of orderedClasses) {
       const accountActuals = actualsByClassId.get(bc.classId) ?? new Map<string, number>();
+      // Debug: log match rate
+      const accountLines = lines.filter(l => l.rowType === 'account' && l.accountCode);
+      const matched = accountLines.filter(l => accountActuals.has(l.accountCode!));
+      const unmatched = accountLines.filter(l => !accountActuals.has(l.accountCode!));
+      console.log(`[BvA] Class ${bc.className}: ${matched.length}/${accountLines.length} budget accounts matched CData actuals`);
+      if (unmatched.length > 0) {
+        console.log(`  [BvA] Unmatched budget codes: ${unmatched.slice(0, 10).map(l => l.accountCode).join(', ')}`);
+      }
+      // Also log CData codes NOT in budget for context
+      const budgetCodes = new Set(accountLines.map(l => l.accountCode!));
+      const extraCdata = [...accountActuals.keys()].filter(k => !budgetCodes.has(k));
+      if (extraCdata.length > 0) {
+        console.log(`  [BvA] CData codes NOT in budget: ${extraCdata.slice(0, 10).join(', ')}`);
+      }
       actualsByClass.set(bc.classId, computeRowActuals(lines, accountActuals));
 
       // Budget amounts: each line's monthly value for this period

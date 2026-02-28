@@ -2,6 +2,7 @@ import { BatchGetCommand, BatchWriteCommand, PutCommand, GetCommand } from '@aws
 import { docClient, queryAllItems } from './dynamo';
 import { FinancialRow } from './models/financial';
 import { DiscoveredClass, FinancialDataItem } from './types';
+import type { AccountActualRow } from './cdata';
 
 const TABLE_NAME = process.env.FINANCIAL_DATA_TABLE || '';
 const BATCH_SIZE = 25;
@@ -244,6 +245,56 @@ export async function setWarehouseClassData(
       },
     }));
   }
+}
+
+// ── Account-level actuals cache ──────────────────────────────────
+
+const ACTUALS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Read cached account-level actuals for a class + period.
+ * Returns null on cache miss or stale data.
+ * SK format: "classActuals#{classId}#{period}"
+ */
+export async function getCachedClassActuals(
+  entityId: string,
+  classId: string,
+  period: string,
+): Promise<AccountActualRow[] | null> {
+  if (!TABLE_NAME) return null;
+  const sk = `classActuals#${classId}#${period}`;
+  const resp = await docClient.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { entityId, sk },
+  }));
+  if (!resp.Item) return null;
+  const cachedAt = resp.Item.cachedAt as string | undefined;
+  if (cachedAt && Date.now() - new Date(cachedAt).getTime() > ACTUALS_CACHE_TTL_MS) {
+    return null; // stale
+  }
+  return (resp.Item.accounts as AccountActualRow[]) ?? null;
+}
+
+/**
+ * Write cached account-level actuals for a class + period.
+ */
+export async function setCachedClassActuals(
+  entityId: string,
+  classId: string,
+  period: string,
+  accounts: AccountActualRow[],
+): Promise<void> {
+  if (!TABLE_NAME) return;
+  const sk = `classActuals#${classId}#${period}`;
+  await docClient.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      entityId,
+      sk,
+      accounts,
+      cachedAt: new Date().toISOString(),
+    },
+  }));
 }
 
 /**
