@@ -24,6 +24,9 @@ function varianceClass(v: number): string {
   return '';
 }
 
+const COLS_PER_CLASS = 5; // Actual, Budget, Forecast, Var $, Var %
+const TOTAL_KEY = '__total__';
+
 export default function BudgetVsActualTable({ data, month }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(month);
 
@@ -38,6 +41,23 @@ export default function BudgetVsActualTable({ data, month }: Props) {
   }, [selectedMonth, data.daysInMonth]);
 
   const [asOfDay, setAsOfDay] = useState(defaultDay);
+
+  // Class visibility toggles (includes Total)
+  const [visibleGroups, setVisibleGroups] = useState<Set<string>>(() => {
+    const all = new Set(data.classes.map(c => c.classId));
+    all.add(TOTAL_KEY);
+    return all;
+  });
+  const toggleGroup = (key: string) => {
+    setVisibleGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const showClass = (classId: string) => visibleGroups.has(classId);
+  const showTotal = visibleGroups.has(TOTAL_KEY);
 
   // When month prop changes (parent refetch), reset asOfDay
   const effectiveDaysInMonth = data.daysInMonth;
@@ -62,60 +82,76 @@ export default function BudgetVsActualTable({ data, month }: Props) {
           />
           <span className="bva-day-hint">/ {effectiveDaysInMonth}</span>
         </label>
+        <div className="bva-col-toggles">
+          {classes.map(cls => (
+            <label key={cls.classId} className="bva-col-toggle">
+              <input
+                type="checkbox"
+                checked={visibleGroups.has(cls.classId)}
+                onChange={() => toggleGroup(cls.classId)}
+              />
+              {cls.className}
+            </label>
+          ))}
+          <label className="bva-col-toggle">
+            <input
+              type="checkbox"
+              checked={showTotal}
+              onChange={() => toggleGroup(TOTAL_KEY)}
+            />
+            Total
+          </label>
+        </div>
       </div>
 
       <div className="bva-scroll-wrapper">
         <table className="bva-table">
           <colgroup>
             <col className="bva-col-name" />
-            {classes.map(cls => (
-              <col key={cls.classId + '-actual'}   className="bva-col-num" />
-            ))}
-            {classes.map(cls => (
-              <col key={cls.classId + '-budget'}   className="bva-col-num" />
-            ))}
-            {classes.map(cls => (
-              <col key={cls.classId + '-forecast'} className="bva-col-num" />
-            ))}
-            {classes.map(cls => (
-              <col key={cls.classId + '-var$'}     className="bva-col-num" />
-            ))}
-            {classes.map(cls => (
-              <col key={cls.classId + '-varpct'}   className="bva-col-num" />
-            ))}
+            {classes.flatMap(cls => showClass(cls.classId) ? [
+              <col key={cls.classId + '-actual'}   className="bva-col-num" />,
+              <col key={cls.classId + '-budget'}   className="bva-col-num" />,
+              <col key={cls.classId + '-forecast'} className="bva-col-num" />,
+              <col key={cls.classId + '-var$'}     className="bva-col-num" />,
+              <col key={cls.classId + '-varpct'}   className="bva-col-num" />,
+            ] : [])}
             {/* Total group */}
-            <col className="bva-col-num" />
-            <col className="bva-col-num" />
-            <col className="bva-col-num" />
-            <col className="bva-col-num" />
-            <col className="bva-col-num" />
+            {showTotal && <>
+              <col className="bva-col-num" />
+              <col className="bva-col-num" />
+              <col className="bva-col-num" />
+              <col className="bva-col-num" />
+              <col className="bva-col-num" />
+            </>}
           </colgroup>
 
           <thead>
             {/* Row 1: class group headers */}
             <tr className="bva-header-group">
               <th className="bva-th-name bva-sticky" rowSpan={2}>Account</th>
-              {classes.map(cls => (
-                <th key={cls.classId} colSpan={5} className="bva-th-class">
+              {classes.map(cls => showClass(cls.classId) && (
+                <th key={cls.classId} colSpan={COLS_PER_CLASS} className="bva-th-class">
                   {cls.className}
                 </th>
               ))}
-              <th colSpan={5} className="bva-th-class bva-th-total">Total</th>
+              {showTotal && <th colSpan={COLS_PER_CLASS} className="bva-th-class bva-th-total">Total</th>}
             </tr>
             {/* Row 2: sub-column headers */}
             <tr className="bva-header-sub">
-              {classes.flatMap(cls => [
+              {classes.flatMap(cls => showClass(cls.classId) ? [
                 <th key={cls.classId + '-a'} className="bva-th-sub">Actual</th>,
                 <th key={cls.classId + '-b'} className="bva-th-sub">Budget</th>,
                 <th key={cls.classId + '-f'} className="bva-th-sub">Forecast</th>,
                 <th key={cls.classId + '-v'} className="bva-th-sub">Var $</th>,
                 <th key={cls.classId + '-p'} className="bva-th-sub">Var %</th>,
-              ])}
-              <th className="bva-th-sub">Actual</th>
-              <th className="bva-th-sub">Budget</th>
-              <th className="bva-th-sub">Forecast</th>
-              <th className="bva-th-sub">Var $</th>
-              <th className="bva-th-sub">Var %</th>
+              ] : [])}
+              {showTotal && <>
+                <th className="bva-th-sub">Actual</th>
+                <th className="bva-th-sub">Budget</th>
+                <th className="bva-th-sub">Forecast</th>
+                <th className="bva-th-sub">Var $</th>
+                <th className="bva-th-sub">Var %</th>
+              </>}
             </tr>
           </thead>
 
@@ -157,7 +193,7 @@ export default function BudgetVsActualTable({ data, month }: Props) {
                     {row.accountName}
                   </td>
 
-                  {classValues.map((cv, ci) => (
+                  {classValues.map((cv, ci) => showClass(classes[ci].classId) && (
                     <Fragment key={ci}>
                       <td className="bva-td-num">{isSection ? '' : fmtCurrency(cv.actual)}</td>
                       <td className="bva-td-num">{isSection ? '' : fmtCurrency(cv.budget)}</td>
@@ -172,15 +208,17 @@ export default function BudgetVsActualTable({ data, month }: Props) {
                   ))}
 
                   {/* Total */}
-                  <td className="bva-td-num bva-td-total">{isSection ? '' : fmtCurrency(totalActual)}</td>
-                  <td className="bva-td-num bva-td-total">{isSection ? '' : fmtCurrency(totalBudget)}</td>
-                  <td className="bva-td-num bva-td-total">{isSection ? '' : fmtCurrency(totalForecast)}</td>
-                  <td className={`bva-td-num bva-td-total ${isSection ? '' : varianceClass(totalVarAmt)}`}>
-                    {isSection ? '' : fmtCurrency(totalVarAmt)}
-                  </td>
-                  <td className={`bva-td-num bva-td-total ${isSection ? '' : (totalVarPct !== null ? varianceClass(totalVarPct) : '')}`}>
-                    {isSection || totalVarPct === null ? '' : formatPct(totalVarPct)}
-                  </td>
+                  {showTotal && <>
+                    <td className="bva-td-num bva-td-total">{isSection ? '' : fmtCurrency(totalActual)}</td>
+                    <td className="bva-td-num bva-td-total">{isSection ? '' : fmtCurrency(totalBudget)}</td>
+                    <td className="bva-td-num bva-td-total">{isSection ? '' : fmtCurrency(totalForecast)}</td>
+                    <td className={`bva-td-num bva-td-total ${isSection ? '' : varianceClass(totalVarAmt)}`}>
+                      {isSection ? '' : fmtCurrency(totalVarAmt)}
+                    </td>
+                    <td className={`bva-td-num bva-td-total ${isSection ? '' : (totalVarPct !== null ? varianceClass(totalVarPct) : '')}`}>
+                      {isSection || totalVarPct === null ? '' : formatPct(totalVarPct)}
+                    </td>
+                  </>}
                 </tr>
               );
             })}
