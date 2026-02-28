@@ -8,7 +8,7 @@ export const SANDBOXES: SandboxConfig[] = [
   {
     id: 'win-desktop',
     label: 'Win Desktop Sandbox',
-    tablePrefix: 'amplify-quickbooksexport-marin-sandbox-59a22a3c9b',
+    tablePrefix: 'amplify-optimaoffice-marin-sandbox-3e6ba4dae8',
   },
   {
     id: 'win-xps',

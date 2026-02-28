@@ -8,7 +8,8 @@ import { KPI_CONFIGS } from "@/widgets/kpi-config";
 import { WIDGET_FORMULAS } from "@/widgets/formulas";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
-import type { KPIs, PnLByMonth, TrendDataPoint, EntityConfig } from "@/lib/types";
+import BudgetVsActualTable from "@/widgets/components/BudgetVsActualTable";
+import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, EntityConfig } from "@/lib/types";
 import "@/widgets/widgets.css";
 import "../widgets.css";
 
@@ -47,6 +48,7 @@ interface PreviewData {
   data?: TrendDataPoint[];
   entityName?: string;
   selectedMonth?: string;
+  previewEntityId?: string;
 }
 
 export default function WidgetTypeDetailPage() {
@@ -65,6 +67,11 @@ export default function WidgetTypeDetailPage() {
   // Preview state
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(true);
+
+  // BudgetVsActual preview state
+  const [bvaData, setBvaData] = useState<BudgetVsActualData | null>(null);
+  const [bvaLoading, setBvaLoading] = useState(false);
+  const [bvaError, setBvaError] = useState("");
 
   // Preview entity + month state
   const [entities, setEntities] = useState<EntityConfig[]>([]);
@@ -96,6 +103,24 @@ export default function WidgetTypeDetailPage() {
     } catch { /* non-fatal */ }
   }, [id]);
 
+  const fetchBvaData = useCallback(async (entityId: string, month: string) => {
+    setBvaLoading(true);
+    setBvaError("");
+    try {
+      const res = await fetch(`/api/widget-data/budget-vs-actual?entities=${entityId}&month=${month}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to load budget data");
+      }
+      setBvaData(await res.json());
+    } catch (err: any) {
+      setBvaError(err.message);
+      setBvaData(null);
+    } finally {
+      setBvaLoading(false);
+    }
+  }, []);
+
   const fetchPreview = useCallback(async (month?: string) => {
     setPreviewLoading(true);
     try {
@@ -107,10 +132,15 @@ export default function WidgetTypeDetailPage() {
         if (data.selectedMonth && !month) {
           setPreviewMonth(data.selectedMonth);
         }
+        // Auto-fetch BVA data when preview says component is BudgetVsActual
+        if (data.available && data.component === 'BudgetVsActual' && data.previewEntityId) {
+          const bvaMonth = month || data.selectedMonth;
+          if (bvaMonth) fetchBvaData(data.previewEntityId, bvaMonth);
+        }
       }
     } catch { /* non-fatal */ }
     finally { setPreviewLoading(false); }
-  }, [id]);
+  }, [id, fetchBvaData]);
 
   const fetchPreviewConfig = useCallback(async () => {
     try {
@@ -354,8 +384,13 @@ export default function WidgetTypeDetailPage() {
               className="month-picker"
               value={previewMonth}
               onChange={(e) => {
-                setPreviewMonth(e.target.value);
-                fetchPreview(e.target.value);
+                const m = e.target.value;
+                setPreviewMonth(m);
+                if (previewData.component === 'BudgetVsActual' && previewData.previewEntityId) {
+                  fetchBvaData(previewData.previewEntityId, m);
+                } else {
+                  fetchPreview(m);
+                }
               }}
             />
           </div>
@@ -365,12 +400,20 @@ export default function WidgetTypeDetailPage() {
           <div className="widget-detail-empty">Loading preview...</div>
         ) : !previewData?.available ? (
           <div className="widget-detail-empty">
-            {previewData?.liveWidget
-              ? "This widget fetches live data directly from CData. Add it to a dashboard to see it in action."
-              : savedEntityId
-                ? "No warehouse data available for this entity. Sync the entity first."
-                : "Select an entity above to preview this widget."}
+            {savedEntityId
+              ? "No data available for this entity. Sync the entity first."
+              : "Select an entity above to preview this widget."}
           </div>
+        ) : previewData.component === 'BudgetVsActual' ? (
+          bvaLoading ? (
+            <div className="widget-detail-empty">Loading budget vs. actual data...</div>
+          ) : bvaError ? (
+            <div className="widget-detail-empty">{bvaError}</div>
+          ) : bvaData ? (
+            <div className="widget-preview-frame">
+              <BudgetVsActualTable data={bvaData} month={previewMonth} />
+            </div>
+          ) : null
         ) : (
           <div className="widget-preview-frame">
             {widgetType.component === 'KpiCard' && kpiConfig && previewData.kpis && (

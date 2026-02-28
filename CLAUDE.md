@@ -24,7 +24,7 @@ Web dashboard that fetches P&L data from CData Connect Cloud and renders financi
 ```
 amplify/
   auth/resource.ts                  — Cognito auth (email, no self-signup)
-  backend.ts                        — defineBackend (auth + 11 DynamoDB tables + SSR compute role + Cognito admin IAM)
+  backend.ts                        — defineBackend (auth + 12 DynamoDB tables + SSR compute role + Cognito admin IAM)
 src/
   app/
     layout.tsx                      — Root layout with ConfigureAmplify
@@ -229,6 +229,7 @@ Admins can rename widget types via `/widgets` page. Overrides stored in `WidgetT
 | ClientUsers | `id` | `byClient` (clientId) | `CLIENT_USERS_TABLE` |
 | DataSources | `id` | — | `DATA_SOURCES_TABLE` |
 | FinancialData | `entityId` (+ SK `sk`) | — | `FINANCIAL_DATA_TABLE` |
+| BudgetData | `entityId` (+ SK `sk`) | — | `BUDGET_DATA_TABLE` |
 
 ### Cascade deletes
 
@@ -322,7 +323,7 @@ On PLCache miss, warehouse data is read and used to repopulate PLCache. On wareh
 ## Tools — Sandbox Data Sync
 
 Admin tool at `/tools` for copying all configuration DynamoDB tables between environments:
-- **Tables synced** (9): Clients, Entities, ClientMemberships, ClientUsers, DataSources, Packages, Dashboards, DashboardWidgets, WidgetTypeMeta. Excludes data caches (PLCache, FinancialData).
+- **Tables synced** (10): Clients, Entities, ClientMemberships, ClientUsers, DataSources, Packages, Dashboards, DashboardWidgets, WidgetTypeMeta, BudgetData. Excludes data caches (PLCache, FinancialData). BudgetData uses composite key (entityId + sk); sync tool supports both simple PK and composite PK+SK tables.
 - **Sandboxes**: Defined in `src/lib/sandboxes.ts` — Win Desktop, Win XPS, Production (each with a table prefix)
 - **Discovery**: `discoverTables(prefix)` in `src/lib/sync-sandbox.ts` uses `ListTablesCommand` + CDK logical ID regex to find all 9 tables by prefix
 - **Preview**: Shows per-table source/destination item counts in a summary table
@@ -376,7 +377,7 @@ Admin tool at `/tools` for copying all configuration DynamoDB tables between env
 
 ## Build-time env inlining (`next.config.ts`)
 
-CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`, `FINANCIAL_DATA_TABLE`), and `COGNITO_USER_POOL_ID` are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names and User Pool ID fall back to `amplify_outputs.json` custom/auth outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
+CData credentials (`CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`), all DynamoDB table names (`PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`, `FINANCIAL_DATA_TABLE`, `BUDGET_DATA_TABLE`), and `COGNITO_USER_POOL_ID` are inlined into the Next.js bundle via `next.config.ts` `env` property. Table names and User Pool ID fall back to `amplify_outputs.json` custom/auth outputs if env vars are not set. On Amplify hosting these are set as environment variables in the Amplify console. For local dev, use `.env.local`.
 
 ## Local development
 
@@ -388,7 +389,7 @@ npx ampx sandbox --profile danasarbulescu
 npm run dev
 ```
 
-Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`, `FINANCIAL_DATA_TABLE`.
+Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_TABLE`, `ENTITIES_TABLE`, `CLIENTS_TABLE`, `CLIENT_MEMBERSHIPS_TABLE`, `PACKAGES_TABLE`, `DASHBOARDS_TABLE`, `DASHBOARD_WIDGETS_TABLE`, `WIDGET_TYPE_META_TABLE`, `CLIENT_USERS_TABLE`, `DATA_SOURCES_TABLE`, `FINANCIAL_DATA_TABLE`, `BUDGET_DATA_TABLE`.
 
 ## Deployment
 
@@ -403,9 +404,9 @@ Create `.env.local` with `CDATA_USER`, `CDATA_PAT`, `CDATA_CATALOG`, `PL_CACHE_T
 
 **Win Desktop sandbox**
 - CLI profile: `danasarbulescu`, IAM user: `admin-cli`
-- AWS resource prefix: `amplify-quickbooksexport-marin-sandbox-59a22a3c9b`
-- User Pool Id: `us-east-2_GD3xwOSsI`
-- User id: `f1fbd530-20c1-70c9-c668-28b08aab69bc`
+- AWS resource prefix: `amplify-optimaoffice-marin-sandbox-3e6ba4dae8`
+- User Pool Id: `us-east-2_kXKgX8IZP`
+- User id: `f19bd520-b021-7097-abf7-e7fce509397c`
 - User admin email: `dana.sarbulescu@gmail.com`
 
 **Win XPS sandbox**

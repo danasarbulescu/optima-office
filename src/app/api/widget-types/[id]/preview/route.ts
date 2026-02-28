@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-context";
 import { getWidgetType } from "@/widgets/registry";
 import { getWarehouseData } from "@/lib/warehouse";
+import { getBudgetYears } from "@/lib/budget-data";
 import { docClient } from "@/lib/dynamo";
 import { GetCommand } from "@aws-sdk/lib-dynamodb";
 import { buildGroupValues, computeKPIs, build13MonthPnL, buildExpensesTrend, subtractMonths } from "@/lib/compute";
@@ -42,9 +43,28 @@ export async function GET(
     return NextResponse.json({ available: false });
   }
 
-  // BudgetVsActual fetches live data from CData + BudgetData — not from warehouse
+  // BudgetVsActual: check if budget data exists for this entity
   if (wt.component === 'BudgetVsActual') {
-    return NextResponse.json({ available: false, liveWidget: true });
+    const budgetYears = await getBudgetYears(previewEntityId);
+    if (budgetYears.length === 0) {
+      return NextResponse.json({ available: false });
+    }
+    // Default month: current month if within a budget year, else Jan of most recent year
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = `${currentYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const monthParam = request.nextUrl.searchParams.get('month');
+    const selectedMonth = (monthParam && /^\d{4}-\d{2}$/.test(monthParam))
+      ? monthParam
+      : budgetYears.includes(currentYear)
+        ? currentMonth
+        : `${budgetYears[budgetYears.length - 1]}-01`;
+    return NextResponse.json({
+      available: true,
+      component: 'BudgetVsActual',
+      selectedMonth,
+      previewEntityId,
+    });
   }
 
   const rows = await getWarehouseData(previewEntityId);

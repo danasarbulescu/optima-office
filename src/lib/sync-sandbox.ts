@@ -8,7 +8,8 @@ import { SandboxConfig } from './sandboxes';
 export interface SyncTableDescriptor {
   typeKey: string;
   cdkLogicalId: string;   // Exact CDK logical ID before the hex hash
-  pkField: string;         // Partition key field: "id" or "userId"
+  pkField: string;         // Partition key field: "id" or "userId" or "entityId"
+  skField?: string;        // Optional sort key field (e.g. "sk" for composite-key tables)
   displayLabel: string;
 }
 
@@ -22,6 +23,7 @@ export const SYNC_TABLES: SyncTableDescriptor[] = [
   { typeKey: 'dashboards',        cdkLogicalId: 'Dashboards',        pkField: 'id',     displayLabel: 'Dashboards' },
   { typeKey: 'dashboardWidgets',  cdkLogicalId: 'DashboardWidgets',  pkField: 'id',     displayLabel: 'Dashboard Widgets' },
   { typeKey: 'widgetTypeMeta',    cdkLogicalId: 'WidgetTypeMeta',    pkField: 'id',     displayLabel: 'Widget Type Meta' },
+  { typeKey: 'budgetData',        cdkLogicalId: 'BudgetData',        pkField: 'entityId', skField: 'sk', displayLabel: 'Budget Data' },
 ];
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -96,16 +98,19 @@ async function discoverTables(prefix: string): Promise<DiscoveredTables> {
 
 /* ── Generic table operations ──────────────────────────────────── */
 
-async function clearTable(tableName: string, pkField: string): Promise<number> {
+async function clearTable(tableName: string, pkField: string, skField?: string): Promise<number> {
+  const projection = skField ? `${pkField}, ${skField}` : pkField;
   const items = await scanAllItems<Record<string, unknown>>({
     TableName: tableName,
-    ProjectionExpression: pkField,
+    ProjectionExpression: projection,
   });
 
   for (const item of items) {
+    const key: Record<string, unknown> = { [pkField]: item[pkField] };
+    if (skField) key[skField] = item[skField];
     await docClient.send(new DeleteCommand({
       TableName: tableName,
-      Key: { [pkField]: item[pkField] },
+      Key: key,
     }));
   }
 
@@ -140,14 +145,17 @@ export async function previewSync(
 
   const tables: TableSyncPreview[] = await Promise.all(
     SYNC_TABLES.map(async (descriptor) => {
+      const projection = descriptor.skField
+        ? `${descriptor.pkField}, ${descriptor.skField}`
+        : descriptor.pkField;
       const [sourceItems, destItems] = await Promise.all([
         scanAllItems<Record<string, unknown>>({
           TableName: sourceTables[descriptor.typeKey],
-          ProjectionExpression: descriptor.pkField,
+          ProjectionExpression: projection,
         }),
         scanAllItems<Record<string, unknown>>({
           TableName: destTables[descriptor.typeKey],
-          ProjectionExpression: descriptor.pkField,
+          ProjectionExpression: projection,
         }),
       ]);
 
@@ -199,7 +207,7 @@ export async function executeSync(
       preservedAdmins = destItems.filter((item) => item.role === 'internal-admin');
     }
 
-    const deletedCount = await clearTable(destTable, descriptor.pkField);
+    const deletedCount = await clearTable(destTable, descriptor.pkField, descriptor.skField);
     // Merge source items with preserved admins (source wins on userId conflict)
     const preservedUserIds = new Set(preservedAdmins.map((a) => a.userId));
     const itemsToWrite = descriptor.typeKey === 'clientMemberships'
