@@ -103,14 +103,14 @@ export async function GET(request: NextRequest) {
     // ── Resolve CData credentials ───────────────────────────────────────────
     let cdataUser = process.env.CDATA_USER ?? '';
     let cdataPat  = process.env.CDATA_PAT ?? '';
-    let catalog   = entity.sourceConfig?.catalog ?? process.env.CDATA_CATALOG ?? '';
+    let catalog   = entity.sourceConfig?.catalogId ?? entity.catalogId ?? process.env.CDATA_CATALOG ?? '';
 
     if (entity.dataSourceId) {
       const ds = await getDataSource(entity.dataSourceId);
       if (ds?.status === 'active') {
         cdataUser = ds.config.user ?? cdataUser;
         cdataPat  = ds.config.pat  ?? cdataPat;
-        catalog   = entity.sourceConfig?.catalog ?? catalog;
+        catalog   = entity.sourceConfig?.catalogId ?? catalog;
       }
     }
 
