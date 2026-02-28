@@ -44,9 +44,13 @@ function computeRowActuals(
       result[i] = actual;
       sums[depth] = (sums[depth] ?? 0) + actual;
     } else if (rowType === 'subtotal') {
-      const actual = sums[depth + 1] ?? 0;
+      // Collect from ALL deeper levels (accounts may be at depth+2, depth+3, etc.)
+      let actual = 0;
+      for (let d = depth + 1; d < sums.length; d++) {
+        actual += sums[d];
+        sums[d] = 0;
+      }
       result[i] = actual;
-      sums[depth + 1] = 0;
       sums[depth] = (sums[depth] ?? 0) + actual;
     }
     // section rows: result[i] remains 0

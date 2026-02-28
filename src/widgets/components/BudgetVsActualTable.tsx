@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { BudgetVsActualData } from '@/lib/types';
 import { formatAbbrev } from '@/lib/format';
 import '@/widgets/widgets.css';
@@ -158,17 +158,17 @@ export default function BudgetVsActualTable({ data, month }: Props) {
                   </td>
 
                   {classValues.map((cv, ci) => (
-                    <>
-                      <td key={ci + '-a'} className="bva-td-num">{isSection ? '' : fmtCurrency(cv.actual)}</td>
-                      <td key={ci + '-b'} className="bva-td-num">{isSection ? '' : fmtCurrency(cv.budget)}</td>
-                      <td key={ci + '-f'} className="bva-td-num">{isSection ? '' : fmtCurrency(cv.forecast)}</td>
-                      <td key={ci + '-v'} className={`bva-td-num ${isSection ? '' : varianceClass(cv.varAmt)}`}>
+                    <Fragment key={ci}>
+                      <td className="bva-td-num">{isSection ? '' : fmtCurrency(cv.actual)}</td>
+                      <td className="bva-td-num">{isSection ? '' : fmtCurrency(cv.budget)}</td>
+                      <td className="bva-td-num">{isSection ? '' : fmtCurrency(cv.forecast)}</td>
+                      <td className={`bva-td-num ${isSection ? '' : varianceClass(cv.varAmt)}`}>
                         {isSection ? '' : fmtCurrency(cv.varAmt)}
                       </td>
-                      <td key={ci + '-p'} className={`bva-td-num ${isSection ? '' : (cv.varPct !== null ? varianceClass(cv.varPct) : '')}`}>
+                      <td className={`bva-td-num ${isSection ? '' : (cv.varPct !== null ? varianceClass(cv.varPct) : '')}`}>
                         {isSection || cv.varPct === null ? '' : formatPct(cv.varPct)}
                       </td>
-                    </>
+                    </Fragment>
                   ))}
 
                   {/* Total */}

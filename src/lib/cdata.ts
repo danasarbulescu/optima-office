@@ -106,7 +106,10 @@ function periodToColName(period: string): string {
 
 /**
  * Fetch account-level P&L actuals from a specific class table (e.g., PL_2100000000001402200).
- * Returns one row per account (RowType = 'Account') with amount for the given period.
+ * Returns one row per account with amount for the given period.
+ *
+ * CData class-specific PL tables use RowType='Section' for account rows (not 'Account').
+ * Account names are indented with leading spaces; we trim before extracting codes.
  */
 export async function fetchAccountLevelPL(
   cdataUser: string,
@@ -116,20 +119,23 @@ export async function fetchAccountLevelPL(
   period: string,
 ): Promise<AccountActualRow[]> {
   const col = periodToColName(period);
-  const sql = `SELECT account, RowGroup, ${col} as amount FROM ${cdataCatalog}.QuickBooksOnline.${tableName} WHERE RowId IS NULL AND RowType = 'Account'`;
+  const sql = `SELECT account, RowGroup, ${col} FROM ${cdataCatalog}.QuickBooksOnline.${tableName} WHERE RowType = 'Section'`;
   const results = await queryCData(cdataUser, cdataPat, sql);
   const codePattern = /^(\d{4}-\d{2})\s+(.+)$/;
-  return results.map(r => {
-    const raw = (r.account ?? '') as string;
-    const m = codePattern.exec(raw);
-    return {
-      accountCode: m ? m[1] : null,
-      accountName: m ? m[2] : raw,
-      rawAccount: raw,
-      rowGroup: (r.RowGroup ?? '') as string,
-      amount: typeof r.amount === 'number' ? r.amount : parseFloat(r.amount ?? '0') || 0,
-    };
-  });
+  return results
+    .map(r => {
+      const raw = ((r.account ?? '') as string).trim();
+      const m = codePattern.exec(raw);
+      const amt = r[col];
+      return {
+        accountCode: m ? m[1] : null,
+        accountName: m ? m[2] : raw,
+        rawAccount: (r.account ?? '') as string,
+        rowGroup: (r.RowGroup ?? '') as string,
+        amount: typeof amt === 'number' ? amt : parseFloat(amt ?? '0') || 0,
+      };
+    })
+    .filter(r => r.accountCode !== null);
 }
 
 /**
