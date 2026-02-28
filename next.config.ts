@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     CLIENT_USERS_TABLE: process.env.CLIENT_USERS_TABLE || amplifyOutputs?.custom?.clientUsersTableName || '',
     DATA_SOURCES_TABLE: process.env.DATA_SOURCES_TABLE || amplifyOutputs?.custom?.dataSourcesTableName || '',
     FINANCIAL_DATA_TABLE: process.env.FINANCIAL_DATA_TABLE || amplifyOutputs?.custom?.financialDataTableName || '',
+    BUDGET_DATA_TABLE: process.env.BUDGET_DATA_TABLE || amplifyOutputs?.custom?.budgetDataTableName || '',
     COGNITO_USER_POOL_ID: process.env.COGNITO_USER_POOL_ID || amplifyOutputs?.auth?.user_pool_id || '',
   },
 };

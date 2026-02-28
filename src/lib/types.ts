@@ -173,6 +173,59 @@ export interface WidgetTypeMeta {
   description?: string; // Admin-entered description
 }
 
+// ── Budget data types ─────────────────────────────────────────────────────────
+
+/** Monthly budget/actual values keyed by period string ("2026-01") */
+export type BudgetMonthMap = Record<string, number>;
+
+/** One P&L line from the budget spreadsheet */
+export interface BudgetLine {
+  accountCode: string | null;   // "4004-00", null for subtotals
+  accountName: string;          // "Wash Sales"
+  rowType: 'account' | 'subtotal' | 'section';
+  depth: number;                // Indentation depth (0 = top-level)
+  monthly: BudgetMonthMap;      // { "2026-01": 121540, ... }
+  annualTotal: number | null;
+  actuals2025: number | null;   // Prior-year full-year actuals from the spreadsheet
+}
+
+/** One operational metric series (car count, gallons, membership, etc.) */
+export interface BudgetMetric {
+  key: string;           // "carCount", "totalGallons", "membershipCount", etc.
+  label: string;         // Original spreadsheet row label
+  monthly: BudgetMonthMap | null;
+  constant: number | null;   // Non-null when same value every month (e.g. cost/gallon)
+  annualTotal: number | null;
+}
+
+/** Budget data for one class (location) stored as a DynamoDB blob item */
+export interface BudgetClassData {
+  entityId: string;
+  sk: string;                  // "budget#2026#class#{classId}"
+  fiscalYear: number;
+  classId: string;             // QuickBooks class ID (matches DiscoveredClass.id)
+  className: string;           // Human-readable class name (e.g. "01 - Huntington Beach")
+  locationCode: string;        // "01", "03", etc.
+  tabName: string;             // Original Excel tab name
+  budgetLines: BudgetLine[];
+  metrics: BudgetMetric[];
+  importedAt: string;          // ISO timestamp of last import
+}
+
+/** Summary metadata item listing all classes with budget data for an entity+year */
+export interface BudgetMetadataItem {
+  entityId: string;
+  sk: string;                  // "budget#2026#metadata"
+  fiscalYear: number;
+  classes: Array<{
+    classId: string;
+    className: string;
+    locationCode: string;
+    importedAt: string;
+  }>;
+  importedAt: string;
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;
