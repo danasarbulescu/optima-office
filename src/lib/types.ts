@@ -226,6 +226,29 @@ export interface BudgetMetadataItem {
   importedAt: string;
 }
 
+// ── Budget vs. Actual response types ─────────────────────────────────────────
+
+/** One row in the budget vs. actual table (account, subtotal, or section) */
+export interface BudgetVsActualRow {
+  accountCode: string | null;
+  accountName: string;
+  rowType: 'account' | 'subtotal' | 'section';
+  depth: number;
+  /** Per-class actual + budget amounts keyed by classId */
+  byClass: Record<string, { actual: number; budget: number }>;
+  total: { actual: number; budget: number };
+}
+
+/** Full response from GET /api/widget-data/budget-vs-actual */
+export interface BudgetVsActualData {
+  month: string;       // "2026-01"
+  year: number;
+  daysInMonth: number; // for client-side forecast calculation
+  entityId: string;
+  classes: Array<{ classId: string; className: string; locationCode: string }>;
+  rows: BudgetVsActualRow[];
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;

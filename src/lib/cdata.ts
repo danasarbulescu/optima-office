@@ -87,6 +87,51 @@ export async function fetchPLClassTables(
     .filter(name => /^PL_\d+$/.test(name));
 }
 
+// ── Account-level P&L actuals ─────────────────────────────────────────────────
+
+export interface AccountActualRow {
+  accountCode: string | null; // "4004-00" parsed from "4004-00 Wash Sales"
+  accountName: string;        // "Wash Sales"
+  rawAccount: string;         // original value e.g. "4004-00 Wash Sales"
+  rowGroup: string;           // "Income", "COGS", etc.
+  amount: number;
+}
+
+/** Convert "2026-01" → "Jan_2026" for use as a CData column name */
+function periodToColName(period: string): string {
+  const [year, month] = period.split('-');
+  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${names[parseInt(month, 10) - 1]}_${year}`;
+}
+
+/**
+ * Fetch account-level P&L actuals from a specific class table (e.g., PL_2100000000001402200).
+ * Returns one row per account (RowType = 'Account') with amount for the given period.
+ */
+export async function fetchAccountLevelPL(
+  cdataUser: string,
+  cdataPat: string,
+  cdataCatalog: string,
+  tableName: string,
+  period: string,
+): Promise<AccountActualRow[]> {
+  const col = periodToColName(period);
+  const sql = `SELECT account, RowGroup, ${col} as amount FROM ${cdataCatalog}.QuickBooksOnline.${tableName} WHERE RowId IS NULL AND RowType = 'Account'`;
+  const results = await queryCData(cdataUser, cdataPat, sql);
+  const codePattern = /^(\d{4}-\d{2})\s+(.+)$/;
+  return results.map(r => {
+    const raw = (r.account ?? '') as string;
+    const m = codePattern.exec(raw);
+    return {
+      accountCode: m ? m[1] : null,
+      accountName: m ? m[2] : raw,
+      rawAccount: raw,
+      rowGroup: (r.RowGroup ?? '') as string,
+      amount: typeof r.amount === 'number' ? r.amount : parseFloat(r.amount ?? '0') || 0,
+    };
+  });
+}
+
 /**
  * Fetch class ID → display name mapping from the QuickBooks Class table.
  */

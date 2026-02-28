@@ -10,11 +10,16 @@ import { getWidgetType } from "@/widgets/registry";
 import { KPI_CONFIGS } from "@/widgets/kpi-config";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
-import type { KPIs, PnLByMonth, TrendDataPoint } from "@/lib/types";
+import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData } from "@/lib/types";
 import "@/widgets/widgets.css";
 
 const TrendChart = dynamic(() => import("@/widgets/components/TrendChart"), {
   loading: () => <div className="app-loading">Loading chart...</div>,
+  ssr: false,
+});
+
+const BudgetVsActualTable = dynamic(() => import("@/widgets/components/BudgetVsActualTable"), {
+  loading: () => <div className="app-loading">Loading budget comparison...</div>,
   ssr: false,
 });
 
@@ -55,6 +60,9 @@ export default function DashboardPage() {
   const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
   const [trendEntityName, setTrendEntityName] = useState("");
 
+  // Budget vs. actual state
+  const [budgetVsActualData, setBudgetVsActualData] = useState<BudgetVsActualData | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
@@ -81,6 +89,14 @@ export default function DashboardPage() {
     widgets.some(w => {
       const wt = getWidgetType(w.widgetTypeId);
       return wt?.component === "TrendChart";
+    }),
+    [widgets]
+  );
+
+  const hasBudgetVsActual = useMemo(() =>
+    widgets.some(w => {
+      const wt = getWidgetType(w.widgetTypeId);
+      return wt?.component === "BudgetVsActual";
     }),
     [widgets]
   );
@@ -160,11 +176,39 @@ export default function DashboardPage() {
     }
   }, [selectedEntities, currentClientId]);
 
+  // Fetch budget vs. actual data
+  const fetchBudgetVsActual = useCallback(async (selectedMonth: string, signal?: AbortSignal) => {
+    setLoading(true);
+    setError("");
+    try {
+      const entityId = selectedEntities[0];
+      if (!entityId) return;
+      const url = `/api/widget-data/budget-vs-actual?entities=${entityId}&month=${selectedMonth}`;
+      const res = await fetch(url, {
+        headers: { "x-client-id": currentClientId || "" },
+        signal,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `API error: ${res.status}`);
+      }
+      const data = await res.json();
+      setBudgetVsActualData(data);
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      setError(err.message || "Failed to load budget comparison");
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [selectedEntities, currentClientId]);
+
   // Stable refs for fetch callbacks — prevents effect re-fires when callback identity changes
   const fetchFinancialRef = useRef(fetchFinancialSnapshot);
   fetchFinancialRef.current = fetchFinancialSnapshot;
   const fetchTrendRef = useRef(fetchExpenseTrend);
   fetchTrendRef.current = fetchExpenseTrend;
+  const fetchBvaRef = useRef(fetchBudgetVsActual);
+  fetchBvaRef.current = fetchBudgetVsActual;
 
   // Auto-load when dashboard, entities, or month change
   useEffect(() => {
@@ -174,6 +218,7 @@ export default function DashboardPage() {
     setKpis(null);
     setPnlByMonth(null);
     setTrendData([]);
+    setBudgetVsActualData(null);
 
     const controller = new AbortController();
     if (hasFinancialWidgets) {
@@ -182,10 +227,13 @@ export default function DashboardPage() {
     if (hasTrendWidgets) {
       fetchTrendRef.current(month, false, controller.signal);
     }
+    if (hasBudgetVsActual) {
+      fetchBvaRef.current(month, controller.signal);
+    }
 
     return () => { controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, month]);
+  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, hasBudgetVsActual, month]);
 
   if (packagesLoading) {
     return <div className="app-loading">Loading...</div>;
@@ -217,7 +265,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Dashboard controls — single month picker */}
-      {(hasFinancialWidgets || hasTrendWidgets) && (
+      {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual) && (
         <div className="dashboard-controls">
           {entities.length > 1 && (
             <div className="multi-select" ref={entityDropdownRef}>
@@ -277,22 +325,25 @@ export default function DashboardPage() {
             onClick={() => {
               if (hasFinancialWidgets) fetchFinancialSnapshot(month);
               if (hasTrendWidgets) fetchExpenseTrend(month);
+              if (hasBudgetVsActual) fetchBudgetVsActual(month);
             }}
             disabled={busy || selectedEntities.length === 0}
             className="refresh-btn"
           >
             {loading ? "Loading..." : "Load"}
           </button>
-          <button
-            onClick={() => {
-              if (hasFinancialWidgets) fetchFinancialSnapshot(month, true);
-              if (hasTrendWidgets) fetchExpenseTrend(month, true);
-            }}
-            disabled={busy || selectedEntities.length === 0}
-            className="refresh-btn"
-          >
-            {syncing ? "Syncing..." : "Sync"}
-          </button>
+          {(hasFinancialWidgets || hasTrendWidgets) && (
+            <button
+              onClick={() => {
+                if (hasFinancialWidgets) fetchFinancialSnapshot(month, true);
+                if (hasTrendWidgets) fetchExpenseTrend(month, true);
+              }}
+              disabled={busy || selectedEntities.length === 0}
+              className="refresh-btn"
+            >
+              {syncing ? "Syncing..." : "Sync"}
+            </button>
+          )}
         </div>
       )}
 
@@ -328,6 +379,11 @@ export default function DashboardPage() {
       {/* Trend widgets */}
       {trendData.length > 0 && hasTrendWidgets && (
         <TrendChart data={trendData} entityName={trendEntityName} />
+      )}
+
+      {/* Budget vs. Actual widget */}
+      {budgetVsActualData && hasBudgetVsActual && (
+        <BudgetVsActualTable data={budgetVsActualData} month={month} />
       )}
     </>
   );

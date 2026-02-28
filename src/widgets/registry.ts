@@ -17,6 +17,9 @@ export const WIDGET_TYPES: WidgetType[] = [
 
   // Chart
   { id: 'trend-chart-expenses', category: 'Chart', component: 'TrendChart' },
+
+  // Budget vs. Actual
+  { id: 'budget-vs-actual', category: 'Table', component: 'BudgetVsActual' },
 ];
 
 /** Default display name for widget types without a DynamoDB override */
