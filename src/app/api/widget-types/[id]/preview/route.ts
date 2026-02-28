@@ -42,6 +42,11 @@ export async function GET(
     return NextResponse.json({ available: false });
   }
 
+  // BudgetVsActual fetches live data from CData + BudgetData — not from warehouse
+  if (wt.component === 'BudgetVsActual') {
+    return NextResponse.json({ available: false, liveWidget: true });
+  }
+
   const rows = await getWarehouseData(previewEntityId);
   if (!rows || rows.length === 0) {
     return NextResponse.json({ available: false });

@@ -40,6 +40,7 @@ interface UsageRecord {
 
 interface PreviewData {
   available: boolean;
+  liveWidget?: boolean;
   component?: string;
   kpis?: KPIs;
   pnl?: PnLByMonth;
@@ -364,9 +365,11 @@ export default function WidgetTypeDetailPage() {
           <div className="widget-detail-empty">Loading preview...</div>
         ) : !previewData?.available ? (
           <div className="widget-detail-empty">
-            {savedEntityId
-              ? "No warehouse data available for this entity. Sync the entity first."
-              : "Select an entity above to preview this widget."}
+            {previewData?.liveWidget
+              ? "This widget fetches live data directly from CData. Add it to a dashboard to see it in action."
+              : savedEntityId
+                ? "No warehouse data available for this entity. Sync the entity first."
+                : "Select an entity above to preview this widget."}
           </div>
         ) : (
           <div className="widget-preview-frame">
