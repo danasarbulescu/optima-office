@@ -23,7 +23,7 @@ function varianceClass(v: number): string {
   return '';
 }
 
-const COLS_PER_CLASS = 5; // Actual, Budget, Forecast, Var $, Var %
+const COLS_PER_CLASS = 5; // Actual, Budget, Forecast, Var #, Var %
 const TOTAL_KEY = '__total__';
 
 export default function SummaryBvaTable({ data, month }: Props) {
@@ -139,14 +139,14 @@ export default function SummaryBvaTable({ data, month }: Props) {
                 <th key={cls.classId + '-a'} className="bva-th-sub">Actual</th>,
                 <th key={cls.classId + '-b'} className="bva-th-sub">Budget</th>,
                 <th key={cls.classId + '-f'} className="bva-th-sub">Forecast</th>,
-                <th key={cls.classId + '-v'} className="bva-th-sub">Var $</th>,
+                <th key={cls.classId + '-v'} className="bva-th-sub">Var #</th>,
                 <th key={cls.classId + '-p'} className="bva-th-sub">Var %</th>,
               ] : [])}
               {showTotal && <>
                 <th className="bva-th-sub">Actual</th>
                 <th className="bva-th-sub">Budget</th>
                 <th className="bva-th-sub">Forecast</th>
-                <th className="bva-th-sub">Var $</th>
+                <th className="bva-th-sub">Var #</th>
                 <th className="bva-th-sub">Var %</th>
               </>}
             </tr>
