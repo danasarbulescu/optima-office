@@ -138,6 +138,62 @@ export async function fetchAccountLevelPL(
     .filter(r => r.accountCode !== null);
 }
 
+// ── Car count actuals ───────────────────────────────────────────────────────
+
+export interface CarCountRow {
+  date: string;       // "2025-10-31"
+  classId: string;    // Class_Id column
+  className: string;  // Class column (e.g. "06 - Huntington Harbor")
+  num: string;        // Num column (contains "daily" keyword for daily entries)
+  debit: number;      // Car count value
+}
+
+/**
+ * Fetch car count journal entries from the CarCount CData table for a given month.
+ * Returns raw rows; caller is responsible for aggregation (daily → monthly).
+ *
+ * Uses date range filtering: Date >= first-of-month AND Date < first-of-next-month.
+ */
+export async function fetchCarCountData(
+  cdataUser: string,
+  cdataPat: string,
+  cdataCatalog: string,
+  period: string, // "2026-01"
+): Promise<CarCountRow[]> {
+  const [yearStr, moStr] = period.split('-');
+  const y = parseInt(yearStr, 10);
+  const m = parseInt(moStr, 10);
+  const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+  // First day of next month
+  const nextM = m === 12 ? 1 : m + 1;
+  const nextY = m === 12 ? y + 1 : y;
+  const endDate = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
+
+  const sql = `SELECT Date, Class_Id, Class, Num, Debit FROM ${cdataCatalog}.QuickBooksOnline.CarCount WHERE Date >= '${startDate}' AND Date < '${endDate}'`;
+  const results = await queryCData(cdataUser, cdataPat, sql);
+
+  return results.map(r => ({
+    date: (r.Date ?? '') as string,
+    classId: (r.Class_Id ?? '') as string,
+    className: (r.Class ?? '') as string,
+    num: (r.Num ?? '') as string,
+    debit: typeof r.Debit === 'number' ? r.Debit : parseFloat(r.Debit ?? '0') || 0,
+  }));
+}
+
+/**
+ * Aggregate CarCountRow[] into a Map<classId, totalDebit> for one month.
+ * Sums all entries (daily + monthly) per class.
+ */
+export function aggregateCarCountByClass(rows: CarCountRow[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.classId) continue;
+    map.set(row.classId, (map.get(row.classId) ?? 0) + row.debit);
+  }
+  return map;
+}
+
 /**
  * Fetch class ID → display name mapping from the QuickBooks Class table.
  */

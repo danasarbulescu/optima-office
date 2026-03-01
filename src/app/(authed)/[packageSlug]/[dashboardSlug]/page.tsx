@@ -10,7 +10,7 @@ import { getWidgetType } from "@/widgets/registry";
 import { KPI_CONFIGS } from "@/widgets/kpi-config";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
-import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData } from "@/lib/types";
+import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, SummaryBvaData } from "@/lib/types";
 import "@/widgets/widgets.css";
 
 const TrendChart = dynamic(() => import("@/widgets/components/TrendChart"), {
@@ -20,6 +20,11 @@ const TrendChart = dynamic(() => import("@/widgets/components/TrendChart"), {
 
 const BudgetVsActualTable = dynamic(() => import("@/widgets/components/BudgetVsActualTable"), {
   loading: () => <div className="app-loading">Loading budget comparison...</div>,
+  ssr: false,
+});
+
+const SummaryBvaTable = dynamic(() => import("@/widgets/components/SummaryBvaTable"), {
+  loading: () => <div className="app-loading">Loading summary budget comparison...</div>,
   ssr: false,
 });
 
@@ -63,6 +68,9 @@ export default function DashboardPage() {
   // Budget vs. actual state
   const [budgetVsActualData, setBudgetVsActualData] = useState<BudgetVsActualData | null>(null);
 
+  // Summary budget vs. actual state
+  const [summaryBvaData, setSummaryBvaData] = useState<SummaryBvaData | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
@@ -97,6 +105,14 @@ export default function DashboardPage() {
     widgets.some(w => {
       const wt = getWidgetType(w.widgetTypeId);
       return wt?.component === "BudgetVsActual";
+    }),
+    [widgets]
+  );
+
+  const hasSummaryBva = useMemo(() =>
+    widgets.some(w => {
+      const wt = getWidgetType(w.widgetTypeId);
+      return wt?.component === "SummaryBva";
     }),
     [widgets]
   );
@@ -202,6 +218,32 @@ export default function DashboardPage() {
     }
   }, [selectedEntities, currentClientId]);
 
+  // Fetch summary budget vs. actual data
+  const fetchSummaryBva = useCallback(async (selectedMonth: string, signal?: AbortSignal) => {
+    setLoading(true);
+    setError("");
+    try {
+      const entityId = selectedEntities[0];
+      if (!entityId) return;
+      const url = `/api/widget-data/summary-bva?entities=${entityId}&month=${selectedMonth}`;
+      const res = await fetch(url, {
+        headers: { "x-client-id": currentClientId || "" },
+        signal,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `API error: ${res.status}`);
+      }
+      const data = await res.json();
+      setSummaryBvaData(data);
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      setError(err.message || "Failed to load summary budget comparison");
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [selectedEntities, currentClientId]);
+
   // Stable refs for fetch callbacks — prevents effect re-fires when callback identity changes
   const fetchFinancialRef = useRef(fetchFinancialSnapshot);
   fetchFinancialRef.current = fetchFinancialSnapshot;
@@ -209,6 +251,8 @@ export default function DashboardPage() {
   fetchTrendRef.current = fetchExpenseTrend;
   const fetchBvaRef = useRef(fetchBudgetVsActual);
   fetchBvaRef.current = fetchBudgetVsActual;
+  const fetchSummaryBvaRef = useRef(fetchSummaryBva);
+  fetchSummaryBvaRef.current = fetchSummaryBva;
 
   // Auto-load when dashboard, entities, or month change
   useEffect(() => {
@@ -219,6 +263,7 @@ export default function DashboardPage() {
     setPnlByMonth(null);
     setTrendData([]);
     setBudgetVsActualData(null);
+    setSummaryBvaData(null);
 
     const controller = new AbortController();
     if (hasFinancialWidgets) {
@@ -230,10 +275,13 @@ export default function DashboardPage() {
     if (hasBudgetVsActual) {
       fetchBvaRef.current(month, controller.signal);
     }
+    if (hasSummaryBva) {
+      fetchSummaryBvaRef.current(month, controller.signal);
+    }
 
     return () => { controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, hasBudgetVsActual, month]);
+  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, hasBudgetVsActual, hasSummaryBva, month]);
 
   if (packagesLoading) {
     return <div className="app-loading">Loading...</div>;
@@ -265,7 +313,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Dashboard controls — single month picker */}
-      {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual) && (
+      {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva) && (
         <div className="dashboard-controls">
           {entities.length > 1 && (
             <div className="multi-select" ref={entityDropdownRef}>
@@ -326,6 +374,7 @@ export default function DashboardPage() {
               if (hasFinancialWidgets) fetchFinancialSnapshot(month);
               if (hasTrendWidgets) fetchExpenseTrend(month);
               if (hasBudgetVsActual) fetchBudgetVsActual(month);
+              if (hasSummaryBva) fetchSummaryBva(month);
             }}
             disabled={busy || selectedEntities.length === 0}
             className="refresh-btn"
@@ -384,6 +433,11 @@ export default function DashboardPage() {
       {/* Budget vs. Actual widget */}
       {budgetVsActualData && hasBudgetVsActual && (
         <BudgetVsActualTable data={budgetVsActualData} month={month} />
+      )}
+
+      {/* Summary Budget vs. Actual widget */}
+      {summaryBvaData && hasSummaryBva && (
+        <SummaryBvaTable data={summaryBvaData} month={month} />
       )}
     </>
   );

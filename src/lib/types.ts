@@ -249,6 +249,26 @@ export interface BudgetVsActualData {
   rows: BudgetVsActualRow[];
 }
 
+// ── Summary Budget vs. Actual response types ────────────────────────────────
+
+/** One metric row in the summary budget-vs-actual table (e.g. Car Count) */
+export interface SummaryBvaRow {
+  label: string;           // "Car Count"
+  metricKey: string;       // "carCount"
+  byClass: Record<string, { actual: number; budget: number }>;
+  total: { actual: number; budget: number };
+}
+
+/** Full response from GET /api/widget-data/summary-bva */
+export interface SummaryBvaData {
+  month: string;       // "2026-01"
+  year: number;
+  daysInMonth: number;
+  entityId: string;
+  classes: Array<{ classId: string; className: string; locationCode: string }>;
+  rows: SummaryBvaRow[];
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;

@@ -411,6 +411,17 @@
 td.bva-pos { color: #4caf50; }
 td.bva-neg { color: #e53935; }
 
+/* ── Summary Budget vs. Actual ──────────────────────────────────────────── */
+
+.sbva-title {
+  color: #6b8cff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .widget-grid { grid-template-columns: repeat(2, 1fr); }

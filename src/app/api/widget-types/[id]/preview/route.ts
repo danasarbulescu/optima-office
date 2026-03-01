@@ -43,8 +43,8 @@ export async function GET(
     return NextResponse.json({ available: false });
   }
 
-  // BudgetVsActual: check if budget data exists for this entity
-  if (wt.component === 'BudgetVsActual') {
+  // BudgetVsActual / SummaryBva: check if budget data exists for this entity
+  if (wt.component === 'BudgetVsActual' || wt.component === 'SummaryBva') {
     const budgetYears = await getBudgetYears(previewEntityId);
     if (budgetYears.length === 0) {
       return NextResponse.json({ available: false });
@@ -61,7 +61,7 @@ export async function GET(
         : `${budgetYears[budgetYears.length - 1]}-01`;
     return NextResponse.json({
       available: true,
-      component: 'BudgetVsActual',
+      component: wt.component,
       selectedMonth,
       previewEntityId,
     });

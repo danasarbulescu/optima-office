@@ -9,7 +9,8 @@ import { WIDGET_FORMULAS } from "@/widgets/formulas";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
 import BudgetVsActualTable from "@/widgets/components/BudgetVsActualTable";
-import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, EntityConfig } from "@/lib/types";
+import SummaryBvaTable from "@/widgets/components/SummaryBvaTable";
+import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, SummaryBvaData, EntityConfig } from "@/lib/types";
 import "@/widgets/widgets.css";
 import "../widgets.css";
 
@@ -73,6 +74,11 @@ export default function WidgetTypeDetailPage() {
   const [bvaLoading, setBvaLoading] = useState(false);
   const [bvaError, setBvaError] = useState("");
 
+  // SummaryBva preview state
+  const [summaryBvaData, setSummaryBvaData] = useState<SummaryBvaData | null>(null);
+  const [summaryBvaLoading, setSummaryBvaLoading] = useState(false);
+  const [summaryBvaError, setSummaryBvaError] = useState("");
+
   // Preview entity + month state
   const [entities, setEntities] = useState<EntityConfig[]>([]);
   const [previewEntityId, setPreviewEntityId] = useState("");
@@ -121,6 +127,24 @@ export default function WidgetTypeDetailPage() {
     }
   }, []);
 
+  const fetchSummaryBvaData = useCallback(async (entityId: string, month: string) => {
+    setSummaryBvaLoading(true);
+    setSummaryBvaError("");
+    try {
+      const res = await fetch(`/api/widget-data/summary-bva?entities=${entityId}&month=${month}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to load summary budget data");
+      }
+      setSummaryBvaData(await res.json());
+    } catch (err: any) {
+      setSummaryBvaError(err.message);
+      setSummaryBvaData(null);
+    } finally {
+      setSummaryBvaLoading(false);
+    }
+  }, []);
+
   const fetchPreview = useCallback(async (month?: string) => {
     setPreviewLoading(true);
     try {
@@ -132,15 +156,20 @@ export default function WidgetTypeDetailPage() {
         if (data.selectedMonth && !month) {
           setPreviewMonth(data.selectedMonth);
         }
-        // Auto-fetch BVA data when preview says component is BudgetVsActual
-        if (data.available && data.component === 'BudgetVsActual' && data.previewEntityId) {
-          const bvaMonth = month || data.selectedMonth;
-          if (bvaMonth) fetchBvaData(data.previewEntityId, bvaMonth);
+        // Auto-fetch live widget data when preview indicates a budget-based component
+        if (data.available && data.previewEntityId) {
+          const effectiveMonth = month || data.selectedMonth;
+          if (effectiveMonth && data.component === 'BudgetVsActual') {
+            fetchBvaData(data.previewEntityId, effectiveMonth);
+          }
+          if (effectiveMonth && data.component === 'SummaryBva') {
+            fetchSummaryBvaData(data.previewEntityId, effectiveMonth);
+          }
         }
       }
     } catch { /* non-fatal */ }
     finally { setPreviewLoading(false); }
-  }, [id, fetchBvaData]);
+  }, [id, fetchBvaData, fetchSummaryBvaData]);
 
   const fetchPreviewConfig = useCallback(async () => {
     try {
@@ -388,6 +417,8 @@ export default function WidgetTypeDetailPage() {
                 setPreviewMonth(m);
                 if (previewData.component === 'BudgetVsActual' && previewData.previewEntityId) {
                   fetchBvaData(previewData.previewEntityId, m);
+                } else if (previewData.component === 'SummaryBva' && previewData.previewEntityId) {
+                  fetchSummaryBvaData(previewData.previewEntityId, m);
                 } else {
                   fetchPreview(m);
                 }
@@ -412,6 +443,16 @@ export default function WidgetTypeDetailPage() {
           ) : bvaData ? (
             <div className="widget-preview-frame">
               <BudgetVsActualTable data={bvaData} month={previewMonth} />
+            </div>
+          ) : null
+        ) : previewData.component === 'SummaryBva' ? (
+          summaryBvaLoading ? (
+            <div className="widget-detail-empty">Loading summary budget vs. actual data...</div>
+          ) : summaryBvaError ? (
+            <div className="widget-detail-empty">{summaryBvaError}</div>
+          ) : summaryBvaData ? (
+            <div className="widget-preview-frame">
+              <SummaryBvaTable data={summaryBvaData} month={previewMonth} />
             </div>
           ) : null
         ) : (
