@@ -255,6 +255,7 @@ export interface BudgetVsActualData {
 export interface SummaryBvaRow {
   label: string;           // "Car Count"
   metricKey: string;       // "carCount"
+  format?: 'number' | 'currency';  // default 'number'
   byClass: Record<string, { actual: number; budget: number }>;
   total: { actual: number; budget: number };
 }

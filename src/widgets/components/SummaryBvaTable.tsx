@@ -9,7 +9,10 @@ interface Props {
   month: string;
 }
 
-function formatNum(v: number): string {
+function formatNum(v: number, fmt?: 'number' | 'currency'): string {
+  if (fmt === 'currency') {
+    return '$' + Math.round(v).toLocaleString();
+  }
   return Math.round(v).toLocaleString();
 }
 
@@ -154,6 +157,7 @@ export default function SummaryBvaTable({ data, month }: Props) {
 
           <tbody>
             {data.rows.map((row, i) => {
+              const fmt = row.format;
               // Per-class computed values
               const classValues = classes.map(cls => {
                 const { actual, budget } = row.byClass[cls.classId] ?? { actual: 0, budget: 0 };
@@ -176,11 +180,11 @@ export default function SummaryBvaTable({ data, month }: Props) {
 
                   {classValues.map((cv, ci) => showClass(classes[ci].classId) && (
                     <Fragment key={ci}>
-                      <td className="bva-td-num">{formatNum(cv.actual)}</td>
-                      <td className="bva-td-num">{formatNum(cv.budget)}</td>
-                      <td className="bva-td-num">{formatNum(cv.forecast)}</td>
+                      <td className="bva-td-num">{formatNum(cv.actual, fmt)}</td>
+                      <td className="bva-td-num">{formatNum(cv.budget, fmt)}</td>
+                      <td className="bva-td-num">{formatNum(cv.forecast, fmt)}</td>
                       <td className={`bva-td-num ${varianceClass(cv.varAmt)}`}>
-                        {formatNum(cv.varAmt)}
+                        {formatNum(cv.varAmt, fmt)}
                       </td>
                       <td className={`bva-td-num ${cv.varPct !== null ? varianceClass(cv.varPct) : ''}`}>
                         {cv.varPct !== null ? formatPct(cv.varPct) : ''}
@@ -190,11 +194,11 @@ export default function SummaryBvaTable({ data, month }: Props) {
 
                   {/* Total */}
                   {showTotal && <>
-                    <td className="bva-td-num bva-td-total">{formatNum(totalActual)}</td>
-                    <td className="bva-td-num bva-td-total">{formatNum(totalBudget)}</td>
-                    <td className="bva-td-num bva-td-total">{formatNum(totalForecast)}</td>
+                    <td className="bva-td-num bva-td-total">{formatNum(totalActual, fmt)}</td>
+                    <td className="bva-td-num bva-td-total">{formatNum(totalBudget, fmt)}</td>
+                    <td className="bva-td-num bva-td-total">{formatNum(totalForecast, fmt)}</td>
                     <td className={`bva-td-num bva-td-total ${varianceClass(totalVarAmt)}`}>
-                      {formatNum(totalVarAmt)}
+                      {formatNum(totalVarAmt, fmt)}
                     </td>
                     <td className={`bva-td-num bva-td-total ${totalVarPct !== null ? varianceClass(totalVarPct) : ''}`}>
                       {totalVarPct !== null ? formatPct(totalVarPct) : ''}

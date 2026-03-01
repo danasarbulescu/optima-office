@@ -16,9 +16,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth-context';
 import { getEntities } from '@/lib/entities';
 import { getDataSource } from '@/lib/data-sources';
-import { getWarehouseClassIndex, getCachedCarCount, setCachedCarCount } from '@/lib/warehouse';
+import { getWarehouseClassIndex, getCachedCarCount, setCachedCarCount, getCachedGallons, setCachedGallons, getCachedClassActuals, setCachedClassActuals } from '@/lib/warehouse';
 import { getAllBudgetClassData, getBudgetMetricValue } from '@/lib/budget-data';
-import { fetchCarCountData, aggregateCarCountByClass } from '@/lib/cdata';
+import { fetchCarCountData, aggregateCarCountByClass, fetchGallonsData, aggregateGallonsByClass, fetchAccountLevelPL } from '@/lib/cdata';
 import { SummaryBvaData, SummaryBvaRow } from '@/lib/types';
 
 export async function GET(request: NextRequest) {
@@ -92,6 +92,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Map classId → CData table name (for P&L queries)
+    const classTableMap = new Map(classIndex.map(c => [c.id, c.tableName]));
+
     // ── Get budget data from DynamoDB ────────────────────────────────────────
     const budgetClasses = await getAllBudgetClassData(entityId, year);
     if (budgetClasses.length === 0) {
@@ -141,6 +144,67 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ── Fetch gallons actuals ──────────────────────────────────────────────
+    const gallonsByClassId = new Map<string, number>();
+    let needGallonsFetch = false;
+
+    if (!refresh) {
+      for (const bc of orderedClasses) {
+        const cached = await getCachedGallons(entityId, bc.classId, month);
+        if (cached !== null) {
+          gallonsByClassId.set(bc.classId, cached);
+        } else {
+          needGallonsFetch = true;
+          break;
+        }
+      }
+    } else {
+      needGallonsFetch = true;
+    }
+
+    if (needGallonsFetch) {
+      const gallonsRows = await fetchGallonsData(cdataUser, cdataPat, catalog, month);
+      console.log(`[SummaryBvA] CData Gallons fetch: ${gallonsRows.length} rows for ${month}`);
+
+      const aggregated = aggregateGallonsByClass(gallonsRows);
+
+      for (const bc of orderedClasses) {
+        const actual = aggregated.get(bc.classId) ?? 0;
+        gallonsByClassId.set(bc.classId, actual);
+        setCachedGallons(entityId, bc.classId, month, actual).catch(() => {});
+      }
+    }
+
+    // ── Fetch sales (income) actuals from P&L class tables ─────────────────
+    const salesByClassId = new Map<string, number>();
+
+    await Promise.all(
+      orderedClasses.map(async bc => {
+        const tableName = classTableMap.get(bc.classId);
+        if (!tableName) return;
+
+        try {
+          let rows = refresh ? null : await getCachedClassActuals(entityId, bc.classId, month);
+          if (!rows) {
+            rows = await fetchAccountLevelPL(cdataUser, cdataPat, catalog, tableName, month);
+            console.log(`[SummaryBvA] CData PL fetch for class ${bc.classId} (${bc.className}), ${rows.length} rows`);
+            setCachedClassActuals(entityId, bc.classId, month, rows).catch(() => {});
+          }
+          // Sum all Income accounts
+          let incomeTotal = 0;
+          for (const row of rows) {
+            if (row.rowGroup === 'Income') {
+              incomeTotal += row.amount;
+            }
+          }
+          salesByClassId.set(bc.classId, incomeTotal);
+        } catch (err) {
+          console.error(`[SummaryBvA] fetchAccountLevelPL failed for class ${bc.classId}:`, err);
+          salesByClassId.set(bc.classId, 0);
+        }
+      }),
+    );
+
     // ── Build response rows ─────────────────────────────────────────────────
     const rows: SummaryBvaRow[] = [];
 
@@ -165,6 +229,57 @@ export async function GET(request: NextRequest) {
     }
 
     rows.push(carCountRow);
+
+    // Gallons row
+    const gallonsRow: SummaryBvaRow = {
+      label: 'Gallons',
+      metricKey: 'totalGallons',
+      byClass: {},
+      total: { actual: 0, budget: 0 },
+    };
+
+    for (const bc of orderedClasses) {
+      const actual = gallonsByClassId.get(bc.classId) ?? 0;
+      const budgetClassData = budgetClasses.find(b => b.classId === bc.classId);
+      const budget = budgetClassData
+        ? getBudgetMetricValue(budgetClassData, 'totalGallons', month) ?? 0
+        : 0;
+
+      gallonsRow.byClass[bc.classId] = { actual, budget };
+      gallonsRow.total.actual += actual;
+      gallonsRow.total.budget += budget;
+    }
+
+    rows.push(gallonsRow);
+
+    // Sales row (all income accounts from P&L)
+    const salesRow: SummaryBvaRow = {
+      label: 'Sales',
+      metricKey: 'sales',
+      format: 'currency',
+      byClass: {},
+      total: { actual: 0, budget: 0 },
+    };
+
+    for (const bc of orderedClasses) {
+      const actual = salesByClassId.get(bc.classId) ?? 0;
+      // Budget: sum all income account lines from budgetLines
+      const budgetClassData = budgetClasses.find(b => b.classId === bc.classId);
+      let budget = 0;
+      if (budgetClassData) {
+        // Find the "Total Income" subtotal line for the period budget
+        const totalIncomeLine = budgetClassData.budgetLines.find(
+          l => l.rowType === 'subtotal' && l.accountName === 'Total Income',
+        );
+        budget = totalIncomeLine?.monthly[month] ?? 0;
+      }
+
+      salesRow.byClass[bc.classId] = { actual, budget };
+      salesRow.total.actual += actual;
+      salesRow.total.budget += budget;
+    }
+
+    rows.push(salesRow);
 
     const response: SummaryBvaData = {
       month,

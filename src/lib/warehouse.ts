@@ -345,6 +345,54 @@ export async function setCachedCarCount(
   }));
 }
 
+// ── Gallons actuals cache ──────────────────────────────────────
+
+/**
+ * Read cached gallons actual for a class + period.
+ * Returns null on cache miss or stale data.
+ * SK format: "gallonsActuals#{classId}#{period}"
+ */
+export async function getCachedGallons(
+  entityId: string,
+  classId: string,
+  period: string,
+): Promise<number | null> {
+  if (!TABLE_NAME) return null;
+  const sk = `gallonsActuals#${classId}#${period}`;
+  const resp = await docClient.send(new GetCommand({
+    TableName: TABLE_NAME,
+    Key: { entityId, sk },
+  }));
+  if (!resp.Item) return null;
+  const cachedAt = resp.Item.cachedAt as string | undefined;
+  if (cachedAt && Date.now() - new Date(cachedAt).getTime() > ACTUALS_CACHE_TTL_MS) {
+    return null; // stale
+  }
+  return (resp.Item.value as number) ?? null;
+}
+
+/**
+ * Write cached gallons actual for a class + period.
+ */
+export async function setCachedGallons(
+  entityId: string,
+  classId: string,
+  period: string,
+  value: number,
+): Promise<void> {
+  if (!TABLE_NAME) return;
+  const sk = `gallonsActuals#${classId}#${period}`;
+  await docClient.send(new PutCommand({
+    TableName: TABLE_NAME,
+    Item: {
+      entityId,
+      sk,
+      value,
+      cachedAt: new Date().toISOString(),
+    },
+  }));
+}
+
 /**
  * Read class-level financial data from the warehouse.
  * Queries items with SK beginning with "class#{classId}#" and assembles FinancialRow[].
