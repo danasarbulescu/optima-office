@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Client } from "@/lib/types";
 import { useEntity } from "@/context/EntityContext";
 import { useClient } from "@/context/ClientContext";
-import { PencilIcon } from "@/components/PencilIcon";
 import { TrashIcon } from "@/components/TrashIcon";
 import "./clients.css";
 
@@ -186,11 +185,10 @@ export default function ClientsPage() {
                 return (
                   <tr key={c.id}>
                     <td><code className="slug-badge">{c.id.slice(0, 6)}</code></td>
-                    <td>{c.displayName}</td>
+                    <td><a className="client-name-link" href={`/clients/${c.id}`} onClick={(e) => { e.preventDefault(); router.push(`/clients/${c.id}`); }}>{c.displayName}</a></td>
                     <td>{contactName || <span className="text-muted">—</span>}</td>
                     <td>Active</td>
                     <td>
-                      <button className="icon-btn-muted icon-btn-view" title="Edit client" onClick={() => router.push(`/clients/${c.id}`)}><PencilIcon /></button>
                       <button className="icon-btn-muted" title="Remove client" onClick={() => handleRemoveClient(c)}><TrashIcon /></button>
                     </td>
                   </tr>

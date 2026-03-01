@@ -145,6 +145,16 @@
   font-weight: 500;
 }
 
+/* Client name link */
+.client-name-link {
+  color: #6b8cff;
+  text-decoration: none;
+}
+
+.client-name-link:hover {
+  text-decoration: underline;
+}
+
 /* Text muted */
 .text-muted {
   color: #4a4b58;
