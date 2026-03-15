@@ -26,6 +26,9 @@ export const WIDGET_TYPES: WidgetType[] = [
 
   // Comparative Snapshot P&L
   { id: 'comparative-snapshot', category: 'Table', component: 'ComparativeSnapshot' },
+
+  // Rolling 13-Month Income Statement (account-level detail)
+  { id: 'rolling-income-statement', category: 'Table', component: 'RollingIncomeStatement' },
 ];
 
 /** Default display name for widget types without a DynamoDB override */

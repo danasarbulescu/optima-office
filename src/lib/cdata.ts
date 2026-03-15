@@ -87,6 +87,23 @@ export async function fetchPLClassTables(
     .filter(name => /^PL_\d+$/.test(name));
 }
 
+/**
+ * Fetch all rows from the P&L table (all RowTypes: Section, Data, Summary).
+ * Used for the Rolling Income Statement widget, which needs account-level detail.
+ */
+export async function fetchFullPLRows(
+  cdataUser: string,
+  cdataPat: string,
+  cdataCatalog: string,
+): Promise<CDataPLRow[]> {
+  if (!cdataUser || !cdataPat || !cdataCatalog) {
+    throw new Error('Missing CData credentials. Provide CDATA_USER, CDATA_PAT, and CDATA_CATALOG.');
+  }
+  const sql = `SELECT * FROM ${cdataCatalog}.QuickBooksOnline.PL`;
+  const results = await queryCData(cdataUser, cdataPat, sql);
+  return results as CDataPLRow[];
+}
+
 // ── Account-level P&L actuals ─────────────────────────────────────────────────
 
 export interface AccountActualRow {
@@ -98,7 +115,7 @@ export interface AccountActualRow {
 }
 
 /** Convert "2026-01" → "Jan_2026" for use as a CData column name */
-function periodToColName(period: string): string {
+export function periodToColName(period: string): string {
   const [year, month] = period.split('-');
   const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${names[parseInt(month, 10) - 1]}_${year}`;

@@ -555,6 +555,165 @@ td.csnap-pos { color: #4caf50 !important; font-weight: 600; }
 td.csnap-neg { color: #e53935 !important; font-weight: 600; }
 td.csnap-neutral { color: #6a6b78 !important; }
 
+/* ── Rolling 13-Month Income Statement ──────────────────────────────────────── */
+
+.ris-container {
+  max-width: 100%;
+  margin: 32px 0 0;
+  padding: 0 24px;
+}
+
+.ris-scroll {
+  overflow-x: auto;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #1a1b23;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.ris-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* Header row */
+.ris-header-row .ris-th {
+  background: #252636;
+  color: #c0c4d0;
+  padding: 6px 6px;
+  font-weight: 700;
+  text-align: right;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-bottom: 2px solid #3b3d52;
+}
+
+.ris-th-account {
+  text-align: left !important;
+  min-width: 220px;
+  z-index: 5 !important;
+}
+
+.ris-th-month {
+  min-width: 72px;
+}
+
+/* Sticky first column */
+.ris-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.ris-header-row .ris-sticky {
+  z-index: 5;
+  background: #252636;
+}
+
+/* Base row */
+.ris-row td {
+  border-bottom: 1px solid #2a2b35;
+  padding: 4px 6px;
+}
+
+.ris-td-account {
+  text-align: left;
+  color: #c0c4d0;
+  background: #1a1b23;
+}
+
+.ris-td-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #c0c4d0;
+  border-left: 1px solid #22232e;
+  min-width: 72px;
+}
+
+.ris-neg {
+  color: #e53935 !important;
+}
+
+/* Data rows: indent account name */
+.ris-indent {
+  padding-left: 24px !important;
+}
+
+.ris-row-data:hover td {
+  background: #1f2233;
+}
+
+.ris-row-data:hover .ris-sticky {
+  background: #1b1c2a;
+}
+
+/* Section header rows (e.g. "Income", "Cost of Goods Sold") */
+.ris-row-section td {
+  background: #252636 !important;
+  color: #6b8cff;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding-top: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #3b3d52;
+}
+
+.ris-row-section .ris-sticky {
+  background: #252636 !important;
+}
+
+/* Sub-total rows (e.g. "Total 40000 Food & Beverage Sales") */
+.ris-row-subtotal td {
+  font-weight: 700;
+  color: #e1e2e8;
+  background: #1e1f2d;
+  border-top: 1px solid #3b3d52;
+  border-bottom: 1px solid #3b3d52;
+}
+
+.ris-row-subtotal .ris-sticky {
+  background: #1a1b29;
+}
+
+.ris-row-subtotal:hover td {
+  background: #222336;
+}
+
+.ris-row-subtotal:hover .ris-sticky {
+  background: #1e1f30;
+}
+
+/* Group total rows (e.g. "Total Income", "Gross Profit", "Net Income") */
+.ris-row-total td {
+  font-weight: 700;
+  color: #e1e2e8;
+  background: #1d1e2d;
+  border-top: 2px solid #3b6cf5;
+  border-bottom: 2px solid #3b6cf5;
+}
+
+.ris-row-total .ris-td-account {
+  color: #6b8cff;
+}
+
+.ris-row-total .ris-sticky {
+  background: #191a28;
+}
+
+.ris-row-total:hover td {
+  background: #1c2040;
+}
+
+.ris-row-total:hover .ris-td-account {
+  color: #6b8cff;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .widget-grid { grid-template-columns: repeat(2, 1fr); }

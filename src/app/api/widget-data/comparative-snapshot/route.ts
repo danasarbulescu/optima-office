@@ -26,11 +26,11 @@ function pctChange(current: number, prior: number): number | null {
   return ((current - prior) / Math.abs(prior)) * 100;
 }
 
-function getLastFullQuarter(year: number, month: number): { qNum: number; qYear: number; months: number[] } {
-  if (month <= 3) return { qNum: 4, qYear: year - 1, months: [10, 11, 12] };
-  if (month <= 6) return { qNum: 1, qYear: year, months: [1, 2, 3] };
-  if (month <= 9) return { qNum: 2, qYear: year, months: [4, 5, 6] };
-  return { qNum: 3, qYear: year, months: [7, 8, 9] };
+function getQuarterForMonth(year: number, month: number): { qNum: number; qYear: number; months: number[] } {
+  if (month <= 3) return { qNum: 1, qYear: year, months: [1, 2, 3] };
+  if (month <= 6) return { qNum: 2, qYear: year, months: [4, 5, 6] };
+  if (month <= 9) return { qNum: 3, qYear: year, months: [7, 8, 9] };
+  return { qNum: 4, qYear: year, months: [10, 11, 12] };
 }
 
 export async function GET(request: NextRequest) {
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Quarter and period setup
-    const { qNum, qYear, months: qMonths } = getLastFullQuarter(year, moNum);
+    const { qNum, qYear, months: qMonths } = getQuarterForMonth(year, moNum);
     const pyQYear = qYear - 1;
     const ytdMonths = Array.from({ length: moNum }, (_, i) => i + 1);
 

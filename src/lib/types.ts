@@ -297,6 +297,22 @@ export interface ComparativeSnapshotData {
   ytdPriorLabel: string;        // e.g. "YTD25"
 }
 
+// ── Rolling 13-Month Income Statement ────────────────────────────────────────
+
+export interface RollingPLRow {
+  account: string;       // e.g. "40010 Food Sales", "Total Income"
+  rowGroup: string;      // CData RowGroup: "Income", "COGS", "GrossProfit", etc.
+  rowType: string;       // "Section" | "Data" | "Summary"
+  rowId: string | null;  // null for group totals (e.g. "Total Income"), non-null for sub-totals
+  periods: Record<string, number>; // "2024-01" -> value
+}
+
+export interface RollingIncomeStatementData {
+  months: string[];      // ["2025-02", "2025-03", ..., "2026-02"] — 13 months in order
+  monthLabels: string[]; // ["Feb 25", "Mar 25", ..., "Feb 26"]
+  rows: RollingPLRow[];
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;
