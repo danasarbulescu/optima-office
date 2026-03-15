@@ -193,13 +193,14 @@ export default function DashboardPage() {
   }, [selectedEntities, currentClientId]);
 
   // Fetch budget vs. actual data
-  const fetchBudgetVsActual = useCallback(async (selectedMonth: string, signal?: AbortSignal) => {
-    setLoading(true);
+  const fetchBudgetVsActual = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
+    const setActive = refresh ? setSyncing : setLoading;
+    setActive(true);
     setError("");
     try {
       const entityId = selectedEntities[0];
       if (!entityId) return;
-      const url = `/api/widget-data/budget-vs-actual?entities=${entityId}&month=${selectedMonth}`;
+      const url = `/api/widget-data/budget-vs-actual?entities=${entityId}&month=${selectedMonth}${refresh ? "&refresh=true" : ""}`;
       const res = await fetch(url, {
         headers: { "x-client-id": currentClientId || "" },
         signal,
@@ -214,18 +215,19 @@ export default function DashboardPage() {
       if (err.name === "AbortError") return;
       setError(err.message || "Failed to load budget comparison");
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted) { setLoading(false); setSyncing(false); }
     }
   }, [selectedEntities, currentClientId]);
 
   // Fetch summary budget vs. actual data
-  const fetchSummaryBva = useCallback(async (selectedMonth: string, signal?: AbortSignal) => {
-    setLoading(true);
+  const fetchSummaryBva = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
+    const setActive = refresh ? setSyncing : setLoading;
+    setActive(true);
     setError("");
     try {
       const entityId = selectedEntities[0];
       if (!entityId) return;
-      const url = `/api/widget-data/summary-bva?entities=${entityId}&month=${selectedMonth}`;
+      const url = `/api/widget-data/summary-bva?entities=${entityId}&month=${selectedMonth}${refresh ? "&refresh=true" : ""}`;
       const res = await fetch(url, {
         headers: { "x-client-id": currentClientId || "" },
         signal,
@@ -240,7 +242,7 @@ export default function DashboardPage() {
       if (err.name === "AbortError") return;
       setError(err.message || "Failed to load summary budget comparison");
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted) { setLoading(false); setSyncing(false); }
     }
   }, [selectedEntities, currentClientId]);
 
@@ -273,10 +275,10 @@ export default function DashboardPage() {
       fetchTrendRef.current(month, false, controller.signal);
     }
     if (hasBudgetVsActual) {
-      fetchBvaRef.current(month, controller.signal);
+      fetchBvaRef.current(month, false, controller.signal);
     }
     if (hasSummaryBva) {
-      fetchSummaryBvaRef.current(month, controller.signal);
+      fetchSummaryBvaRef.current(month, false, controller.signal);
     }
 
     return () => { controller.abort(); };
@@ -381,11 +383,13 @@ export default function DashboardPage() {
           >
             {loading ? "Loading..." : "Load"}
           </button>
-          {(hasFinancialWidgets || hasTrendWidgets) && (
+          {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva) && (
             <button
               onClick={() => {
                 if (hasFinancialWidgets) fetchFinancialSnapshot(month, true);
                 if (hasTrendWidgets) fetchExpenseTrend(month, true);
+                if (hasBudgetVsActual) fetchBudgetVsActual(month, true);
+                if (hasSummaryBva) fetchSummaryBva(month, true);
               }}
               disabled={busy || selectedEntities.length === 0}
               className="refresh-btn"

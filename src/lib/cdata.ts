@@ -108,8 +108,13 @@ function periodToColName(period: string): string {
  * Fetch account-level P&L actuals from a specific class table (e.g., PL_2100000000001402200).
  * Returns one row per account with amount for the given period.
  *
- * CData class-specific PL tables use RowType='Section' for account rows (not 'Account').
- * Account names are indented with leading spaces; we trim before extracting codes.
+ * CData class-specific PL tables use three RowTypes:
+ *   - 'Section' for parent/group account rows (e.g., "4004-00 Wash Sales")
+ *   - 'Data' for leaf account rows (e.g., "4013-00 Lottery Sales")
+ *   - 'Summary' for subtotal rows (e.g., "Total 4004-00 Wash Sales")
+ *
+ * We include both Section and Data rows (excluding Summary to avoid double-counting)
+ * and aggregate by account code in case the same code appears in both row types.
  */
 export async function fetchAccountLevelPL(
   cdataUser: string,
@@ -119,23 +124,38 @@ export async function fetchAccountLevelPL(
   period: string,
 ): Promise<AccountActualRow[]> {
   const col = periodToColName(period);
-  const sql = `SELECT account, RowGroup, ${col} FROM ${cdataCatalog}.QuickBooksOnline.${tableName} WHERE RowType = 'Section'`;
+  const sql = `SELECT account, RowGroup, ${col} FROM ${cdataCatalog}.QuickBooksOnline.${tableName} WHERE RowType != 'Summary'`;
   const results = await queryCData(cdataUser, cdataPat, sql);
   const codePattern = /^(\d{4}-\d{2})\s+(.+)$/;
-  return results
-    .map(r => {
-      const raw = ((r.account ?? '') as string).trim();
-      const m = codePattern.exec(raw);
-      const amt = r[col];
-      return {
-        accountCode: m ? m[1] : null,
-        accountName: m ? m[2] : raw,
+
+  // Aggregate by account code to handle cases where the same code appears
+  // in both Section and Data rows
+  const byCode = new Map<string, AccountActualRow>();
+
+  for (const r of results) {
+    const raw = ((r.account ?? '') as string).trim();
+    const m = codePattern.exec(raw);
+    if (!m) continue; // skip rows without a proper account code
+
+    const code = m[1];
+    const amt = r[col];
+    const amount = typeof amt === 'number' ? amt : parseFloat(amt ?? '0') || 0;
+
+    const existing = byCode.get(code);
+    if (existing) {
+      existing.amount += amount;
+    } else {
+      byCode.set(code, {
+        accountCode: code,
+        accountName: m[2],
         rawAccount: (r.account ?? '') as string,
         rowGroup: (r.RowGroup ?? '') as string,
-        amount: typeof amt === 'number' ? amt : parseFloat(amt ?? '0') || 0,
-      };
-    })
-    .filter(r => r.accountCode !== null);
+        amount,
+      });
+    }
+  }
+
+  return Array.from(byCode.values());
 }
 
 // ── Car count actuals ───────────────────────────────────────────────────────
