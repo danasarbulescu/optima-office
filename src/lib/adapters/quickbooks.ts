@@ -40,7 +40,15 @@ export function normalizePLRow(row: CDataPLRow): FinancialRow {
 export class QuickBooksAdapter implements DataAdapter {
   async fetchFinancialData(sourceConfig: Record<string, string>, credentials: Record<string, string>): Promise<FinancialRow[]> {
     const rawRows = await fetchPLSummaries(credentials.user, credentials.pat, sourceConfig.catalogId);
-    return rawRows.map(normalizePLRow);
+    // CData returns multiple rows per RowGroup (sub-group totals followed by the group total).
+    // Deduplicate by RowGroup keeping the last row per group, which is always the group total
+    // (e.g., "Total Expenses" for Expenses). Without this, mergeFinancialRows sums all
+    // sub-group totals + the overall total, producing inflated values in combined-entity views.
+    const byGroup = new Map<string, CDataPLRow>();
+    for (const row of rawRows) {
+      byGroup.set(row.RowGroup, row);
+    }
+    return Array.from(byGroup.values()).map(normalizePLRow);
   }
 
   /**

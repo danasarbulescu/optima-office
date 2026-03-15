@@ -270,6 +270,33 @@ export interface SummaryBvaData {
   rows: SummaryBvaRow[];
 }
 
+// ── Comparative Snapshot P&L ─────────────────────────────────────────────────
+
+export interface ComparativeSnapshotRow {
+  label: string;
+  currentQ: number;
+  priorYearQ: number;
+  chgQoQ: number | null;
+  currentMonth: number;
+  priorYearMonth: number;
+  chgMoM: number | null;
+  ytdCurrent: number;
+  ytdPrior: number;
+  chgYTD: number | null;
+  isPct: boolean;   // true for GP% and Net Operating Profit % rows
+  isBold: boolean;  // true for Gross Profit, Operating Profit, Net Income rows
+}
+
+export interface ComparativeSnapshotData {
+  rows: ComparativeSnapshotRow[];
+  currentQLabel: string;        // e.g. "Q4 2025"
+  priorYearQLabel: string;      // e.g. "Q4 2024"
+  currentMonthLabel: string;    // e.g. "Feb26"
+  priorYearMonthLabel: string;  // e.g. "Feb25"
+  ytdCurrentLabel: string;      // e.g. "YTD26"
+  ytdPriorLabel: string;        // e.g. "YTD25"
+}
+
 export interface KPIs {
   revenueCurrentMo: number;
   revenue3MoAvg: number;

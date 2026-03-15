@@ -23,6 +23,9 @@ export const WIDGET_TYPES: WidgetType[] = [
 
   // Summary Budget vs. Actual (operational metrics)
   { id: 'summary-bva', category: 'Table', component: 'SummaryBva' },
+
+  // Comparative Snapshot P&L
+  { id: 'comparative-snapshot', category: 'Table', component: 'ComparativeSnapshot' },
 ];
 
 /** Default display name for widget types without a DynamoDB override */

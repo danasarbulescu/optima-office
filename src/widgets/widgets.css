@@ -422,6 +422,139 @@ td.bva-neg { color: #e53935; }
   margin: 0 0 8px;
 }
 
+/* ── Comparative Snapshot P&L ───────────────────────────────────────────── */
+
+.csnap-section {
+  max-width: 1200px;
+  margin: 40px auto 0;
+}
+
+.csnap-title {
+  color: #6b8cff;
+  font-size: 20px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.csnap-scroll {
+  overflow-x: auto;
+  background: #1a1b23;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.csnap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+  min-width: 900px;
+}
+
+.csnap-header th {
+  background: #252636;
+  color: #c0c4d0;
+  padding: 10px 12px;
+  font-weight: 700;
+  text-align: right;
+  position: sticky;
+  top: 0;
+  border-bottom: 2px solid #3b3d52;
+}
+
+.csnap-th-label {
+  text-align: left !important;
+  min-width: 190px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #252636;
+}
+
+.csnap-th-num {
+  min-width: 100px;
+}
+
+.csnap-th-chg {
+  min-width: 80px;
+  color: #9a9caa !important;
+  font-size: 11px;
+}
+
+.csnap-th-group {
+  border-left: 2px solid #3b3d52;
+}
+
+.csnap-row td {
+  padding: 8px 12px;
+  text-align: right;
+  border-bottom: 1px solid #2a2b35;
+  color: #c0c4d0;
+}
+
+.csnap-row:hover td {
+  background: #1f2233;
+}
+
+.csnap-td-label {
+  text-align: left !important;
+  font-weight: 600;
+  color: #e1e2e8 !important;
+  position: sticky;
+  left: 0;
+  background: #1a1b23;
+  z-index: 1;
+}
+
+.csnap-row:hover .csnap-td-label {
+  background: #1f2233;
+}
+
+.csnap-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bold summary rows */
+.csnap-row-bold td {
+  font-weight: 700;
+  color: #e1e2e8 !important;
+  border-top: 2px solid #3b6cf5;
+  border-bottom: 2px solid #3b6cf5;
+}
+
+.csnap-row-bold .csnap-td-label {
+  color: #6b8cff !important;
+}
+
+.csnap-row-bold:hover td {
+  background: #1c2040;
+}
+
+.csnap-row-bold:hover .csnap-td-label {
+  background: #1c2040;
+}
+
+/* Percentage rows */
+.csnap-row-pct td {
+  font-style: italic;
+  color: #6a6b78 !important;
+}
+
+.csnap-row-pct .csnap-td-label {
+  color: #6a6b78 !important;
+}
+
+.csnap-row-pct:hover td {
+  background: #1f2233;
+}
+
+/* Change column colors */
+td.csnap-pos { color: #4caf50 !important; font-weight: 600; }
+td.csnap-neg { color: #e53935 !important; font-weight: 600; }
+td.csnap-neutral { color: #6a6b78 !important; }
+
 /* Responsive */
 @media (max-width: 900px) {
   .widget-grid { grid-template-columns: repeat(2, 1fr); }

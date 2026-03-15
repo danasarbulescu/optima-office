@@ -10,7 +10,7 @@ import { getWidgetType } from "@/widgets/registry";
 import { KPI_CONFIGS } from "@/widgets/kpi-config";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
-import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, SummaryBvaData } from "@/lib/types";
+import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, SummaryBvaData, ComparativeSnapshotData } from "@/lib/types";
 import "@/widgets/widgets.css";
 
 const TrendChart = dynamic(() => import("@/widgets/components/TrendChart"), {
@@ -25,6 +25,11 @@ const BudgetVsActualTable = dynamic(() => import("@/widgets/components/BudgetVsA
 
 const SummaryBvaTable = dynamic(() => import("@/widgets/components/SummaryBvaTable"), {
   loading: () => <div className="app-loading">Loading summary budget comparison...</div>,
+  ssr: false,
+});
+
+const ComparativeSnapshot = dynamic(() => import("@/widgets/components/ComparativeSnapshot"), {
+  loading: () => <div className="app-loading">Loading snapshot...</div>,
   ssr: false,
 });
 
@@ -71,6 +76,9 @@ export default function DashboardPage() {
   // Summary budget vs. actual state
   const [summaryBvaData, setSummaryBvaData] = useState<SummaryBvaData | null>(null);
 
+  // Comparative snapshot state
+  const [comparativeSnapshotData, setComparativeSnapshotData] = useState<ComparativeSnapshotData | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
@@ -113,6 +121,14 @@ export default function DashboardPage() {
     widgets.some(w => {
       const wt = getWidgetType(w.widgetTypeId);
       return wt?.component === "SummaryBva";
+    }),
+    [widgets]
+  );
+
+  const hasComparativeSnapshot = useMemo(() =>
+    widgets.some(w => {
+      const wt = getWidgetType(w.widgetTypeId);
+      return wt?.component === "ComparativeSnapshot";
     }),
     [widgets]
   );
@@ -219,6 +235,31 @@ export default function DashboardPage() {
     }
   }, [selectedEntities, currentClientId]);
 
+  // Fetch comparative snapshot data
+  const fetchComparativeSnapshot = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
+    const setActive = refresh ? setSyncing : setLoading;
+    setActive(true);
+    setError("");
+    try {
+      const url = `/api/widget-data/comparative-snapshot?month=${selectedMonth}&entities=${selectedEntities.join(",")}${refresh ? "&refresh=true" : ""}`;
+      const res = await fetch(url, {
+        headers: { "x-client-id": currentClientId || "" },
+        signal,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `API error: ${res.status}`);
+      }
+      const data = await res.json();
+      setComparativeSnapshotData(data);
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      setError(err.message || "Failed to load comparative snapshot");
+    } finally {
+      if (!signal?.aborted) { setLoading(false); setSyncing(false); }
+    }
+  }, [selectedEntities, currentClientId]);
+
   // Fetch summary budget vs. actual data
   const fetchSummaryBva = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
     const setActive = refresh ? setSyncing : setLoading;
@@ -255,6 +296,8 @@ export default function DashboardPage() {
   fetchBvaRef.current = fetchBudgetVsActual;
   const fetchSummaryBvaRef = useRef(fetchSummaryBva);
   fetchSummaryBvaRef.current = fetchSummaryBva;
+  const fetchComparativeSnapshotRef = useRef(fetchComparativeSnapshot);
+  fetchComparativeSnapshotRef.current = fetchComparativeSnapshot;
 
   // Auto-load when dashboard, entities, or month change
   useEffect(() => {
@@ -266,6 +309,7 @@ export default function DashboardPage() {
     setTrendData([]);
     setBudgetVsActualData(null);
     setSummaryBvaData(null);
+    setComparativeSnapshotData(null);
 
     const controller = new AbortController();
     if (hasFinancialWidgets) {
@@ -280,10 +324,13 @@ export default function DashboardPage() {
     if (hasSummaryBva) {
       fetchSummaryBvaRef.current(month, false, controller.signal);
     }
+    if (hasComparativeSnapshot) {
+      fetchComparativeSnapshotRef.current(month, false, controller.signal);
+    }
 
     return () => { controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, hasBudgetVsActual, hasSummaryBva, month]);
+  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, hasBudgetVsActual, hasSummaryBva, hasComparativeSnapshot, month]);
 
   if (packagesLoading) {
     return <div className="app-loading">Loading...</div>;
@@ -315,7 +362,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Dashboard controls — single month picker */}
-      {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva) && (
+      {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva || hasComparativeSnapshot) && (
         <div className="dashboard-controls">
           {entities.length > 1 && (
             <div className="multi-select" ref={entityDropdownRef}>
@@ -377,19 +424,21 @@ export default function DashboardPage() {
               if (hasTrendWidgets) fetchExpenseTrend(month);
               if (hasBudgetVsActual) fetchBudgetVsActual(month);
               if (hasSummaryBva) fetchSummaryBva(month);
+              if (hasComparativeSnapshot) fetchComparativeSnapshot(month);
             }}
             disabled={busy || selectedEntities.length === 0}
             className="refresh-btn"
           >
             {loading ? "Loading..." : "Load"}
           </button>
-          {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva) && (
+          {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva || hasComparativeSnapshot) && (
             <button
               onClick={() => {
                 if (hasFinancialWidgets) fetchFinancialSnapshot(month, true);
                 if (hasTrendWidgets) fetchExpenseTrend(month, true);
                 if (hasBudgetVsActual) fetchBudgetVsActual(month, true);
                 if (hasSummaryBva) fetchSummaryBva(month, true);
+                if (hasComparativeSnapshot) fetchComparativeSnapshot(month, true);
               }}
               disabled={busy || selectedEntities.length === 0}
               className="refresh-btn"
@@ -442,6 +491,11 @@ export default function DashboardPage() {
       {/* Summary Budget vs. Actual widget */}
       {summaryBvaData && hasSummaryBva && (
         <SummaryBvaTable data={summaryBvaData} month={month} />
+      )}
+
+      {/* Comparative Snapshot P&L widget */}
+      {comparativeSnapshotData && hasComparativeSnapshot && (
+        <ComparativeSnapshot data={comparativeSnapshotData} />
       )}
     </>
   );
