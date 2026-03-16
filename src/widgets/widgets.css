@@ -555,6 +555,122 @@ td.csnap-pos { color: #4caf50 !important; font-weight: 600; }
 td.csnap-neg { color: #e53935 !important; font-weight: 600; }
 td.csnap-neutral { color: #6a6b78 !important; }
 
+/* ── Category P&L (Food / Beverage / etc.) ──────────────────────────────────── */
+
+.cpl-container {
+  max-width: 100%;
+  margin: 32px 0 0;
+  padding: 0 24px;
+}
+
+.cpl-empty {
+  color: #9a9cb8;
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+.cpl-scroll {
+  overflow-x: auto;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: #16172380;
+}
+
+.cpl-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+
+.cpl-header-row { background: #1e1f30; }
+
+.cpl-th {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9a9cbb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #2e2f45;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #1e1f30;
+}
+
+.cpl-th-account { text-align: left; min-width: 200px; }
+.cpl-th-month   { text-align: right; min-width: 72px; }
+
+.cpl-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.cpl-th.cpl-sticky { z-index: 3; }
+
+.cpl-td-account {
+  padding: 5px 12px;
+  text-align: left;
+  white-space: nowrap;
+  background: #13141f;
+}
+
+.cpl-indent { padding-left: 28px !important; }
+
+.cpl-td-num {
+  padding: 5px 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Section header row (category name) */
+.cpl-row-section td {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #6b8cff;
+  background: #252636 !important;
+  border-top: 2px solid #2e2f45;
+  padding-top: 8px;
+}
+
+.cpl-row-section .cpl-sticky { background: #21223366 !important; }
+
+/* Data rows (Revenue, COGS) */
+.cpl-row-data td { color: #c8cadf; background: #13141f; }
+.cpl-row-data:hover td { background: #1a1b2a; }
+.cpl-row-data .cpl-sticky { background: #11121b; }
+
+/* Total row (Gross Profit) */
+.cpl-row-total td {
+  font-weight: 700;
+  color: #e1e2e8;
+  background: #1d1e2d;
+  border-top: 1px solid #3b3d52;
+  border-bottom: 1px solid #3b3d52;
+}
+
+.cpl-row-total .cpl-sticky { background: #191a28; }
+.cpl-row-total:hover td   { background: #1c2040; }
+
+/* GP% row */
+.cpl-row-pct td {
+  font-weight: 700;
+  font-style: italic;
+  color: #a0b4ff;
+  background: #1d1e2d;
+  border-bottom: 2px solid #3b6cf5;
+}
+
+.cpl-row-pct .cpl-sticky { background: #191a28; }
+.cpl-row-pct:hover td    { background: #1c2040; }
+
+.cpl-neg { color: #e53935 !important; }
+
 /* ── Rolling 13-Month Income Statement ──────────────────────────────────────── */
 
 .ris-container {
@@ -562,6 +678,7 @@ td.csnap-neutral { color: #6a6b78 !important; }
   margin: 32px 0 0;
   padding: 0 24px;
 }
+
 
 .ris-scroll {
   overflow-x: auto;
@@ -712,6 +829,29 @@ td.csnap-neutral { color: #6a6b78 !important; }
 
 .ris-row-total:hover .ris-td-account {
   color: #6b8cff;
+}
+
+/* GP%, NOP%, and NI% rows — calculated percentage metrics */
+.ris-row-gp-pct td,
+.ris-row-nop-pct td,
+.ris-row-ni-pct td {
+  font-weight: 700;
+  font-style: italic;
+  color: #a0b4ff;
+  background: #1d1e2d;
+  border-bottom: 2px solid #3b6cf5;
+}
+
+.ris-row-gp-pct .ris-sticky,
+.ris-row-nop-pct .ris-sticky,
+.ris-row-ni-pct .ris-sticky {
+  background: #191a28;
+}
+
+.ris-row-gp-pct:hover td,
+.ris-row-nop-pct:hover td,
+.ris-row-ni-pct:hover td {
+  background: #1c2040;
 }
 
 /* Responsive */

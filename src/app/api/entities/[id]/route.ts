@@ -14,7 +14,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { displayName, dataSourceBindings } = body;
+    const { displayName, dataSourceBindings, accountCategories } = body;
 
     // Validate catalogId regex within each binding
     if (dataSourceBindings) {
@@ -44,6 +44,8 @@ export async function PUT(
         updates.catalogId = '';
       }
     }
+
+    if (accountCategories !== undefined) updates.accountCategories = accountCategories;
 
     await updateEntity(id, updates);
     return NextResponse.json({ success: true });

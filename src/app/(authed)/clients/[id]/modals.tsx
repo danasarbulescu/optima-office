@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Client, EntityConfig, Package, Dashboard, ClientUser, DataSource, getEntityBindings } from "@/lib/types";
+import { Client, EntityConfig, Package, Dashboard, ClientUser, DataSource, AccountCategory, getEntityBindings } from "@/lib/types";
 import { DATA_SOURCE_TYPES } from "@/lib/data-source-types";
 
 interface BindingState {
@@ -296,11 +296,53 @@ export function EditEntityModal({
     const existing = getEntityBindings(entity);
     return existing.map(b => ({ dataSourceId: b.dataSourceId, sourceConfig: { ...b.sourceConfig } }));
   });
+  const [accountCategories, setAccountCategories] = useState<AccountCategory[]>(
+    entity.accountCategories || []
+  );
+  const [availableAccounts, setAvailableAccounts] = useState<{ income: string[]; cogs: string[] } | null>(null);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [accountsError, setAccountsError] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
 
   const activeSources = dataSources.filter(ds => ds.status === 'active');
+
+  // Load Income + COGS account names from CData for this entity
+  useEffect(() => {
+    const hasDataSource = entity.dataSourceId || (entity.dataSourceBindings && entity.dataSourceBindings.length > 0);
+    if (!hasDataSource) return;
+    setLoadingAccounts(true);
+    fetch(`/api/entities/${encodeURIComponent(entity.id)}/accounts`)
+      .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(new Error(d.error || 'Failed to load accounts'))))
+      .then(data => setAvailableAccounts(data))
+      .catch(err => setAccountsError(err.message))
+      .finally(() => setLoadingAccounts(false));
+  }, [entity.id]);
+
+  const addCategory = () => {
+    setAccountCategories(prev => [...prev, { name: '', revenueAccounts: [], cogsAccounts: [] }]);
+  };
+
+  const removeCategory = (idx: number) => {
+    setAccountCategories(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateCategoryName = (idx: number, name: string) => {
+    setAccountCategories(prev => prev.map((c, i) => i === idx ? { ...c, name } : c));
+  };
+
+  const toggleAccount = (idx: number, type: 'revenue' | 'cogs', acct: string, checked: boolean) => {
+    setAccountCategories(prev => prev.map((c, i) => {
+      if (i !== idx) return c;
+      const field = type === 'revenue' ? 'revenueAccounts' : 'cogsAccounts';
+      const current = c[field];
+      return {
+        ...c,
+        [field]: checked ? [...current, acct] : current.filter(a => a !== acct),
+      };
+    }));
+  };
 
   const toggleFieldVisibility = (key: string) => {
     setVisibleFields(prev => {
@@ -349,7 +391,7 @@ export function EditEntityModal({
       const res = await fetch(`/api/entities/${encodeURIComponent(entity.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, dataSourceBindings }),
+        body: JSON.stringify({ displayName, dataSourceBindings, accountCategories }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -452,6 +494,71 @@ export function EditEntityModal({
             );
           })
         )}
+
+        {/* Account Categories */}
+        <div className="modal-separator" />
+        <div className="account-categories-header">
+          <label>Account Categories</label>
+          <button type="button" className="add-binding-btn" onClick={addCategory}>+ Add Category</button>
+        </div>
+        {loadingAccounts && <div className="account-categories-loading">Loading accounts from data source...</div>}
+        {accountsError && <div className="modal-error">{accountsError}</div>}
+        {!loadingAccounts && !availableAccounts && !accountsError && (
+          <div className="modal-hint">Configure a data source above to enable account selection.</div>
+        )}
+        {accountCategories.map((cat, idx) => (
+          <div key={idx} className="account-category-section">
+            <div className="account-category-header">
+              <input
+                type="text"
+                className="category-name-input"
+                value={cat.name}
+                onChange={e => updateCategoryName(idx, e.target.value)}
+                placeholder="Category name (e.g. Food, Alcoholic Beverages)"
+              />
+              <button type="button" className="remove-binding-btn" onClick={() => removeCategory(idx)}>Remove</button>
+            </div>
+            {availableAccounts ? (
+              <>
+                <div className="account-checklist-label">Revenue Accounts</div>
+                <div className="account-checklist">
+                  {availableAccounts.income.length === 0
+                    ? <span style={{ fontSize: 12, color: '#6a6b78' }}>No income accounts found.</span>
+                    : availableAccounts.income.map(acct => (
+                      <label key={acct} className="account-check-option">
+                        <input
+                          type="checkbox"
+                          checked={cat.revenueAccounts.includes(acct)}
+                          onChange={e => toggleAccount(idx, 'revenue', acct, e.target.checked)}
+                        />
+                        {acct}
+                      </label>
+                    ))
+                  }
+                </div>
+                <div className="account-checklist-label">Cost of Goods Sold Accounts</div>
+                <div className="account-checklist">
+                  {availableAccounts.cogs.length === 0
+                    ? <span style={{ fontSize: 12, color: '#6a6b78' }}>No COGS accounts found.</span>
+                    : availableAccounts.cogs.map(acct => (
+                      <label key={acct} className="account-check-option">
+                        <input
+                          type="checkbox"
+                          checked={cat.cogsAccounts.includes(acct)}
+                          onChange={e => toggleAccount(idx, 'cogs', acct, e.target.checked)}
+                        />
+                        {acct}
+                      </label>
+                    ))
+                  }
+                </div>
+              </>
+            ) : (
+              <div className="modal-hint">Accounts will appear here once the data source is loaded.</div>
+            )}
+          </div>
+        ))}
+
         {error && <div className="modal-error">{error}</div>}
         <div className="modal-actions">
           <button className="modal-cancel-btn" onClick={onClose}>Cancel</button>

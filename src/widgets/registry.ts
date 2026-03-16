@@ -29,6 +29,9 @@ export const WIDGET_TYPES: WidgetType[] = [
 
   // Rolling 13-Month Income Statement (account-level detail)
   { id: 'rolling-income-statement', category: 'Table', component: 'RollingIncomeStatement' },
+
+  // Category P&L (Food / Beverage / etc.) — restaurant-specific
+  { id: 'category-pl', category: 'Table', component: 'CategoryPL' },
 ];
 
 /** Default display name for widget types without a DynamoDB override */

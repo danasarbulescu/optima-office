@@ -6,6 +6,11 @@ function formatAmt(n: number): string {
   return n < 0 ? `(${abs})` : abs;
 }
 
+function formatPct(n: number): string {
+  if (n === 0) return '-';
+  return `${(n * 100).toFixed(1)}%`;
+}
+
 function isTotalRow(row: RollingPLRow): boolean {
   return row.rowType === 'Summary' && (row.rowId === null || row.rowId === '');
 }
@@ -16,10 +21,15 @@ function isSubtotalRow(row: RollingPLRow): boolean {
 
 function rowClass(row: RollingPLRow): string {
   if (row.rowType === 'Section') return 'ris-row ris-row-section';
+  if (row.rowType === 'GpPercent') return 'ris-row ris-row-gp-pct';
+  if (row.rowType === 'NopPercent') return 'ris-row ris-row-nop-pct';
+  if (row.rowType === 'NiPercent')  return 'ris-row ris-row-ni-pct';
   if (isTotalRow(row)) return 'ris-row ris-row-total';
   if (isSubtotalRow(row)) return 'ris-row ris-row-subtotal';
   return 'ris-row ris-row-data';
 }
+
+const PCT_TYPES = new Set(['GpPercent', 'NopPercent', 'NiPercent']);
 
 export default function RollingIncomeStatement({ data }: { data: RollingIncomeStatementData }) {
   const { months, monthLabels, rows } = data;
@@ -39,6 +49,7 @@ export default function RollingIncomeStatement({ data }: { data: RollingIncomeSt
           <tbody>
             {rows.map((row, idx) => {
               const isSection = row.rowType === 'Section';
+              const isPct = PCT_TYPES.has(row.rowType);
               return (
                 <tr key={`${row.rowGroup}-${row.rowType}-${row.account}-${idx}`} className={rowClass(row)}>
                   <td className={`ris-td-account ris-sticky${row.rowType === 'Data' ? ' ris-indent' : ''}`}>
@@ -47,6 +58,9 @@ export default function RollingIncomeStatement({ data }: { data: RollingIncomeSt
                   {months.map(m => {
                     if (isSection) return <td key={m} className="ris-td-num" />;
                     const val = row.periods[m] || 0;
+                    if (isPct) {
+                      return <td key={m} className="ris-td-num">{formatPct(val)}</td>;
+                    }
                     return (
                       <td key={m} className={`ris-td-num${val < 0 ? ' ris-neg' : ''}`}>
                         {formatAmt(val)}

@@ -5,6 +5,13 @@ export interface DataSourceBinding {
   sourceConfig: Record<string, string>;
 }
 
+/** Maps a named P&L category (e.g. "Food") to the accounts that make up its Revenue and COGS */
+export interface AccountCategory {
+  name: string;               // e.g. "Food", "Alcoholic Beverages"
+  revenueAccounts: string[];  // exact account names from Income Data rows in CData
+  cogsAccounts: string[];     // exact account names from COGS Data rows in CData
+}
+
 export interface EntityConfig {
   id: string;          // Internal UUID (DynamoDB partition key)
   clientId: string;    // Client this entity belongs to
@@ -13,6 +20,7 @@ export interface EntityConfig {
   dataSourceId?: string; // Legacy single binding (synced from dataSourceBindings[0])
   sourceConfig?: Record<string, string>; // Legacy single binding
   dataSourceBindings?: DataSourceBinding[]; // Multiple data source bindings
+  accountCategories?: AccountCategory[]; // Per-entity P&L account category mappings
   createdAt?: string;
   email?: string;
   firstName?: string;
@@ -326,4 +334,27 @@ export interface KPIs {
   netIncomeYTD: number;
   pyToDateNetIncome: number | null;
   netIncomeYoyVariance: number | null;
+}
+
+// ── Category P&L (Food / Beverage / etc.) ────────────────────────────────────
+
+/** One value row inside a CategoryPLGroup (Revenue, COGS, Gross Profit, or GP%) */
+export interface CategoryPLRow {
+  label: string;
+  values: Record<string, number>; // period "YYYY-MM" → amount (ratio for isPct rows)
+  isPct: boolean;
+  isBold: boolean;
+}
+
+/** One named category group (e.g. "Food") with its 4 summary rows */
+export interface CategoryPLGroup {
+  name: string;
+  rows: CategoryPLRow[];
+}
+
+/** Full response from GET /api/widget-data/category-pl */
+export interface CategoryPLData {
+  months: string[];       // ["2025-02", ..., "2026-02"]
+  monthLabels: string[];  // ["Feb 25", ..., "Feb 26"]
+  groups: CategoryPLGroup[];
 }

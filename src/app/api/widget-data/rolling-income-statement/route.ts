@@ -35,20 +35,6 @@ function monthLabel(m: string): string {
   return `${MONTH_ABBREVS[parseInt(mo, 10) - 1]} ${year.slice(2)}`;
 }
 
-// Sort weight within a RowGroup: Section < Data < Summary-subtotal < Summary-total
-function rowTypeSortOrder(rowType: string, rowId: string | null): number {
-  if (rowType === 'Section') return 0;
-  if (rowType === 'Data') return 1;
-  if (rowType === 'Summary' && rowId !== null && rowId !== '') return 2;
-  return 3; // Summary group total (RowId IS NULL)
-}
-
-// Extract leading account code number for sorting (e.g. "40010" from "40010 Food Sales")
-function accountCodeKey(account: string): number {
-  const m = /^(\d+)/.exec(account.trim());
-  return m ? parseInt(m[1], 10) : 999999;
-}
-
 async function fetchEntityRows(entity: EntityConfig, months: string[]): Promise<RollingPLRow[]> {
   let user = process.env.CDATA_USER ?? '';
   let pat = process.env.CDATA_PAT ?? '';
@@ -82,43 +68,39 @@ async function fetchEntityRows(entity: EntityConfig, months: string[]): Promise<
 }
 
 function mergeAndSort(entityRowSets: RollingPLRow[][], months: string[]): RollingPLRow[] {
-  // Merge by (rowGroup, rowType, account) — sums period values for same account across entities
+  // Merge by (rowGroup, rowType, account) — sums period values for same account across entities.
+  // Track the source index (position in the CData result) so we can restore the original order.
   const map = new Map<string, RollingPLRow>();
+  const sourceIndexMap = new Map<string, number>(); // key → earliest source index seen
 
   for (const rows of entityRowSets) {
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       const key = `${row.rowGroup}|||${row.rowType}|||${row.account}`;
       const existing = map.get(key);
       if (existing) {
         for (const m of months) {
           existing.periods[m] = (existing.periods[m] || 0) + (row.periods[m] || 0);
         }
+        // Keep the smaller index so rows introduced by entity 1 retain their position
+        const prev = sourceIndexMap.get(key) ?? i;
+        if (i < prev) sourceIndexMap.set(key, i);
       } else {
         map.set(key, { ...row, periods: { ...row.periods } });
+        sourceIndexMap.set(key, i);
       }
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => {
-    // 1. Section order
+  return Array.from(map.entries()).sort(([keyA, a], [keyB, b]) => {
+    // 1. Canonical RowGroup order (Income → COGS → GrossProfit → … → NetIncome)
     const ga = ROW_GROUP_ORDER[a.rowGroup] ?? 99;
     const gb = ROW_GROUP_ORDER[b.rowGroup] ?? 99;
     if (ga !== gb) return ga - gb;
 
-    // 2. Row type order within section
-    const ta = rowTypeSortOrder(a.rowType, a.rowId);
-    const tb = rowTypeSortOrder(b.rowType, b.rowId);
-    if (ta !== tb) return ta - tb;
-
-    // 3. For data rows: sort by account code number, then name
-    if (a.rowType === 'Data') {
-      const ca = accountCodeKey(a.account);
-      const cb = accountCodeKey(b.account);
-      if (ca !== cb) return ca - cb;
-    }
-
-    return a.account.localeCompare(b.account);
-  });
+    // 2. Within the same RowGroup, preserve the original CData row order
+    return (sourceIndexMap.get(keyA) ?? 0) - (sourceIndexMap.get(keyB) ?? 0);
+  }).map(([, row]) => row);
 }
 
 export async function GET(request: NextRequest) {
@@ -165,7 +147,56 @@ export async function GET(request: NextRequest) {
       resolvedEntities.map(e => fetchEntityRows(e, months))
     );
 
-    const rows = mergeAndSort(entityRowSets, months);
+    const merged = mergeAndSort(entityRowSets, months);
+
+    // Remove rows where all 13 period values are zero.
+    // Section rows (headers with no values) are kept only when their RowGroup has at least one non-zero Data/Summary row.
+    const nonEmptyGroups = new Set(
+      merged
+        .filter(r => r.rowType !== 'Section' && months.some(m => r.periods[m] !== 0))
+        .map(r => r.rowGroup)
+    );
+    const filtered = merged.filter(r =>
+      r.rowType === 'Section'
+        ? nonEmptyGroups.has(r.rowGroup)
+        : months.some(m => r.periods[m] !== 0)
+    );
+
+    const incomeTotalRow = filtered.find(r => r.rowGroup === 'Income' && r.rowType === 'Summary' && (r.rowId === null || r.rowId === ''));
+
+    function pctRow(label: string, rowGroup: string, rowType: string, numeratorRow: RollingPLRow | undefined): RollingPLRow | null {
+      if (!numeratorRow || !incomeTotalRow) return null;
+      const periods: Record<string, number> = {};
+      for (const m of months) {
+        const num = numeratorRow.periods[m] || 0;
+        const denom = incomeTotalRow.periods[m] || 0;
+        periods[m] = denom !== 0 ? num / denom : 0;
+      }
+      return { account: label, rowGroup, rowType, rowId: null, periods };
+    }
+
+    // Inject GP% after last GrossProfit row, NOP% after last NetOperatingIncome row
+    const gpTotalRow  = filtered.find(r => r.rowGroup === 'GrossProfit'        && r.rowType === 'Summary' && (r.rowId === null || r.rowId === ''));
+    const nopTotalRow = filtered.find(r => r.rowGroup === 'NetOperatingIncome' && r.rowType === 'Summary' && (r.rowId === null || r.rowId === ''));
+    const niTotalRow  = filtered.find(r => r.rowGroup === 'NetIncome'          && r.rowType === 'Summary' && (r.rowId === null || r.rowId === ''));
+    const gpPctRow  = pctRow('Gross Profit %',        'GrossProfit',        'GpPercent',  gpTotalRow);
+    const nopPctRow = pctRow('Net Operating Profit %', 'NetOperatingIncome', 'NopPercent', nopTotalRow);
+    const niPctRow  = pctRow('Net Income %',           'NetIncome',          'NiPercent',  niTotalRow);
+
+    let rows = filtered;
+    if (gpPctRow || nopPctRow || niPctRow) {
+      rows = [];
+      const groups = filtered.map(r => r.rowGroup);
+      const lastGpIdx  = groups.lastIndexOf('GrossProfit');
+      const lastNopIdx = groups.lastIndexOf('NetOperatingIncome');
+      const lastNiIdx  = groups.lastIndexOf('NetIncome');
+      for (let i = 0; i < filtered.length; i++) {
+        rows.push(filtered[i]);
+        if (i === lastGpIdx  && gpPctRow)  rows.push(gpPctRow);
+        if (i === lastNopIdx && nopPctRow) rows.push(nopPctRow);
+        if (i === lastNiIdx  && niPctRow)  rows.push(niPctRow);
+      }
+    }
 
     const data: RollingIncomeStatementData = { months, monthLabels, rows };
     return NextResponse.json(data);
