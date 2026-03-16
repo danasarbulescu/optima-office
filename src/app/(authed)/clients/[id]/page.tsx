@@ -668,6 +668,7 @@ export default function ClientDetailPage() {
         <AddWidgetModal
           dashboard={addWidgetForDashboard}
           existingWidgetTypeIds={(allWidgets[addWidgetForDashboard.id] || []).map(w => w.widgetTypeId)}
+          entities={entities}
           onClose={() => setAddWidgetForDashboard(null)}
           onSaved={() => { setAddWidgetForDashboard(null); afterPackageMutation(); }}
         />

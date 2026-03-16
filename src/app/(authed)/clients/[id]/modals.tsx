@@ -876,11 +876,13 @@ export function EditDashboardModal({
 export function AddWidgetModal({
   dashboard,
   existingWidgetTypeIds,
+  entities,
   onClose,
   onSaved,
 }: {
   dashboard: Dashboard;
   existingWidgetTypeIds: string[];
+  entities: EntityConfig[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -890,6 +892,11 @@ export function AddWidgetModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [categoryNameInput, setCategoryNameInput] = useState("");
+
+  // Collect unique account category names from all entities
+  const availableCategories = Array.from(
+    new Set(entities.flatMap(e => (e.accountCategories || []).map(c => c.name)))
+  ).sort();
 
   useEffect(() => {
     (async () => {
@@ -967,15 +974,28 @@ export function AddWidgetModal({
         {selectedIds.includes('category-pl-detail') && (
           <div style={{ marginTop: 12 }}>
             <label style={{ display: 'block', fontSize: 13, color: '#c0c4d0', marginBottom: 4 }}>
-              Category Name (for Category P&L Detail widget)
+              Account Category (for Category P&L Detail widget)
             </label>
-            <input
-              type="text"
-              value={categoryNameInput}
-              onChange={e => setCategoryNameInput(e.target.value)}
-              placeholder="e.g. Food, Beverages"
-              style={{ width: '100%', padding: '6px 10px', background: '#13141f', border: '1px solid #2a2b3d', borderRadius: 4, color: '#e1e2ee', fontSize: 13 }}
-            />
+            {availableCategories.length > 0 ? (
+              <select
+                value={categoryNameInput}
+                onChange={e => setCategoryNameInput(e.target.value)}
+                style={{ width: '100%', padding: '6px 10px', background: '#13141f', border: '1px solid #2a2b3d', borderRadius: 4, color: categoryNameInput ? '#e1e2ee' : '#6b7280', fontSize: 13 }}
+              >
+                <option value="">— Select a category —</option>
+                {availableCategories.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={categoryNameInput}
+                onChange={e => setCategoryNameInput(e.target.value)}
+                placeholder="e.g. Food, Beverages (no categories configured on entities)"
+                style={{ width: '100%', padding: '6px 10px', background: '#13141f', border: '1px solid #2a2b3d', borderRadius: 4, color: '#e1e2ee', fontSize: 13 }}
+              />
+            )}
           </div>
         )}
         {error && <div className="modal-error">{error}</div>}
