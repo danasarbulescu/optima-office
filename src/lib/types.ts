@@ -358,3 +358,29 @@ export interface CategoryPLData {
   monthLabels: string[];  // ["Feb 25", ..., "Feb 26"]
   groups: CategoryPLGroup[];
 }
+
+// ── Category P&L Detail (per-category, with sub-account breakdown) ────────────
+
+export interface CategoryPLDetailEntry {
+  code: string | null;    // e.g. "40010", null if not parseable
+  name: string;           // e.g. "Sales Food"
+  section: 'income' | 'cogs';
+  amounts: Record<string, number>;  // period "YYYY-MM" → value
+}
+
+export interface CategoryPLDetailData {
+  categoryName: string;
+  mode: 'yoy' | 'range';
+  // Ordered periods to display
+  // yoy mode: [currentMonth] — prior year periods in priorPeriods
+  // range mode: [startMonth, ..., endMonth]
+  periods: string[];
+  periodLabels: string[];
+  priorPeriods?: string[];       // yoy mode only: [priorYearMonth]
+  priorPeriodLabels?: string[];  // yoy mode only: [priorYearLabel]
+  incomeEntries: CategoryPLDetailEntry[];
+  cogsEntries: CategoryPLDetailEntry[];
+  incomeTotals: Record<string, number>;  // period → total
+  cogsTotals: Record<string, number>;
+  gpTotals: Record<string, number>;
+}

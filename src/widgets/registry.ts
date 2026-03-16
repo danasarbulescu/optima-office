@@ -32,6 +32,9 @@ export const WIDGET_TYPES: WidgetType[] = [
 
   // Category P&L (Food / Beverage / etc.) — restaurant-specific
   { id: 'category-pl', category: 'Table', component: 'CategoryPL' },
+
+  // Category P&L Detail (per-category, with sub-account breakdown and YOY)
+  { id: 'category-pl-detail', category: 'Table', component: 'CategoryPLDetail' },
 ];
 
 /** Default display name for widget types without a DynamoDB override */

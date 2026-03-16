@@ -862,3 +862,118 @@ td.csnap-neutral { color: #6a6b78 !important; }
 @media (max-width: 600px) {
   .widget-grid, .widget-grid-5 { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Category P&L Detail (cpld-) ─────────────────────────────────────────── */
+.cpld-container {
+  max-width: 1200px;
+  margin: 40px auto 0;
+}
+
+.cpld-title {
+  background: #2a3a7a;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: 8px 8px 0 0;
+  letter-spacing: 0.5px;
+}
+
+.cpld-scroll {
+  overflow-x: auto;
+  background: #13141f;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.cpld-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.cpld-header-row1 { background: #1e1f30; }
+.cpld-header-row2 { background: #252636; }
+
+.cpld-th {
+  padding: 7px 12px;
+  color: #8890b0;
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid #2a2b3d;
+  text-align: right;
+}
+.cpld-th-account { text-align: left; min-width: 220px; }
+.cpld-th-num     { min-width: 90px; }
+.cpld-th-span    { text-align: center; color: #c0c4d0; }
+
+.cpld-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #13141f;
+}
+.cpld-th.cpld-sticky { z-index: 3; background: #252636; }
+
+.cpld-td-account {
+  padding: 6px 12px;
+  text-align: left;
+  color: #c8cadf;
+  font-size: 13px;
+}
+.cpld-indent { padding-left: 28px !important; }
+.cpld-acct-code {
+  color: #8890b0;
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.cpld-td-num {
+  padding: 6px 12px;
+  text-align: right;
+  color: #c8cadf;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section header row (Income / Cost of Goods Sold) */
+.cpld-row-section td {
+  background: #1e1f30 !important;
+  color: #8890b0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 5px 12px;
+  border-top: 1px solid #2a2b3d;
+  border-bottom: 1px solid #2a2b3d;
+}
+.cpld-row-section .cpld-sticky { background: #1e1f30 !important; }
+
+/* Data rows */
+.cpld-row-data td { color: #c8cadf; background: #13141f; }
+.cpld-row-data:hover td { background: #1a1b2a; }
+.cpld-row-data .cpld-sticky { background: #11121b; }
+.cpld-row-data:hover .cpld-sticky { background: #181926; }
+
+/* Bold total rows (Income, Cost of Goods Sold totals) */
+.cpld-row-bold td {
+  font-weight: 700;
+  color: #e1e2ee;
+  background: #191a28;
+  border-top: 1px solid #2a2b3d;
+}
+.cpld-row-bold .cpld-sticky { background: #181926; }
+
+/* Gross Profit row */
+.cpld-row-gp td {
+  font-weight: 700;
+  color: #ffffff;
+  background: #1e2840;
+  border-top: 2px solid #3a5090;
+}
+.cpld-row-gp .cpld-sticky { background: #1c2438; }
+
+/* Negative values */
+.cpld-neg { color: #f06060 !important; }

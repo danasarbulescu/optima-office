@@ -10,7 +10,7 @@ import { getWidgetType } from "@/widgets/registry";
 import { KPI_CONFIGS } from "@/widgets/kpi-config";
 import KpiCard from "@/widgets/components/KpiCard";
 import PnlTable from "@/widgets/components/PnlTable";
-import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, SummaryBvaData, ComparativeSnapshotData, RollingIncomeStatementData, CategoryPLData } from "@/lib/types";
+import type { KPIs, PnLByMonth, TrendDataPoint, BudgetVsActualData, SummaryBvaData, ComparativeSnapshotData, RollingIncomeStatementData, CategoryPLData, CategoryPLDetailData } from "@/lib/types";
 import "@/widgets/widgets.css";
 
 const TrendChart = dynamic(() => import("@/widgets/components/TrendChart"), {
@@ -40,6 +40,11 @@ const RollingIncomeStatement = dynamic(() => import("@/widgets/components/Rollin
 
 const CategoryPL = dynamic(() => import("@/widgets/components/CategoryPL"), {
   loading: () => <div className="app-loading">Loading category P&amp;L...</div>,
+  ssr: false,
+});
+
+const CategoryPLDetail = dynamic(() => import("@/widgets/components/CategoryPLDetail"), {
+  loading: () => <div className="app-loading">Loading category detail...</div>,
   ssr: false,
 });
 
@@ -94,6 +99,10 @@ export default function DashboardPage() {
 
   // Category P&L state
   const [categoryPLData, setCategoryPLData] = useState<CategoryPLData | null>(null);
+
+  // Category P&L Detail state (keyed by categoryName)
+  const [categoryPLDetailMap, setCategoryPLDetailMap] = useState<Map<string, CategoryPLDetailData>>(new Map());
+  const [startMonth, setStartMonth] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -164,6 +173,23 @@ export default function DashboardPage() {
     }),
     [widgets]
   );
+
+  const categoryPLDetailWidgets = useMemo(() =>
+    widgets.filter(w => {
+      const wt = getWidgetType(w.widgetTypeId);
+      return wt?.component === "CategoryPLDetail";
+    }),
+    [widgets]
+  );
+
+  const hasCategoryPLDetail = categoryPLDetailWidgets.length > 0;
+
+  const categoryPLDetailCategories = useMemo(() => {
+    const cats = categoryPLDetailWidgets
+      .map(w => (w.config?.categoryName as string) || "")
+      .filter(Boolean);
+    return [...new Set(cats)];
+  }, [categoryPLDetailWidgets]);
 
   // Close entity dropdown on outside click
   useEffect(() => {
@@ -316,6 +342,44 @@ export default function DashboardPage() {
     }
   }, [selectedEntities, currentClientId]);
 
+  // Fetch category P&L detail data (one fetch per unique category name)
+  const fetchCategoryPLDetail = useCallback(async (
+    selectedMonth: string,
+    rangeStart: string,
+    categories: string[],
+    signal?: AbortSignal,
+  ) => {
+    if (categories.length === 0) return;
+    setLoading(true);
+    setError("");
+    try {
+      const results = await Promise.all(
+        categories.map(async (cat) => {
+          const startParam = rangeStart && rangeStart < selectedMonth ? `&startMonth=${rangeStart}` : "";
+          const url = `/api/widget-data/category-pl-detail?month=${selectedMonth}&entities=${selectedEntities.join(",")}&category=${encodeURIComponent(cat)}${startParam}`;
+          const res = await fetch(url, {
+            headers: { "x-client-id": currentClientId || "" },
+            signal,
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `API error: ${res.status}`);
+          }
+          return { cat, data: await res.json() as CategoryPLDetailData };
+        })
+      );
+      if (signal?.aborted) return;
+      const newMap = new Map<string, CategoryPLDetailData>();
+      for (const { cat, data } of results) newMap.set(cat, data);
+      setCategoryPLDetailMap(newMap);
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      setError(err.message || "Failed to load category detail");
+    } finally {
+      if (!signal?.aborted) { setLoading(false); setSyncing(false); }
+    }
+  }, [selectedEntities, currentClientId]);
+
   // Fetch rolling income statement data (direct CData fetch — account-level detail)
   const fetchRollingIS = useCallback(async (selectedMonth: string, refresh = false, signal?: AbortSignal) => {
     const setActive = refresh ? setSyncing : setLoading;
@@ -383,6 +447,8 @@ export default function DashboardPage() {
   fetchRollingISRef.current = fetchRollingIS;
   const fetchCategoryPLRef = useRef(fetchCategoryPL);
   fetchCategoryPLRef.current = fetchCategoryPL;
+  const fetchCategoryPLDetailRef = useRef(fetchCategoryPLDetail);
+  fetchCategoryPLDetailRef.current = fetchCategoryPLDetail;
 
   // Auto-load when dashboard, entities, or month change
   useEffect(() => {
@@ -397,6 +463,7 @@ export default function DashboardPage() {
     setComparativeSnapshotData(null);
     setRollingISData(null);
     setCategoryPLData(null);
+    setCategoryPLDetailMap(new Map());
 
     const controller = new AbortController();
     if (hasFinancialWidgets) {
@@ -420,10 +487,13 @@ export default function DashboardPage() {
     if (hasCategoryPL) {
       fetchCategoryPLRef.current(month, false, controller.signal);
     }
+    if (hasCategoryPLDetail) {
+      fetchCategoryPLDetailRef.current(month, startMonth, categoryPLDetailCategories, controller.signal);
+    }
 
     return () => { controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, hasBudgetVsActual, hasSummaryBva, hasComparativeSnapshot, hasRollingIS, hasCategoryPL, month]);
+  }, [packagesLoading, dashboard?.id, selectedEntities, hasFinancialWidgets, hasTrendWidgets, hasBudgetVsActual, hasSummaryBva, hasComparativeSnapshot, hasRollingIS, hasCategoryPL, hasCategoryPLDetail, categoryPLDetailCategories, month, startMonth]);
 
   if (packagesLoading) {
     return <div className="app-loading">Loading...</div>;
@@ -455,7 +525,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Dashboard controls — single month picker */}
-      {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva || hasComparativeSnapshot || hasRollingIS || hasCategoryPL) && (
+      {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva || hasComparativeSnapshot || hasRollingIS || hasCategoryPL || hasCategoryPLDetail) && (
         <div className="dashboard-controls">
           {entities.length > 1 && (
             <div className="multi-select" ref={entityDropdownRef}>
@@ -505,6 +575,19 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+          {hasCategoryPLDetail && (
+            <>
+              <label className="month-picker-label">From</label>
+              <input
+                type="month"
+                value={startMonth}
+                onChange={(e) => setStartMonth(e.target.value)}
+                className="month-picker"
+                placeholder="(single month)"
+              />
+              <label className="month-picker-label">To</label>
+            </>
+          )}
           <input
             type="month"
             value={month}
@@ -520,13 +603,14 @@ export default function DashboardPage() {
               if (hasComparativeSnapshot) fetchComparativeSnapshot(month);
               if (hasRollingIS) fetchRollingIS(month);
               if (hasCategoryPL) fetchCategoryPL(month);
+              if (hasCategoryPLDetail) fetchCategoryPLDetail(month, startMonth, categoryPLDetailCategories);
             }}
             disabled={busy || selectedEntities.length === 0}
             className="refresh-btn"
           >
             {loading ? "Loading..." : "Load"}
           </button>
-          {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva || hasComparativeSnapshot || hasRollingIS || hasCategoryPL) && (
+          {(hasFinancialWidgets || hasTrendWidgets || hasBudgetVsActual || hasSummaryBva || hasComparativeSnapshot || hasRollingIS || hasCategoryPL || hasCategoryPLDetail) && (
             <button
               onClick={() => {
                 if (hasFinancialWidgets) fetchFinancialSnapshot(month, true);
@@ -536,6 +620,7 @@ export default function DashboardPage() {
                 if (hasComparativeSnapshot) fetchComparativeSnapshot(month, true);
                 if (hasRollingIS) fetchRollingIS(month, true);
                 if (hasCategoryPL) fetchCategoryPL(month);
+                if (hasCategoryPLDetail) fetchCategoryPLDetail(month, startMonth, categoryPLDetailCategories);
               }}
               disabled={busy || selectedEntities.length === 0}
               className="refresh-btn"
@@ -604,6 +689,14 @@ export default function DashboardPage() {
       {categoryPLData && hasCategoryPL && (
         <CategoryPL data={categoryPLData} />
       )}
+
+      {/* Category P&L Detail widgets (one per configured category) */}
+      {hasCategoryPLDetail && categoryPLDetailWidgets.map(w => {
+        const catName = (w.config?.categoryName as string) || "";
+        const detailData = categoryPLDetailMap.get(catName);
+        if (!detailData) return null;
+        return <CategoryPLDetail key={w.id} data={detailData} />;
+      })}
     </>
   );
 }

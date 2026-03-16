@@ -889,6 +889,7 @@ export function AddWidgetModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [categoryNameInput, setCategoryNameInput] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -896,9 +897,9 @@ export function AddWidgetModal({
         const res = await fetch(`/api/widget-types`);
         if (res.ok) {
           const data = await res.json();
-          // Filter out already-mapped widget types
+          // Filter out already-mapped widget types (category-pl-detail can appear multiple times)
           const available = data.widgetTypes.filter(
-            (wt: any) => !existingWidgetTypeIds.includes(wt.id)
+            (wt: any) => wt.id === 'category-pl-detail' || !existingWidgetTypeIds.includes(wt.id)
           );
           setWidgetTypes(available);
         }
@@ -925,6 +926,9 @@ export function AddWidgetModal({
           body: JSON.stringify({
             widgetTypeId: selectedIds[i],
             sortOrder: existingWidgetTypeIds.length + i,
+            ...(selectedIds[i] === 'category-pl-detail' && categoryNameInput.trim()
+              ? { config: { categoryName: categoryNameInput.trim() } }
+              : {}),
           }),
         });
         if (!res.ok) throw new Error("Failed to add widget");
@@ -958,6 +962,20 @@ export function AddWidgetModal({
                 <span className="widget-select-category">{wt.category}</span>
               </label>
             ))}
+          </div>
+        )}
+        {selectedIds.includes('category-pl-detail') && (
+          <div style={{ marginTop: 12 }}>
+            <label style={{ display: 'block', fontSize: 13, color: '#c0c4d0', marginBottom: 4 }}>
+              Category Name (for Category P&L Detail widget)
+            </label>
+            <input
+              type="text"
+              value={categoryNameInput}
+              onChange={e => setCategoryNameInput(e.target.value)}
+              placeholder="e.g. Food, Beverages"
+              style={{ width: '100%', padding: '6px 10px', background: '#13141f', border: '1px solid #2a2b3d', borderRadius: 4, color: '#e1e2ee', fontSize: 13 }}
+            />
           </div>
         )}
         {error && <div className="modal-error">{error}</div>}
